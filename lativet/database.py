@@ -2882,11 +2882,20 @@ class PostgresDatabase(Database):
         self.db_path = Path("supabase")
         self._lock = threading.RLock()
         self.connection = PostgresConnection(dsn)
+        lock_id = 9245021
         with self._lock:
-            self._init_schema()
-            self.connection.commit()
-            if not self._has_settings():
-                self.save_settings(DEFAULT_SETTINGS)
+            try:
+                self.connection.execute("SELECT pg_advisory_lock(?)", (lock_id,))
+                self._init_schema()
+                self.connection.commit()
+                if not self._has_settings():
+                    self.save_settings(DEFAULT_SETTINGS)
+            finally:
+                try:
+                    self.connection.execute("SELECT pg_advisory_unlock(?)", (lock_id,))
+                    self.connection.commit()
+                except Exception:
+                    pass
 
     def _ensure_column(self, table: str, column: str, definition: str) -> None:
         self.connection.execute(
