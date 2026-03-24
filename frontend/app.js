@@ -16,6 +16,7 @@ const state = {
   billing_documents: [],
   cash_movements: [],
   stock_movements: [],
+  users: [],
   billing_summary: {},
   requests: {},
   reports: {},
@@ -36,6 +37,17 @@ let agendaSelectedDate = new Date().toISOString().slice(0, 10);
 const notifications = [];
 let unreadNotifications = 0;
 const MAX_NOTIFICATIONS = 60;
+const permissionOptions = [
+  { key: "dashboard", label: "Dashboard" },
+  { key: "administration", label: "Administracion" },
+  { key: "agenda", label: "Agenda" },
+  { key: "sales", label: "Ventas" },
+  { key: "consultorio", label: "Consultorio" },
+  { key: "hospamb", label: "Hosp./Amb." },
+  { key: "requests", label: "Solicitudes" },
+  { key: "reports", label: "Informes" },
+];
+const usersFilters = { query: "", pageSize: 10, showInactive: false };
 const consultationTypes = [
   "Vacunacion",
   "Formula",
@@ -562,6 +574,13 @@ const api = {
   saveGrooming: (payload) =>
     apiRequest("/api/grooming", { method: "POST", body: JSON.stringify(payload) }),
   backupDatabase: () => apiRequest("/api/backups", { method: "POST", body: "{}" }),
+  saveUser: (payload) =>
+    apiRequest("/api/users", { method: "POST", body: JSON.stringify(payload) }),
+  updateUserStatus: (userId, is_active) =>
+    apiRequest(`/api/users/${userId}/status`, {
+      method: "PATCH",
+      body: JSON.stringify({ is_active }),
+    }),
 };
 
 function cacheElements() {
@@ -655,6 +674,17 @@ function cacheElements() {
     "catalogItemsList",
     "billingClientsList",
     "billingDocumentsList",
+    "usersClinicName",
+    "usersTableBody",
+    "usersSummary",
+    "usersSearchInput",
+    "usersPageSizeSelect",
+    "openUserModalButton",
+    "toggleInactiveUsersButton",
+    "exportUsersButton",
+    "userModal",
+    "closeUserModalButton",
+    "userForm",
     "cashMovementsList",
     "stockMovementsList",
     "requestRecordsList",
@@ -1526,6 +1556,73 @@ function renderGoogleCalendarStatus() {
   }
 }
 
+function buildUserPermissionsSummary(permissions) {
+  if (!Array.isArray(permissions) || !permissions.length) {
+    return "Sin permisos";
+  }
+  if (permissions.length >= permissionOptions.length) {
+    return "Acceso total";
+  }
+  return `${permissions.length} permisos`;
+}
+
+function renderUsers() {
+  if (!elements.usersTableBody) {
+    return;
+  }
+  const clinicName = state.settings?.clinic_name || "Lativet";
+  elements.usersClinicName.textContent = clinicName;
+  const query = usersFilters.query.trim().toLowerCase();
+  let users = Array.isArray(state.users) ? [...state.users] : [];
+  if (!usersFilters.showInactive) {
+    users = users.filter((user) => user.is_active);
+  }
+  if (query) {
+    users = users.filter((user) => {
+      const haystack = `${user.full_name || ""} ${user.email || ""} ${user.role || ""}`.toLowerCase();
+      return haystack.includes(query);
+    });
+  }
+  const total = users.length;
+  const pageSize = Number(usersFilters.pageSize || 10);
+  const visible = users.slice(0, pageSize);
+  if (!visible.length) {
+    elements.usersTableBody.innerHTML = `<tr><td colspan="5">${emptyState("Aun no hay usuarios registrados.")}</td></tr>`;
+  } else {
+    elements.usersTableBody.innerHTML = visible
+      .map((user) => {
+        const statusLabel = user.is_active ? "Activo" : "Inactivo";
+        const statusClass = user.is_active ? "pill--confirmed" : "pill--draft";
+        const createdLabel = user.created_at ? formatDateTime(user.created_at) : "N/D";
+        return `
+          <tr class="${user.is_active ? "" : "is-muted"}">
+            <td>
+              <div class="table-actions">
+                <button type="button" data-user-edit="${escapeHtml(user.id)}">Editar</button>
+                <button type="button" data-user-toggle="${escapeHtml(user.id)}" data-user-active="${user.is_active ? "1" : "0"}">
+                  ${user.is_active ? "Desactivar" : "Activar"}
+                </button>
+              </div>
+            </td>
+            <td>${escapeHtml(user.full_name || "Sin nombre")}</td>
+            <td>${escapeHtml(user.email || "Sin correo")}</td>
+            <td>
+              ${escapeHtml(user.role || "Sin rol")}
+              <div class="meta-copy">Permisos: ${escapeHtml(buildUserPermissionsSummary(user.permissions))}</div>
+              <span class="pill ${statusClass}">${statusLabel}</span>
+            </td>
+            <td>${escapeHtml(createdLabel)}</td>
+          </tr>
+        `;
+      })
+      .join("");
+  }
+  const showing = Math.min(total, pageSize);
+  elements.usersSummary.textContent = total
+    ? `Mostrando registros del 1 al ${showing} de un total de ${total} registros.`
+    : "Sin registros.";
+}
+
 function renderRecords() {
   renderList(
     elements.recordsList,
@@ -1934,6 +2031,7 @@ function setDateTimeDefaults() {
 function renderAll() {
   renderDashboard();
   applySettingsForm();
+  renderUsers();
   renderOwners();
   renderPatients();
   renderAppointments();
@@ -2003,6 +2101,37 @@ function openAvailabilityModal() {
 function closeAvailabilityModal() {
   elements.availabilityModal.classList.add("is-hidden");
   elements.availabilityModal.setAttribute("aria-hidden", "true");
+}
+
+function openUserModal(user = null) {
+  if (!elements.userModal || !elements.userForm) {
+    return;
+  }
+  elements.userForm.reset();
+  elements.userForm.elements.id.value = user?.id || "";
+  elements.userForm.elements.full_name.value = user?.full_name || "";
+  elements.userForm.elements.email.value = user?.email || "";
+  elements.userForm.elements.role.value = user?.role || "Veterinario";
+  elements.userForm.elements.is_active.checked = user?.is_active ?? true;
+  const permissions = Array.isArray(user?.permissions) ? user.permissions : [];
+  const hasAll = permissions.length >= permissionOptions.length;
+  elements.userForm.elements.permissions_all.checked = hasAll;
+  permissionOptions.forEach((option) => {
+    const field = elements.userForm.elements[`perm_${option.key}`];
+    if (field) {
+      field.checked = hasAll || permissions.includes(option.key);
+    }
+  });
+  elements.userModal.classList.remove("is-hidden");
+  elements.userModal.setAttribute("aria-hidden", "false");
+}
+
+function closeUserModal() {
+  if (!elements.userModal) {
+    return;
+  }
+  elements.userModal.classList.add("is-hidden");
+  elements.userModal.setAttribute("aria-hidden", "true");
 }
 
 function openAgendaAppointmentsModal() {
@@ -2154,6 +2283,58 @@ async function handleAvailabilitySubmit(event) {
   await refreshData("Disponibilidad guardada.");
   closeAvailabilityModal();
   setActiveSection("agenda");
+}
+
+function buildUserPayload() {
+  const form = elements.userForm;
+  const payload = {
+    id: form.elements.id.value || "",
+    full_name: form.elements.full_name.value,
+    email: form.elements.email.value,
+    role: form.elements.role.value,
+    is_active: form.elements.is_active.checked,
+  };
+  const permissions = [];
+  const allChecked = form.elements.permissions_all.checked;
+  if (allChecked) {
+    permissionOptions.forEach((option) => permissions.push(option.key));
+  } else {
+    permissionOptions.forEach((option) => {
+      const field = form.elements[`perm_${option.key}`];
+      if (field?.checked) {
+        permissions.push(option.key);
+      }
+    });
+  }
+  payload.permissions = permissions;
+  return payload;
+}
+
+async function handleUserSubmit(event) {
+  event.preventDefault();
+  const payload = buildUserPayload();
+  await api.saveUser(payload);
+  closeUserModal();
+  await refreshData("Usuario guardado.");
+  setActiveSection("administration");
+}
+
+async function handleUsersTableClick(event) {
+  const editButton = event.target.closest("button[data-user-edit]");
+  if (editButton) {
+    const user = state.users.find((item) => item.id === editButton.dataset.userEdit);
+    if (user) {
+      openUserModal(user);
+    }
+    return;
+  }
+  const toggleButton = event.target.closest("button[data-user-toggle]");
+  if (toggleButton) {
+    const userId = toggleButton.dataset.userToggle;
+    const isActive = toggleButton.dataset.userActive === "1";
+    await api.updateUserStatus(userId, !isActive);
+    await refreshData(isActive ? "Usuario desactivado." : "Usuario activado.");
+  }
 }
 
 async function handleGoogleCalendarSubmit(event) {
@@ -2386,6 +2567,7 @@ function bindNavigation() {
       closeAppointmentModal();
       closeAvailabilityModal();
       closeAgendaAppointmentsModal();
+      closeUserModal();
     }
   });
 }
@@ -2422,6 +2604,89 @@ function bindForms() {
       } catch (error) {
         showStatus("No fue posible copiar las notificaciones.", "error");
       }
+    });
+  }
+  if (elements.openUserModalButton) {
+    elements.openUserModalButton.addEventListener("click", () => openUserModal());
+  }
+  if (elements.closeUserModalButton) {
+    elements.closeUserModalButton.addEventListener("click", closeUserModal);
+  }
+  if (elements.userModal) {
+    elements.userModal.addEventListener("click", (event) => {
+      if (event.target.dataset.closeUserModal) {
+        closeUserModal();
+      }
+    });
+  }
+  if (elements.userForm) {
+    elements.userForm.addEventListener("submit", wrapAsync(handleUserSubmit));
+    elements.userForm.elements.permissions_all?.addEventListener("change", (event) => {
+      const checked = event.target.checked;
+      permissionOptions.forEach((option) => {
+        const field = elements.userForm.elements[`perm_${option.key}`];
+        if (field) {
+          field.checked = checked;
+        }
+      });
+    });
+  }
+  if (elements.usersTableBody) {
+    elements.usersTableBody.addEventListener("click", wrapAsync(handleUsersTableClick));
+  }
+  if (elements.usersSearchInput) {
+    elements.usersSearchInput.addEventListener("input", (event) => {
+      usersFilters.query = event.target.value || "";
+      renderUsers();
+    });
+  }
+  if (elements.usersPageSizeSelect) {
+    elements.usersPageSizeSelect.addEventListener("change", (event) => {
+      usersFilters.pageSize = Number(event.target.value || 10);
+      renderUsers();
+    });
+  }
+  if (elements.toggleInactiveUsersButton) {
+    elements.toggleInactiveUsersButton.addEventListener("click", () => {
+      usersFilters.showInactive = !usersFilters.showInactive;
+      elements.toggleInactiveUsersButton.textContent = usersFilters.showInactive
+        ? "Ocultar inactivos"
+        : "Usuarios inactivos";
+      renderUsers();
+    });
+  }
+  if (elements.exportUsersButton) {
+    elements.exportUsersButton.addEventListener("click", () => {
+      const rows = (state.users || []).map((user) => ({
+        Nombre: user.full_name || "",
+        Correo: user.email || "",
+        Rol: user.role || "",
+        Estado: user.is_active ? "Activo" : "Inactivo",
+        Permisos: Array.isArray(user.permissions) ? user.permissions.join("|") : "",
+        Creacion: user.created_at || "",
+      }));
+      if (!rows.length) {
+        showStatus("No hay usuarios para exportar.", "info");
+        return;
+      }
+      const headers = Object.keys(rows[0]);
+      const csv = [headers.join(",")]
+        .concat(
+          rows.map((row) =>
+            headers
+              .map((key) => `"${String(row[key] || "").replaceAll('"', '""')}"`)
+              .join(",")
+          )
+        )
+        .join("\n");
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = "usuarios.csv";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(link.href);
     });
   }
   if (elements.settingsForm) {

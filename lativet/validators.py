@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from datetime import date, datetime
 
 
@@ -118,6 +119,25 @@ def validate_settings(payload: dict) -> dict:
         "email_body_template": optional_text(payload, "email_body_template"),
         "google_calendar_enabled": to_bool(payload.get("google_calendar_enabled")),
         "google_calendar_id": optional_text(payload, "google_calendar_id") or "primary",
+    }
+
+
+def validate_user(payload: dict) -> dict:
+    permissions = payload.get("permissions") or []
+    if isinstance(permissions, str):
+        try:
+            permissions = json.loads(permissions)
+        except json.JSONDecodeError:
+            permissions = []
+    if not isinstance(permissions, list):
+        permissions = []
+    return {
+        "id": optional_text(payload, "id"),
+        "full_name": required_text(payload, "full_name", "Nombre completo"),
+        "email": required_text(payload, "email", "Correo"),
+        "role": optional_text(payload, "role") or "Auxiliar",
+        "permissions": [str(item) for item in permissions],
+        "is_active": to_bool(payload.get("is_active", True)),
     }
 
 

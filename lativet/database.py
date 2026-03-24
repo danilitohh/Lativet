@@ -28,6 +28,7 @@ from .validators import (
     validate_patient,
     validate_provider,
     validate_settings,
+    validate_user,
 )
 
 
@@ -537,6 +538,18 @@ class Database:
                 created_at TEXT NOT NULL
             );
 
+            CREATE TABLE IF NOT EXISTS staff_users (
+                id TEXT PRIMARY KEY,
+                full_name TEXT NOT NULL,
+                email TEXT NOT NULL,
+                role TEXT NOT NULL,
+                permissions_json TEXT NOT NULL,
+                is_active INTEGER NOT NULL DEFAULT 1,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                UNIQUE (email)
+            );
+
             CREATE INDEX IF NOT EXISTS idx_patients_owner ON patients(owner_id);
             CREATE INDEX IF NOT EXISTS idx_appointments_at ON appointments(appointment_at);
             CREATE INDEX IF NOT EXISTS idx_appointments_status ON appointments(status);
@@ -559,6 +572,7 @@ class Database:
             CREATE INDEX IF NOT EXISTS idx_billing_payments_document ON billing_document_payments(document_id);
             CREATE INDEX IF NOT EXISTS idx_billing_cash_date ON billing_cash_movements(movement_date);
             CREATE INDEX IF NOT EXISTS idx_billing_stock_item ON billing_stock_movements(catalog_item_id);
+            CREATE INDEX IF NOT EXISTS idx_staff_users_email ON staff_users(email);
             """
         )
         self._ensure_column("appointments", "professional_name", "TEXT")
@@ -742,6 +756,102 @@ class Database:
         owner = self.get_owner(consent["owner_id"])
         settings = self.get_settings()
         return {"settings": settings, "owner": owner, "patient": patient, "consent": consent}
+
+    def list_users(self, include_inactive: bool = True) -> list[dict]:
+        query = "SELECT * FROM staff_users"
+        params: tuple = ()
+        if not include_inactive:
+            query += " WHERE is_active = 1"
+        query += " ORDER BY created_at DESC"
+        rows = self.connection.execute(query, params).fetchall()
+        users = [self._row_to_dict(row) for row in rows]
+        for user in users:
+            try:
+                user["permissions"] = json.loads(user.get("permissions_json") or "[]")
+            except json.JSONDecodeError:
+                user["permissions"] = []
+            user["is_active"] = bool(int(user.get("is_active") or 0))
+        return users
+
+    def save_user(self, payload: dict) -> dict:
+        data = validate_user(payload)
+        user_id = data["id"] or uuid.uuid4().hex
+        timestamp = now_iso()
+        permissions_json = json.dumps(data["permissions"] or [], ensure_ascii=False)
+        with self._tx():
+            existing = None
+            if data["id"]:
+                existing = self.connection.execute(
+                    "SELECT id FROM staff_users WHERE id = ?",
+                    (user_id,),
+                ).fetchone()
+            if existing:
+                self.connection.execute(
+                    """
+                    UPDATE staff_users
+                    SET full_name = ?, email = ?, role = ?, permissions_json = ?, is_active = ?, updated_at = ?
+                    WHERE id = ?
+                    """,
+                    (
+                        data["full_name"],
+                        data["email"],
+                        data["role"],
+                        permissions_json,
+                        1 if data["is_active"] else 0,
+                        timestamp,
+                        user_id,
+                    ),
+                )
+                action = "update"
+            else:
+                self.connection.execute(
+                    """
+                    INSERT INTO staff_users (
+                        id, full_name, email, role, permissions_json,
+                        is_active, created_at, updated_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        user_id,
+                        data["full_name"],
+                        data["email"],
+                        data["role"],
+                        permissions_json,
+                        1 if data["is_active"] else 0,
+                        timestamp,
+                        timestamp,
+                    ),
+                )
+                action = "create"
+            self._record_audit("staff_user", user_id, action, "admin", data)
+        return self.get_user(user_id)
+
+    def update_user_status(self, user_id: str, is_active: bool) -> dict:
+        timestamp = now_iso()
+        with self._tx():
+            self.connection.execute(
+                "UPDATE staff_users SET is_active = ?, updated_at = ? WHERE id = ?",
+                (1 if is_active else 0, timestamp, user_id),
+            )
+            self._record_audit(
+                "staff_user", user_id, "status", "admin", {"is_active": is_active}
+            )
+        return self.get_user(user_id)
+
+    def get_user(self, user_id: str) -> dict:
+        row = self.connection.execute(
+            "SELECT * FROM staff_users WHERE id = ?",
+            (user_id,),
+        ).fetchone()
+        if row is None:
+            raise ValidationError("El usuario seleccionado no existe.")
+        user = self._row_to_dict(row)
+        try:
+            user["permissions"] = json.loads(user.get("permissions_json") or "[]")
+        except json.JSONDecodeError:
+            user["permissions"] = []
+        user["is_active"] = bool(int(user.get("is_active") or 0))
+        return user
 
     def save_settings(self, payload: dict) -> dict:
         data = validate_settings(payload)
@@ -2855,10 +2965,12 @@ class Database:
         }
         if lite:
             payload["dashboard"] = {}
+            payload["users"] = []
             return payload
         payload["dashboard"] = self.get_dashboard_summary()
         payload.update(
             {
+                "users": self.list_users(),
                 "owners": self.list_owners(),
                 "patients": self.list_patients(),
                 "appointments": self.list_appointments(),

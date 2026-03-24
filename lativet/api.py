@@ -112,6 +112,14 @@ class LativetService:
         return self._db.save_provider(payload)
 
     @safe_api_call
+    def save_user(self, payload: dict) -> dict:
+        return self._db.save_user(payload)
+
+    @safe_api_call
+    def update_user_status(self, user_id: str, is_active: bool) -> dict:
+        return self._db.update_user_status(user_id, is_active)
+
+    @safe_api_call
     def save_patient(self, payload: dict) -> dict:
         return self._db.save_patient(payload)
 

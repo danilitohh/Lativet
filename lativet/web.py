@@ -63,6 +63,15 @@ def create_app(base_dir: Path | None = None, data_dir: Path | None = None) -> Fl
     def save_provider():
         return respond(service.save_provider(payload()))
 
+    @app.post("/api/users")
+    def save_user():
+        return respond(service.save_user(payload()))
+
+    @app.patch("/api/users/<user_id>/status")
+    def update_user_status(user_id: str):
+        is_active = bool(payload().get("is_active"))
+        return respond(service.update_user_status(user_id, is_active))
+
     @app.post("/api/patients")
     def save_patient():
         return respond(service.save_patient(payload()))

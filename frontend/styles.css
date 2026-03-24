@@ -579,6 +579,81 @@ button:active {
   grid-template-columns: repeat(6, minmax(0, 1fr));
 }
 
+.panel-card--wide {
+  grid-column: 1 / -1;
+}
+
+.table-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 18px;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.table-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.table-control select,
+.table-control input {
+  padding: 8px 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(11, 39, 49, 0.12);
+  background: #fff;
+}
+
+.table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid rgba(11, 39, 49, 0.08);
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+
+.data-table th,
+.data-table td {
+  padding: 12px 14px;
+  text-align: left;
+  border-bottom: 1px solid rgba(11, 39, 49, 0.08);
+}
+
+.data-table th {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.data-table tbody tr:hover {
+  background: rgba(15, 118, 110, 0.06);
+}
+
+.data-table .table-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.checkbox-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 8px 14px;
+}
+
+.checkbox-grid .checkbox-row {
+  margin: 0;
+}
 .menu-card {
   padding: 18px 20px;
   border: 1px solid rgba(11, 39, 49, 0.08);
