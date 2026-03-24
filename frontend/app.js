@@ -491,7 +491,19 @@ async function apiRequest(path, options = {}) {
     },
     ...options,
   });
-  const payload = await response.json();
+  const contentType = response.headers.get("content-type") || "";
+  let payload = null;
+  if (contentType.includes("application/json")) {
+    try {
+      payload = await response.json();
+    } catch (error) {
+      payload = null;
+    }
+  } else {
+    const text = await response.text();
+    const message = text ? text.slice(0, 200).trim() : "Respuesta no valida del servidor.";
+    throw new Error(message || "Respuesta no valida del servidor.");
+  }
   if (!response.ok || !payload?.ok) {
     throw new Error(payload?.error || "Operacion no completada.");
   }
