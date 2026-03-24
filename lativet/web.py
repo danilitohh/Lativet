@@ -48,7 +48,8 @@ def create_app(base_dir: Path | None = None, data_dir: Path | None = None) -> Fl
 
     @app.get("/api/bootstrap")
     def bootstrap():
-        return respond(service.bootstrap())
+        lite = request.args.get("lite", "").lower() in {"1", "true", "yes", "si"}
+        return respond(service.bootstrap(lite=lite))
 
     @app.post("/api/settings")
     def save_settings():

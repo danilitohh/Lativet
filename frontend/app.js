@@ -500,7 +500,7 @@ async function apiRequest(path, options = {}) {
 }
 
 const api = {
-  bootstrap: () => apiRequest("/api/bootstrap"),
+  bootstrap: (lite = false) => apiRequest(`/api/bootstrap${lite ? "?lite=1" : ""}`),
   saveSettings: (payload) =>
     apiRequest("/api/settings", { method: "POST", body: JSON.stringify(payload) }),
   saveOwner: (payload) =>
@@ -1845,8 +1845,15 @@ function renderAll() {
   Object.keys(sectionSubsections).forEach(applySectionSubsection);
 }
 
-async function refreshData(message) {
-  const payload = await api.bootstrap();
+async function refreshData(options = {}) {
+  let message = "";
+  let lite = false;
+  if (typeof options === "string") {
+    message = options;
+  } else {
+    ({ message = "", lite = false } = options || {});
+  }
+  const payload = await api.bootstrap(lite);
   Object.assign(state, payload);
   if (!toIsoDate(agendaSelectedDate)) {
     agendaSelectedDate = toIsoDate(new Date());
@@ -2354,7 +2361,14 @@ async function initApp() {
   bindForms();
   setActiveSection("dashboard");
   setDateTimeDefaults();
-  await refreshData("Version web lista.");
+  await refreshData({ lite: true, message: "Version web lista." });
+  refreshData()
+    .then(() => {
+      showStatus("Datos completos cargados.", "info");
+    })
+    .catch((error) => {
+      showStatus(error.message || "No fue posible cargar datos completos.", "error");
+    });
 }
 
 window.addEventListener("DOMContentLoaded", () => {

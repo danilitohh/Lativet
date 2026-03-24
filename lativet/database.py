@@ -2845,32 +2845,39 @@ class Database:
                 destination.close()
         return {"path": str(backup_path)}
 
-    def bootstrap(self) -> dict:
-        return {
+    def bootstrap(self, lite: bool = False) -> dict:
+        payload = {
             "generated_at": now_iso(),
             "settings": self.get_settings(),
             "dashboard": self.get_dashboard_summary(),
-            "owners": self.list_owners(),
-            "patients": self.list_patients(),
-            "appointments": self.list_appointments(),
-            "availability_rules": self.list_availability_rules(),
-            "agenda_calendar": self.get_agenda_calendar(),
-            "consents": self.list_consents(),
-            "records": self.list_clinical_records(),
-            "consultations": self.list_consultations(),
-            "grooming_documents": self.list_grooming_documents(),
-            "providers": self.list_providers(),
-            "catalog_items": self.list_catalog_items(),
-            "billing_clients": self.list_billing_clients(),
-            "billing_documents": self.list_billing_documents(),
-            "cash_movements": self.list_cash_movements(),
-            "stock_movements": self.list_stock_movements(),
-            "billing_summary": self.get_billing_summary(),
-            "requests": self.get_requests_summary(),
-            "reports": self.get_reports_summary(),
             "database_path": str(self.db_path),
             "backups_path": str(self.backups_dir),
         }
+        if lite:
+            return payload
+        payload.update(
+            {
+                "owners": self.list_owners(),
+                "patients": self.list_patients(),
+                "appointments": self.list_appointments(),
+                "availability_rules": self.list_availability_rules(),
+                "agenda_calendar": self.get_agenda_calendar(),
+                "consents": self.list_consents(),
+                "records": self.list_clinical_records(),
+                "consultations": self.list_consultations(),
+                "grooming_documents": self.list_grooming_documents(),
+                "providers": self.list_providers(),
+                "catalog_items": self.list_catalog_items(),
+                "billing_clients": self.list_billing_clients(),
+                "billing_documents": self.list_billing_documents(),
+                "cash_movements": self.list_cash_movements(),
+                "stock_movements": self.list_stock_movements(),
+                "billing_summary": self.get_billing_summary(),
+                "requests": self.get_requests_summary(),
+                "reports": self.get_reports_summary(),
+            }
+        )
+        return payload
 
 
 class PostgresDatabase(Database):

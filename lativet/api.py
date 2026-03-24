@@ -60,8 +60,8 @@ class LativetService:
         return f"/exports/{relative.as_posix()}"
 
     @safe_api_call
-    def bootstrap(self) -> dict:
-        payload = self._db.bootstrap()
+    def bootstrap(self, lite: bool = False) -> dict:
+        payload = self._db.bootstrap(lite=lite)
         payload["compliance"] = get_compliance_context()
         payload["google_calendar"] = self._google_calendar.status(payload.get("settings"))
         return payload
