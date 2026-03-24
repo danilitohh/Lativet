@@ -2434,7 +2434,10 @@ async function initApp() {
   bindForms();
   setActiveSection("dashboard");
   setDateTimeDefaults();
-  await refreshData({ lite: true, message: "Version web lista." });
+  showStatus("Version web lista. Cargando datos...", "info");
+  refreshData({ lite: true }).catch((error) => {
+    showStatus(error.message || "No fue posible cargar la configuracion.", "error");
+  });
   refreshData()
     .then(() => {
       showStatus("Datos completos cargados.", "info");

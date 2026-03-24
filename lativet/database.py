@@ -2849,12 +2849,13 @@ class Database:
         payload = {
             "generated_at": now_iso(),
             "settings": self.get_settings(),
-            "dashboard": self.get_dashboard_summary(),
             "database_path": str(self.db_path),
             "backups_path": str(self.backups_dir),
         }
         if lite:
+            payload["dashboard"] = {}
             return payload
+        payload["dashboard"] = self.get_dashboard_summary()
         payload.update(
             {
                 "owners": self.list_owners(),
