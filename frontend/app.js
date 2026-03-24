@@ -596,6 +596,7 @@ function cacheElements() {
     "agendaSelectedDateLabel",
     "agendaDaySlots",
     "agendaSelectedDayAppointments",
+    "agendaConnectionBadge",
     "agendaAvailabilityFormPanel",
     "agendaGeneralListPanel",
     "agendaAvailabilityRulesPanel",

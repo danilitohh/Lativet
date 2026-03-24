@@ -481,6 +481,13 @@ button:active {
   color: var(--muted);
 }
 
+.section-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
 .menu-strip {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
