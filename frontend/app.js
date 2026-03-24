@@ -33,6 +33,9 @@ const activeSubsections = {};
 let openNavDropdownSection = "";
 let agendaViewDate = new Date();
 let agendaSelectedDate = new Date().toISOString().slice(0, 10);
+const notifications = [];
+let unreadNotifications = 0;
+const MAX_NOTIFICATIONS = 60;
 const consultationTypes = [
   "Vacunacion",
   "Formula",
@@ -567,6 +570,12 @@ function cacheElements() {
   [
     "statusBanner",
     "backupButton",
+    "notificationsButton",
+    "notificationsBadge",
+    "notificationsPanel",
+    "notificationsList",
+    "notificationsCopyButton",
+    "notificationsClearButton",
     "dashboardUpdated",
     "metricOwners",
     "metricPatients",
@@ -714,9 +723,15 @@ function showStatus(message, tone = "info", html = false) {
   banner.dataset.tone = tone;
   if (html) {
     banner.innerHTML = message;
-    return;
+  } else {
+    banner.textContent = message;
   }
-  banner.textContent = message;
+  const plainText = html
+    ? String(message).replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim()
+    : String(message || "").trim();
+  if (plainText) {
+    addNotification(plainText, tone);
+  }
 }
 
 function setActiveSection(sectionId) {
@@ -801,6 +816,82 @@ function applySectionSubsection(sectionId) {
 function closeNavDropdowns() {
   openNavDropdownSection = "";
   queryAll(".switcher-item").forEach((item) => item.classList.remove("is-open"));
+}
+
+function renderNotifications() {
+  if (!elements.notificationsList) {
+    return;
+  }
+  if (!notifications.length) {
+    elements.notificationsList.innerHTML = emptyState("Sin notificaciones por ahora.");
+  } else {
+    elements.notificationsList.innerHTML = notifications
+      .map(
+        (item) => `
+        <article class="notification-item" data-tone="${escapeHtml(item.tone)}">
+          <strong>${escapeHtml(item.title)}</strong>
+          <p>${escapeHtml(item.message)}</p>
+        </article>
+      `
+      )
+      .join("");
+  }
+  if (elements.notificationsBadge) {
+    elements.notificationsBadge.textContent = String(unreadNotifications);
+    elements.notificationsBadge.classList.toggle("is-hidden", unreadNotifications === 0);
+  }
+}
+
+function addNotification(message, tone = "info") {
+  const timestamp = new Date();
+  const titleMap = {
+    error: "Error",
+    success: "Listo",
+    info: "Estado",
+    warning: "Aviso",
+  };
+  notifications.unshift({
+    message,
+    tone,
+    title: titleMap[tone] || "Estado",
+    time: timestamp.toISOString(),
+  });
+  if (notifications.length > MAX_NOTIFICATIONS) {
+    notifications.pop();
+  }
+  if (elements.notificationsPanel?.classList.contains("is-hidden")) {
+    unreadNotifications = Math.min(unreadNotifications + 1, MAX_NOTIFICATIONS);
+  }
+  renderNotifications();
+}
+
+function openNotificationsPanel() {
+  if (!elements.notificationsPanel) {
+    return;
+  }
+  elements.notificationsPanel.classList.remove("is-hidden");
+  elements.notificationsPanel.setAttribute("aria-hidden", "false");
+  unreadNotifications = 0;
+  renderNotifications();
+}
+
+function closeNotificationsPanel() {
+  if (!elements.notificationsPanel) {
+    return;
+  }
+  elements.notificationsPanel.classList.add("is-hidden");
+  elements.notificationsPanel.setAttribute("aria-hidden", "true");
+}
+
+function toggleNotificationsPanel() {
+  if (!elements.notificationsPanel) {
+    return;
+  }
+  if (elements.notificationsPanel.classList.contains("is-hidden")) {
+    openNotificationsPanel();
+  } else {
+    closeNotificationsPanel();
+  }
 }
 
 function updateNavDropdownState() {
@@ -2302,6 +2393,14 @@ function bindNavigation() {
     if (!event.target.closest(".switcher-item")) {
       closeNavDropdowns();
     }
+    if (
+      elements.notificationsPanel &&
+      !elements.notificationsPanel.classList.contains("is-hidden") &&
+      !event.target.closest("#notificationsPanel") &&
+      !event.target.closest("#notificationsButton")
+    ) {
+      closeNotificationsPanel();
+    }
   });
   window.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
@@ -2325,6 +2424,29 @@ function wrapAsync(handler) {
 }
 
 function bindForms() {
+  if (elements.notificationsButton) {
+    elements.notificationsButton.addEventListener("click", toggleNotificationsPanel);
+  }
+  if (elements.notificationsClearButton) {
+    elements.notificationsClearButton.addEventListener("click", () => {
+      notifications.length = 0;
+      unreadNotifications = 0;
+      renderNotifications();
+    });
+  }
+  if (elements.notificationsCopyButton) {
+    elements.notificationsCopyButton.addEventListener("click", async () => {
+      const content = notifications
+        .map((item) => `[${item.time}] ${item.title}: ${item.message}`)
+        .join("\n");
+      try {
+        await navigator.clipboard.writeText(content || "Sin notificaciones.");
+        showStatus("Notificaciones copiadas.", "success");
+      } catch (error) {
+        showStatus("No fue posible copiar las notificaciones.", "error");
+      }
+    });
+  }
   elements.settingsForm.addEventListener("submit", wrapAsync(handleSettingsSubmit));
   elements.billingSettingsForm.addEventListener("submit", wrapAsync(handleBillingSettingsSubmit));
   elements.ownerForm.addEventListener("submit", wrapAsync(handleOwnerSubmit));
@@ -2441,6 +2563,7 @@ function bindForms() {
 
 async function initApp() {
   cacheElements();
+  renderNotifications();
   buildNavDropdowns();
   bindNavigation();
   bindNavDropdowns();
@@ -2464,4 +2587,15 @@ window.addEventListener("DOMContentLoaded", () => {
   initApp().catch((error) => {
     showStatus(error.message || "No fue posible inicializar la app.", "error");
   });
+});
+
+window.addEventListener("error", (event) => {
+  if (event?.message) {
+    addNotification(event.message, "error");
+  }
+});
+
+window.addEventListener("unhandledrejection", (event) => {
+  const reason = event?.reason?.message || event?.reason || "Promesa rechazada.";
+  addNotification(String(reason), "error");
 });

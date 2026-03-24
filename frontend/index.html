@@ -20,6 +20,23 @@
           </div>
         </div>
         <div class="header-actions">
+          <button id="notificationsButton" class="secondary-button" type="button">
+            Notificaciones
+            <span id="notificationsBadge" class="notify-badge is-hidden">0</span>
+          </button>
+          <div id="notificationsPanel" class="notifications-panel is-hidden" aria-hidden="true">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Panel de estado</p>
+                <h3>Notificaciones</h3>
+              </div>
+              <div class="form-actions">
+                <button id="notificationsCopyButton" class="ghost-button" type="button">Copiar</button>
+                <button id="notificationsClearButton" class="ghost-button" type="button">Limpiar</button>
+              </div>
+            </div>
+            <div id="notificationsList" class="notifications-list"></div>
+          </div>
           <button id="backupButton" class="secondary-button" type="button">Crear respaldo</button>
         </div>
       </header>
