@@ -48,6 +48,7 @@ const permissionOptions = [
   { key: "reports", label: "Informes" },
 ];
 const usersFilters = { query: "", pageSize: 10, showInactive: false };
+const authState = { requiresLogin: false, authenticated: false };
 const consultationTypes = [
   "Vacunacion",
   "Formula",
@@ -581,6 +582,10 @@ const api = {
       method: "PATCH",
       body: JSON.stringify({ is_active }),
     }),
+  authStatus: () => apiRequest("/api/auth/status"),
+  authLogin: (payload) =>
+    apiRequest("/api/auth/login", { method: "POST", body: JSON.stringify(payload) }),
+  authLogout: () => apiRequest("/api/auth/logout", { method: "POST", body: "{}" }),
 };
 
 function cacheElements() {
@@ -593,6 +598,10 @@ function cacheElements() {
     "notificationsList",
     "notificationsCopyButton",
     "notificationsClearButton",
+    "logoutButton",
+    "loginModal",
+    "loginForm",
+    "loginError",
     "dashboardUpdated",
     "metricOwners",
     "metricPatients",
@@ -2144,6 +2153,36 @@ function closeAgendaAppointmentsModal() {
   elements.agendaAppointmentsModal.setAttribute("aria-hidden", "true");
 }
 
+function openLoginModal(force = false) {
+  if (!elements.loginModal) {
+    return;
+  }
+  if (elements.loginError) {
+    elements.loginError.textContent = "";
+    elements.loginError.classList.add("is-hidden");
+  }
+  elements.loginModal.dataset.force = force ? "1" : "0";
+  elements.loginModal.classList.remove("is-hidden");
+  elements.loginModal.setAttribute("aria-hidden", "false");
+}
+
+function closeLoginModal() {
+  if (!elements.loginModal) {
+    return;
+  }
+  if (elements.loginModal.dataset.force === "1") {
+    return;
+  }
+  elements.loginModal.classList.add("is-hidden");
+  elements.loginModal.setAttribute("aria-hidden", "true");
+}
+
+function setAuthUI(authenticated) {
+  if (elements.logoutButton) {
+    elements.logoutButton.classList.toggle("is-hidden", !authenticated);
+  }
+}
+
 
 function applyConsentTemplate(type) {
   const template = consentTemplates[type];
@@ -2335,6 +2374,35 @@ async function handleUsersTableClick(event) {
     await api.updateUserStatus(userId, !isActive);
     await refreshData(isActive ? "Usuario desactivado." : "Usuario activado.");
   }
+}
+
+async function handleLoginSubmit(event) {
+  event.preventDefault();
+  const email = elements.loginForm.elements.email.value;
+  const password = elements.loginForm.elements.password.value;
+  try {
+    await api.authLogin({ email, password });
+    authState.authenticated = true;
+    setAuthUI(true);
+    closeLoginModal();
+    await startDataLoad();
+  } catch (error) {
+    if (elements.loginError) {
+      elements.loginError.textContent = error.message || "Credenciales invalidas.";
+      elements.loginError.classList.remove("is-hidden");
+    }
+  }
+}
+
+async function handleLogout() {
+  try {
+    await api.authLogout();
+  } catch (error) {
+    // ignore
+  }
+  authState.authenticated = false;
+  setAuthUI(false);
+  openLoginModal(true);
 }
 
 async function handleGoogleCalendarSubmit(event) {
@@ -2568,6 +2636,7 @@ function bindNavigation() {
       closeAvailabilityModal();
       closeAgendaAppointmentsModal();
       closeUserModal();
+      closeLoginModal();
     }
   });
 }
@@ -2689,6 +2758,12 @@ function bindForms() {
       URL.revokeObjectURL(link.href);
     });
   }
+  if (elements.loginForm) {
+    elements.loginForm.addEventListener("submit", wrapAsync(handleLoginSubmit));
+  }
+  if (elements.logoutButton) {
+    elements.logoutButton.addEventListener("click", wrapAsync(handleLogout));
+  }
   if (elements.settingsForm) {
     elements.settingsForm.addEventListener("submit", wrapAsync(handleSettingsSubmit));
   }
@@ -2789,15 +2864,7 @@ function bindForms() {
   );
 }
 
-async function initApp() {
-  cacheElements();
-  renderNotifications();
-  buildNavDropdowns();
-  bindNavigation();
-  bindNavDropdowns();
-  bindForms();
-  setActiveSection("dashboard");
-  setDateTimeDefaults();
+async function startDataLoad() {
   showStatus("Version web lista. Cargando datos...", "info");
   refreshData({ lite: true }).catch((error) => {
     showStatus(error.message || "No fue posible cargar la configuracion.", "error");
@@ -2809,6 +2876,31 @@ async function initApp() {
     .catch((error) => {
       showStatus(error.message || "No fue posible cargar datos completos.", "error");
     });
+}
+
+async function initApp() {
+  cacheElements();
+  renderNotifications();
+  buildNavDropdowns();
+  bindNavigation();
+  bindNavDropdowns();
+  bindForms();
+  setActiveSection("dashboard");
+  setDateTimeDefaults();
+  try {
+    const status = await api.authStatus();
+    authState.requiresLogin = Boolean(status.requires_login);
+    authState.authenticated = Boolean(status.authenticated);
+  } catch (error) {
+    authState.requiresLogin = false;
+    authState.authenticated = true;
+  }
+  setAuthUI(authState.authenticated);
+  if (authState.requiresLogin && !authState.authenticated) {
+    openLoginModal(true);
+    return;
+  }
+  await startDataLoad();
 }
 
 window.addEventListener("DOMContentLoaded", () => {

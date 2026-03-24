@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from flask import Flask, jsonify, request, send_from_directory
+import os
+from flask import Flask, jsonify, request, send_from_directory, session
 
 from .api import LativetService
 
@@ -16,8 +17,25 @@ def create_app(base_dir: Path | None = None, data_dir: Path | None = None) -> Fl
 
     service = LativetService(project_dir, runtime_data_dir)
     app = Flask(__name__)
+    app.secret_key = (
+        os.getenv("ADMIN_SESSION_SECRET")
+        or os.getenv("FLASK_SECRET_KEY")
+        or "lativet-session"
+    )
+    app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+    if os.getenv("SESSION_COOKIE_SECURE", "").lower() in {"1", "true", "on", "yes", "si", "s"}:
+        app.config["SESSION_COOKIE_SECURE"] = True
     app.json.ensure_ascii = False
     app.extensions["lativet_service"] = service
+
+    admin_email = os.getenv("ADMIN_EMAIL", "").strip().lower()
+    admin_password = os.getenv("ADMIN_PASSWORD", "").strip()
+
+    def admin_configured() -> bool:
+        return bool(admin_email and admin_password)
+
+    def is_authenticated() -> bool:
+        return bool(session.get("admin_authenticated"))
 
     def payload() -> dict:
         return request.get_json(silent=True) or {}
@@ -25,6 +43,20 @@ def create_app(base_dir: Path | None = None, data_dir: Path | None = None) -> Fl
     def respond(result: dict):
         status_code = 200 if result.get("ok") else 400
         return jsonify(result), status_code
+
+    @app.before_request
+    def enforce_auth():
+        if not request.path.startswith("/api/"):
+            return None
+        if request.path in (
+            "/api/auth/status",
+            "/api/auth/login",
+            "/api/google-calendar/callback",
+        ):
+            return None
+        if admin_configured() and not is_authenticated():
+            return jsonify({"ok": False, "error": "No autorizado"}), 401
+        return None
 
     @app.get("/")
     def index():
@@ -50,6 +82,33 @@ def create_app(base_dir: Path | None = None, data_dir: Path | None = None) -> Fl
     def bootstrap():
         lite = request.args.get("lite", "").lower() in {"1", "true", "yes", "si"}
         return respond(service.bootstrap(lite=lite))
+
+    @app.get("/api/auth/status")
+    def auth_status():
+        return respond(
+            {
+                "requires_login": admin_configured(),
+                "authenticated": is_authenticated(),
+            }
+        )
+
+    @app.post("/api/auth/login")
+    def auth_login():
+        if not admin_configured():
+            session["admin_authenticated"] = True
+            return respond({"authenticated": True})
+        body = payload()
+        email = (body.get("email") or "").strip().lower()
+        password = (body.get("password") or "").strip()
+        if email == admin_email and password == admin_password:
+            session["admin_authenticated"] = True
+            return respond({"authenticated": True})
+        return jsonify({"ok": False, "error": "Credenciales invalidas."}), 401
+
+    @app.post("/api/auth/logout")
+    def auth_logout():
+        session.clear()
+        return respond({"authenticated": False})
 
     @app.post("/api/settings")
     def save_settings():

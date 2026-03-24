@@ -1002,6 +1002,10 @@ textarea:focus {
   box-shadow: 0 28px 70px rgba(13, 34, 47, 0.2);
 }
 
+.modal-card--compact {
+  width: min(460px, 100%);
+}
+
 .empty-state {
   padding: 16px;
   border: 1px dashed rgba(11, 39, 49, 0.18);

@@ -24,6 +24,7 @@
             Notificaciones
             <span id="notificationsBadge" class="notify-badge is-hidden">0</span>
           </button>
+          <button id="logoutButton" class="ghost-button is-hidden" type="button">Salir</button>
           <button id="backupButton" class="secondary-button" type="button">Crear respaldo</button>
         </div>
       </header>
@@ -303,6 +304,26 @@
               </div>
               <div class="full form-actions">
                 <button class="primary-button" type="submit">Guardar usuario</button>
+              </div>
+            </form>
+          </div>
+        </div>
+
+        <div id="loginModal" class="modal-shell is-hidden" aria-hidden="true">
+          <div class="modal-backdrop"></div>
+          <div class="modal-card modal-card--compact" role="dialog" aria-modal="true" aria-labelledby="loginModalTitle">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Acceso administrativo</p>
+                <h3 id="loginModalTitle">Iniciar sesion</h3>
+              </div>
+            </div>
+            <form id="loginForm" class="form-grid">
+              <label class="full"><span>Correo</span><input name="email" type="email" required /></label>
+              <label class="full"><span>Contrasena</span><input name="password" type="password" required /></label>
+              <p id="loginError" class="meta-copy is-hidden"></p>
+              <div class="full form-actions">
+                <button class="primary-button" type="submit">Entrar</button>
               </div>
             </form>
           </div>
