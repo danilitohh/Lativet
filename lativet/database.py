@@ -816,7 +816,7 @@ class Database:
             FROM owners o
             LEFT JOIN patients p ON p.owner_id = o.id
             GROUP BY o.id
-            ORDER BY o.full_name COLLATE NOCASE
+            ORDER BY LOWER(o.full_name)
             """
         ).fetchall()
         return [self._row_to_dict(row) for row in rows]
@@ -918,7 +918,7 @@ class Database:
                    (SELECT COUNT(*) FROM clinical_records r WHERE r.patient_id = p.id) AS records_count
             FROM patients p
             JOIN owners o ON o.id = p.owner_id
-            ORDER BY p.name COLLATE NOCASE
+            ORDER BY LOWER(p.name)
             """
         ).fetchall()
         return [self._row_to_dict(row) for row in rows]
@@ -1426,7 +1426,7 @@ class Database:
             SELECT *
             FROM agenda_availability_rules
             WHERE scope = 'general'
-            ORDER BY day_of_week, start_time, professional_name COLLATE NOCASE
+            ORDER BY day_of_week, start_time, LOWER(professional_name)
             """
         ).fetchall()
         return [self._row_to_dict(row) for row in rows]
@@ -1694,7 +1694,7 @@ class Database:
             SELECT p.*,
                    (SELECT COUNT(*) FROM billing_catalog_items c WHERE c.provider_id = p.id) AS items_count
             FROM billing_providers p
-            ORDER BY p.name COLLATE NOCASE
+            ORDER BY LOWER(p.name)
             """
         ).fetchall()
         return [self._row_to_dict(row) for row in rows]
@@ -1797,7 +1797,7 @@ class Database:
             SELECT c.*, p.name AS provider_name
             FROM billing_catalog_items c
             LEFT JOIN billing_providers p ON p.id = c.provider_id
-            ORDER BY c.name COLLATE NOCASE
+            ORDER BY LOWER(c.name)
             """
         ).fetchall()
         return [self.get_catalog_item(row["id"]) for row in rows]
@@ -1872,7 +1872,7 @@ class Database:
                    (SELECT COUNT(*) FROM patients p WHERE p.owner_id = o.id) AS patients_count,
                    (SELECT COUNT(*) FROM billing_documents d WHERE d.owner_id = o.id) AS documents_count
             FROM owners o
-            ORDER BY o.full_name COLLATE NOCASE
+            ORDER BY LOWER(o.full_name)
             """
         ).fetchall()
         return [self._row_to_dict(row) for row in rows]
