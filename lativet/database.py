@@ -4,7 +4,7 @@ import json
 import sqlite3
 import threading
 import uuid
-import time
+import time as time_module
 from contextlib import contextmanager
 from datetime import date, datetime, time, timedelta
 from pathlib import Path
@@ -2904,7 +2904,7 @@ class PostgresDatabase(Database):
                     lock_acquired = False
                 if lock_acquired:
                     break
-                time.sleep(0.2)
+                time_module.sleep(0.2)
             if lock_acquired:
                 try:
                     self._init_schema()
