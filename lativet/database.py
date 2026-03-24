@@ -171,9 +171,16 @@ class PostgresConnection:
 
     def execute(self, query: str, params: tuple | list | None = None):
         sql = _convert_postgres_placeholders(query)
-        if params is None:
-            return self._conn.execute(sql)
-        return self._conn.execute(sql, params)
+        try:
+            if params is None:
+                return self._conn.execute(sql)
+            return self._conn.execute(sql, params)
+        except Exception:
+            try:
+                self._conn.rollback()
+            except Exception:
+                pass
+            raise
 
     def executescript(self, script: str) -> None:
         normalized = _normalize_postgres_schema(script)
