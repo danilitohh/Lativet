@@ -2230,17 +2230,17 @@ function bindNavigation() {
     button.addEventListener("click", (event) => {
       event.stopPropagation();
       const sectionId = button.dataset.sectionTarget;
-      setActiveSection(sectionId);
       const wrapper = button.closest(".switcher-item");
-      if (!wrapper) {
+      if (wrapper) {
+        const shouldOpen = openNavDropdownSection !== sectionId;
+        closeNavDropdowns();
+        if (shouldOpen) {
+          wrapper.classList.add("is-open");
+          openNavDropdownSection = sectionId;
+        }
         return;
       }
-      const shouldOpen = openNavDropdownSection !== sectionId;
-      closeNavDropdowns();
-      if (shouldOpen) {
-        wrapper.classList.add("is-open");
-        openNavDropdownSection = sectionId;
-      }
+      setActiveSection(sectionId);
     });
   });
   document.addEventListener("click", (event) => {

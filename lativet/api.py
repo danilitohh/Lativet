@@ -109,11 +109,17 @@ class LativetService:
     @safe_api_call
     def save_google_calendar_config(self, payload: dict) -> dict:
         data = validate_google_calendar_config(payload)
+        current_settings = self._db.get_settings()
         if data["credentials_json"]:
             self._google_calendar.save_credentials_json(data["credentials_json"])
+        enabled = data["google_calendar_enabled"]
+        if data["credentials_json"]:
+            enabled = True
+        if current_settings.get("google_calendar_enabled") and not enabled:
+            enabled = True
         merged_settings = {
-            **self._db.get_settings(),
-            "google_calendar_enabled": data["google_calendar_enabled"],
+            **current_settings,
+            "google_calendar_enabled": enabled,
             "google_calendar_id": data["google_calendar_id"],
             "agenda_timezone": data["agenda_timezone"],
         }
