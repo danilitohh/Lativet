@@ -1,0 +1,915 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lativet Web</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="site-header">
+        <div class="brand-lockup">
+          <img class="brand-logo" src="/images/logo.png" alt="Lativet" />
+          <div>
+            <p class="eyebrow">Operacion veterinaria centralizada</p>
+            <h1>Lativet</h1>
+            <p class="header-copy">
+              Historias clinicas, agenda, facturacion, inventario, caja, consentimientos, peluqueria e informes en una sola web.
+            </p>
+          </div>
+        </div>
+        <div class="header-actions">
+          <button id="backupButton" class="secondary-button" type="button">Crear respaldo</button>
+        </div>
+      </header>
+
+      <nav class="app-switcher">
+        <button class="switcher-tab is-active" type="button" data-section-target="dashboard">Dashboard</button>
+        <button class="switcher-tab" type="button" data-section-target="administration">Administracion</button>
+        <button class="switcher-tab" type="button" data-section-target="agenda">Agenda</button>
+        <button class="switcher-tab" type="button" data-section-target="sales">Ventas</button>
+        <button class="switcher-tab" type="button" data-section-target="consultorio">Consultorio</button>
+        <button class="switcher-tab" type="button" data-section-target="hospamb">Hosp./Amb.</button>
+        <button class="switcher-tab" type="button" data-section-target="requests">Solicitudes</button>
+        <button class="switcher-tab" type="button" data-section-target="reports">Informes</button>
+      </nav>
+
+      <div id="statusBanner" class="status-banner" data-tone="info">Cargando Lativet...</div>
+
+      <main class="workspace">
+        <section id="dashboard" class="workspace-section is-visible">
+          <div class="section-hero">
+            <div>
+              <p class="eyebrow">Dashboard</p>
+              <h2>Operacion diaria de la clinica</h2>
+              <p class="section-copy">
+                Acceso directo al panorama operativo, solicitudes pendientes y actividad reciente.
+              </p>
+            </div>
+            <p id="dashboardUpdated" class="meta-copy"></p>
+          </div>
+
+          <div id="dashboardOverviewBlock" class="stats-grid stats-grid--eight">
+            <article class="metric-card"><span>Propietarios</span><strong id="metricOwners">0</strong></article>
+            <article class="metric-card"><span>Mascotas</span><strong id="metricPatients">0</strong></article>
+            <article class="metric-card"><span>Historias</span><strong id="metricRecords">0</strong></article>
+            <article class="metric-card"><span>Consultas</span><strong id="metricConsultations">0</strong></article>
+            <article class="metric-card"><span>Citas activas</span><strong id="metricAppointments">0</strong></article>
+            <article class="metric-card"><span>Consentimientos</span><strong id="metricConsents">0</strong></article>
+            <article class="metric-card"><span>Peluqueria</span><strong id="metricGrooming">0</strong></article>
+            <article class="metric-card"><span>Disponibilidad</span><strong id="metricAvailability">0</strong></article>
+          </div>
+
+          <div id="dashboardSummaryBlock" class="three-column-grid">
+            <article id="dashboardOperationPanel" class="panel-card">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">Resumen</p>
+                  <h3>Operacion</h3>
+                </div>
+              </div>
+              <div class="summary-list">
+                <div class="summary-item"><span>Citas de hoy</span><strong id="agendaTodayValue">0</strong></div>
+                <div class="summary-item"><span>Proxima semana</span><strong id="agendaWeekValue">0</strong></div>
+                <div class="summary-item"><span>Retencion proxima</span><strong id="recordsRetentionValue">0</strong></div>
+                <div class="summary-item"><span>Ultimo respaldo</span><strong id="lastBackupValue">Sin respaldos</strong></div>
+              </div>
+              <div class="storage-meta">
+                <p><strong>Base:</strong> <span id="databasePathLabel">N/D</span></p>
+                <p><strong>Respaldos:</strong> <span id="backupsPathLabel">N/D</span></p>
+              </div>
+            </article>
+
+            <article id="dashboardRequestsPanel" class="panel-card">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">Solicitudes</p>
+                  <h3>Items pendientes</h3>
+                </div>
+              </div>
+              <div id="dashboardRequestsList" class="list-surface"></div>
+            </article>
+
+            <article id="dashboardConsultationTypesPanel" class="panel-card">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">Distribucion</p>
+                  <h3>Consultas por tipo</h3>
+                </div>
+              </div>
+              <div id="dashboardConsultationTypeList" class="summary-list"></div>
+            </article>
+          </div>
+
+          <div class="two-column-grid">
+            <article id="dashboardAgendaPanel" class="panel-card">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">Agenda</p>
+                  <h3>Citas activas</h3>
+                </div>
+              </div>
+              <div id="dashboardAppointmentsList" class="list-surface"></div>
+            </article>
+
+            <article id="dashboardHistoryPanel" class="panel-card">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">Historias</p>
+                  <h3>Casos recientes</h3>
+                </div>
+              </div>
+              <div id="dashboardRecordsList" class="list-surface"></div>
+            </article>
+          </div>
+
+          <div class="two-column-grid">
+            <article id="dashboardSalesSummaryPanel" class="panel-card">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">Ventas</p>
+                  <h3>Resumen de facturacion</h3>
+                </div>
+              </div>
+              <div id="dashboardBillingSummary" class="summary-list"></div>
+            </article>
+
+            <article id="dashboardSalesDocumentsPanel" class="panel-card">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">Ventas</p>
+                  <h3>Documentos pendientes</h3>
+                </div>
+              </div>
+              <div id="dashboardBillingDocumentsList" class="list-surface"></div>
+            </article>
+          </div>
+        </section>
+
+        <section id="administration" class="workspace-section">
+          <div class="section-hero">
+            <div>
+              <p class="eyebrow">Administracion</p>
+              <h2>Configuracion y directorio base</h2>
+              <p class="section-copy">
+                Propietarios, datos de la veterinaria, usuarios y variables operativas.
+              </p>
+            </div>
+          </div>
+
+          <div class="menu-strip">
+            <article class="menu-card">
+              <h3>Configuracion de la veterinaria</h3>
+              <p>Datos institucionales, retencion y correo.</p>
+            </article>
+            <article class="menu-card">
+              <h3>Usuarios</h3>
+              <p>Espacio preparado para la administracion futura de perfiles.</p>
+            </article>
+            <article class="menu-card">
+              <h3>Propietarios</h3>
+              <p>Registro central de tutores y responsables.</p>
+            </article>
+            <article class="menu-card">
+              <h3>Variables</h3>
+              <p>Base de cumplimiento y lineamientos clinicos.</p>
+            </article>
+          </div>
+
+          <div class="two-column-grid">
+            <article id="administrationSettingsPanel" class="panel-card">
+              <div class="panel-heading"><div><p class="eyebrow">Veterinaria</p><h3>Configuracion</h3></div></div>
+              <form id="settingsForm" class="form-grid">
+                <label class="full"><span>Nombre de la clinica</span><input name="clinic_name" required /></label>
+                <label><span>Registro</span><input name="clinic_registration" /></label>
+                <label><span>Telefono</span><input name="clinic_phone" /></label>
+                <label class="full"><span>Direccion</span><input name="clinic_address" /></label>
+                <label><span>Correo</span><input name="clinic_email" type="email" /></label>
+                <label><span>Retencion (anos)</span><input name="retention_years" type="number" min="5" max="30" /></label>
+                <label class="checkbox-row full"><input name="smtp_enabled" type="checkbox" /><span>Habilitar envio por correo</span></label>
+                <label><span>Correo remitente</span><input name="smtp_from" type="email" /></label>
+                <label><span>Servidor SMTP</span><input name="smtp_host" /></label>
+                <label><span>Puerto SMTP</span><input name="smtp_port" type="number" min="1" max="65535" /></label>
+                <label><span>App password</span><input name="smtp_app_password" type="password" /></label>
+                <label><span>Caja por defecto</span><select name="billing_default_cash_account"><option value="caja_menor">Caja menor</option><option value="caja_mayor">Caja mayor</option><option value="transferencia">Transferencia</option></select></label>
+                <label class="full"><span>Footer de facturacion</span><textarea name="billing_footer" rows="2"></textarea></label>
+                <label class="full"><span>Asunto de correo para documentos</span><input name="email_subject_template" placeholder="Documento {document_number} - {clinic_name}" /></label>
+                <label class="full"><span>Cuerpo de correo para documentos</span><textarea name="email_body_template" rows="3"></textarea></label>
+                <div class="full form-actions"><button class="primary-button" type="submit">Guardar configuracion</button></div>
+              </form>
+            </article>
+
+            <article id="administrationOwnersFormPanel" class="panel-card">
+              <div class="panel-heading"><div><p class="eyebrow">Propietarios</p><h3>Nuevo propietario</h3></div></div>
+              <form id="ownerForm" class="form-grid">
+                <label><span>Nombre completo</span><input name="full_name" required /></label>
+                <label><span>Tipo ID</span><select name="identification_type" required><option value="">Selecciona</option><option>CC</option><option>CE</option><option>NIT</option><option>Pasaporte</option></select></label>
+                <label><span>Numero ID</span><input name="identification_number" required /></label>
+                <label><span>Telefono</span><input name="phone" required /></label>
+                <label><span>Correo</span><input name="email" type="email" /></label>
+                <label class="full"><span>Direccion</span><input name="address" /></label>
+                <div class="full form-actions"><button class="primary-button" type="submit">Guardar propietario</button></div>
+              </form>
+            </article>
+          </div>
+
+          <div class="two-column-grid">
+            <article id="administrationOwnersListPanel" class="panel-card">
+              <div class="panel-heading"><div><p class="eyebrow">Directorio</p><h3>Propietarios registrados</h3></div></div>
+              <div id="ownersList" class="list-surface"></div>
+            </article>
+
+            <article id="administrationVariablesPanel" class="panel-card">
+              <div class="panel-heading"><div><p class="eyebrow">Variables</p><h3>Base operativa</h3></div></div>
+              <div id="complianceNotes" class="compliance-surface"></div>
+              <div id="complianceSources" class="list-surface"></div>
+            </article>
+          </div>
+
+          <article id="administrationUsersPanel" class="panel-card">
+            <div class="panel-heading"><div><p class="eyebrow">Usuarios</p><h3>Administracion futura</h3></div></div>
+            <div class="list-surface">
+              <article class="list-card">
+                <h4>Gestion de usuarios</h4>
+                <p>Este modulo queda preparado para crear perfiles, roles y permisos cuando cierres la fase funcional principal.</p>
+              </article>
+            </div>
+          </article>
+        </section>
+
+        <section id="agenda" class="workspace-section">
+          <div class="section-hero">
+            <div>
+              <p class="eyebrow">Agenda</p>
+              <h2>Agenda general y horarios de atencion</h2>
+              <p class="section-copy">
+                Calendario central de citas, disponibilidad operativa y sincronizacion con Google Calendar.
+              </p>
+            </div>
+          </div>
+
+          <div class="two-column-grid">
+            <article id="agendaGeneralPanel" class="panel-card">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">Agenda general</p>
+                  <h3>Calendario de citas</h3>
+                </div>
+                <div class="form-actions">
+                  <button id="agendaPrevMonthButton" class="secondary-button" type="button">Anterior</button>
+                  <button id="agendaTodayButton" class="secondary-button" type="button">Hoy</button>
+                  <button id="agendaNextMonthButton" class="secondary-button" type="button">Siguiente</button>
+                  <button id="openAppointmentModalButton" class="primary-button" type="button">Nueva cita</button>
+                </div>
+              </div>
+              <div class="agenda-month-header">
+                <strong id="agendaMonthLabel"></strong>
+                <span id="agendaConnectionBadge" class="pill pill--draft">Google pendiente</span>
+              </div>
+              <div class="agenda-weekdays">
+                <span>Lu</span>
+                <span>Ma</span>
+                <span>Mi</span>
+                <span>Ju</span>
+                <span>Vi</span>
+                <span>Sa</span>
+                <span>Do</span>
+              </div>
+              <div id="agendaMonthGrid" class="agenda-month-grid"></div>
+            </article>
+
+            <article id="agendaDayPanel" class="panel-card">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">Programacion del dia</p>
+                  <h3 id="agendaSelectedDateLabel">Selecciona un dia</h3>
+                </div>
+              </div>
+              <div id="agendaDaySlots" class="agenda-day-slots"></div>
+              <div id="agendaSelectedDayAppointments" class="list-surface"></div>
+            </article>
+          </div>
+
+          <div class="two-column-grid">
+            <article id="agendaAvailabilityFormPanel" class="panel-card">
+              <div class="panel-heading"><div><p class="eyebrow">Horario de atencion</p><h3>Disponibilidad operativa</h3></div></div>
+              <form id="availabilityForm" class="form-grid">
+                <label><span>Dia</span><select name="day_of_week" required><option value="0">Lunes</option><option value="1">Martes</option><option value="2">Miercoles</option><option value="3">Jueves</option><option value="4">Viernes</option><option value="5">Sabado</option><option value="6">Domingo</option></select></label>
+                <label><span>Responsable o recurso</span><input name="professional_name" placeholder="Agenda general, Dra. Laura, Sala 1" /></label>
+                <label><span>Hora inicial</span><input name="start_time" type="time" required /></label>
+                <label><span>Hora final</span><input name="end_time" type="time" required /></label>
+                <label><span>Bloque (min)</span><input name="slot_minutes" type="number" min="15" step="15" value="30" /></label>
+                <label><span>Lugar</span><input name="location" /></label>
+                <label class="full"><span>Notas</span><textarea name="notes" rows="2"></textarea></label>
+                <div class="full form-actions"><button class="primary-button" type="submit">Guardar disponibilidad</button></div>
+              </form>
+            </article>
+
+            <article id="agendaGoogleCalendarPanel" class="panel-card">
+              <div class="panel-heading"><div><p class="eyebrow">Google Calendar</p><h3>Sincronizacion externa</h3></div></div>
+              <form id="googleCalendarForm" class="form-grid">
+                <label class="checkbox-row full"><input name="google_calendar_enabled" type="checkbox" /><span>Sincronizar citas nuevas y cambios de estado</span></label>
+                <label><span>Calendar ID</span><input name="google_calendar_id" value="primary" placeholder="primary" /></label>
+                <label><span>Zona horaria</span><input name="agenda_timezone" value="America/Bogota" /></label>
+                <label class="full"><span>JSON del cliente OAuth</span><textarea name="credentials_json" rows="5" placeholder='Pega aqui el JSON del cliente OAuth de Google para Calendar'></textarea></label>
+                <div class="full form-actions">
+                  <button class="primary-button" type="submit">Guardar integracion</button>
+                  <button id="googleCalendarConnectButton" class="secondary-button" type="button">Conectar</button>
+                  <button id="googleCalendarDisconnectButton" class="ghost-button" type="button">Desconectar</button>
+                </div>
+              </form>
+              <div id="googleCalendarStatus" class="summary-list"></div>
+            </article>
+          </div>
+
+          <div class="two-column-grid">
+            <article id="agendaGeneralListPanel" class="panel-card">
+              <div class="panel-heading"><div><p class="eyebrow">Agenda general</p><h3>Citas recientes</h3></div></div>
+              <div id="appointmentsList" class="list-surface"></div>
+            </article>
+
+            <article id="agendaAvailabilityRulesPanel" class="panel-card">
+              <div class="panel-heading"><div><p class="eyebrow">Horario de atencion</p><h3>Bloques configurados</h3></div></div>
+              <div id="availabilityRulesList" class="list-surface"></div>
+            </article>
+          </div>
+        </section>
+
+        <section id="sales" class="workspace-section">
+          <div class="section-hero">
+            <div>
+              <p class="eyebrow">Ventas</p>
+              <h2>Documentos, caja, inventario, proveedores y clientes</h2>
+              <p class="section-copy">
+                Facturas, cotizaciones, ingresos, egresos, inventario y configuracion de facturacion integrados a la misma operacion veterinaria.
+              </p>
+            </div>
+          </div>
+
+          <div class="menu-strip menu-strip--six">
+            <article class="menu-card">
+              <h3>Documentos</h3>
+              <p>Facturas y cotizaciones con abonos y saldo.</p>
+            </article>
+            <article class="menu-card">
+              <h3>Ingresos y egresos</h3>
+              <p>Caja manual y movimientos automaticos.</p>
+            </article>
+            <article class="menu-card">
+              <h3>Inventario</h3>
+              <p>Catalogo, stock y ajustes manuales.</p>
+            </article>
+            <article class="menu-card">
+              <h3>Proveedores</h3>
+              <p>Directorio de abastecimiento y relacion comercial.</p>
+            </article>
+            <article class="menu-card">
+              <h3>Clientes</h3>
+              <p>Los propietarios quedan disponibles tambien como clientes.</p>
+            </article>
+            <article class="menu-card">
+              <h3>Configuracion de facturacion</h3>
+              <p>Pie de documento, cuenta por defecto y plantillas de correo.</p>
+            </article>
+          </div>
+
+          <div id="salesSummaryMetricsBlock" class="stats-grid stats-grid--six">
+            <article class="metric-card"><span>Documentos</span><strong id="salesDocumentsTotal">0</strong></article>
+            <article class="metric-card"><span>Facturas</span><strong id="salesInvoicesTotal">0</strong></article>
+            <article class="metric-card"><span>Cotizaciones</span><strong id="salesQuotesTotal">0</strong></article>
+            <article class="metric-card"><span>Ingresos</span><strong id="salesIncomeTotal">$0</strong></article>
+            <article class="metric-card"><span>Saldo pendiente</span><strong id="salesPendingTotal">$0</strong></article>
+            <article class="metric-card"><span>Stock bajo</span><strong id="salesLowStockTotal">0</strong></article>
+          </div>
+
+          <div class="two-column-grid">
+            <article id="salesProviderFormPanel" class="panel-card">
+              <div class="panel-heading"><div><p class="eyebrow">Proveedores</p><h3>Nuevo proveedor</h3></div></div>
+              <form id="providerForm" class="form-grid">
+                <label><span>Nombre</span><input name="name" required /></label>
+                <label><span>Contacto</span><input name="contact_name" /></label>
+                <label><span>Telefono</span><input name="phone" /></label>
+                <label><span>Correo</span><input name="email" type="email" /></label>
+                <label class="full"><span>Notas</span><textarea name="notes" rows="2"></textarea></label>
+                <div class="full form-actions"><button class="primary-button" type="submit">Guardar proveedor</button></div>
+              </form>
+            </article>
+
+            <article id="salesCatalogFormPanel" class="panel-card">
+              <div class="panel-heading"><div><p class="eyebrow">Inventario</p><h3>Nuevo item de catalogo</h3></div></div>
+              <form id="catalogForm" class="form-grid">
+                <label><span>Proveedor</span><select id="catalogProviderSelect" name="provider_id"></select></label>
+                <label><span>Categoria</span><input name="category" placeholder="Medicamento, servicio, alimento" required /></label>
+                <label class="full"><span>Nombre</span><input name="name" required /></label>
+                <label><span>Costo de compra</span><input name="purchase_cost" type="number" step="0.01" min="0" value="0" /></label>
+                <label><span>Margen (%)</span><input name="margin_percent" type="number" step="0.01" min="0" value="0" /></label>
+                <label><span>Presentacion total</span><input name="presentation_total" type="number" step="0.01" min="0.01" value="1" /></label>
+                <label><span>Stock inicial</span><input name="stock_quantity" type="number" step="0.01" value="0" /></label>
+                <label><span>Stock minimo</span><input name="min_stock" type="number" step="0.01" value="0" /></label>
+                <label class="checkbox-row full"><input name="track_inventory" type="checkbox" checked /><span>Controlar inventario</span></label>
+                <label class="full"><span>Notas</span><textarea name="notes" rows="2"></textarea></label>
+                <div class="full form-actions"><button class="primary-button" type="submit">Guardar item</button></div>
+              </form>
+            </article>
+          </div>
+
+          <div class="two-column-grid">
+            <article id="salesDocumentFormPanel" class="panel-card">
+              <div class="panel-heading"><div><p class="eyebrow">Documentos</p><h3>Nueva factura o cotizacion</h3></div></div>
+              <form id="billingDocumentForm" class="form-grid">
+                <label class="full"><span>Paciente</span><select id="billingPatientSelect" name="patient_id" required></select></label>
+                <label><span>Tipo</span><select id="billingDocumentTypeSelect" name="document_type"><option value="factura">Factura</option><option value="cotizacion">Cotizacion</option></select></label>
+                <label><span>Fecha de emision</span><input name="issue_date" type="date" required /></label>
+                <label><span>Vencimiento</span><input name="due_date" type="date" /></label>
+                <label><span>Metodo de pago</span><select id="billingPaymentMethodSelect" name="payment_method"><option value="Pendiente">Pendiente</option><option value="Efectivo">Efectivo</option><option value="Transferencia">Transferencia</option><option value="Tarjeta">Tarjeta</option><option value="Otro">Otro</option></select></label>
+                <label><span>Cuenta de caja</span><select id="billingCashAccountSelect" name="cash_account"><option value="caja_menor">Caja menor</option><option value="caja_mayor">Caja mayor</option><option value="transferencia">Transferencia</option></select></label>
+                <label><span>Descuento</span><input name="discount" type="number" step="0.01" min="0" value="0" /></label>
+                <label><span>Correo del receptor</span><input name="recipient_email" type="email" /></label>
+                <label class="full"><span>Item del documento</span><select id="billingLineItemSelect"></select></label>
+                <label><span>Cantidad</span><input id="billingLineQuantity" type="number" step="0.01" min="0.01" value="1" /></label>
+                <div class="form-actions align-end"><button id="addBillingLineButton" class="secondary-button" type="button">Agregar item</button></div>
+                <div class="full">
+                  <div id="billingDraftLines" class="list-surface"></div>
+                </div>
+                <div id="billingInitialPaymentGroup" class="form-grid full">
+                  <label><span>Abono inicial</span><input name="initial_payment_amount" type="number" step="0.01" min="0" value="0" /></label>
+                  <label><span>Fecha del abono</span><input name="initial_payment_date" type="date" /></label>
+                  <label><span>Metodo del abono</span><select name="initial_payment_method"><option value="Efectivo">Efectivo</option><option value="Transferencia">Transferencia</option><option value="Tarjeta">Tarjeta</option><option value="Otro">Otro</option></select></label>
+                  <label><span>Caja del abono</span><select name="initial_payment_cash_account"><option value="caja_menor">Caja menor</option><option value="caja_mayor">Caja mayor</option><option value="transferencia">Transferencia</option></select></label>
+                </div>
+                <label class="full"><span>Notas</span><textarea name="notes" rows="3"></textarea></label>
+                <div class="full form-actions"><button class="primary-button" type="submit">Guardar documento</button></div>
+              </form>
+            </article>
+
+            <article id="salesPaymentFormPanel" class="panel-card">
+              <div class="panel-heading"><div><p class="eyebrow">Abonos</p><h3>Registrar pago</h3></div></div>
+              <form id="billingPaymentForm" class="form-grid">
+                <label class="full"><span>Factura pendiente</span><select id="billingPaymentDocumentSelect" name="document_id" required></select></label>
+                <label><span>Fecha</span><input name="payment_date" type="date" required /></label>
+                <label><span>Monto</span><input name="amount" type="number" step="0.01" min="0.01" required /></label>
+                <label><span>Metodo</span><select name="payment_method"><option value="Efectivo">Efectivo</option><option value="Transferencia">Transferencia</option><option value="Tarjeta">Tarjeta</option><option value="Otro">Otro</option></select></label>
+                <label><span>Caja</span><select name="cash_account"><option value="caja_menor">Caja menor</option><option value="caja_mayor">Caja mayor</option><option value="transferencia">Transferencia</option></select></label>
+                <label class="full"><span>Nota</span><textarea name="note" rows="2"></textarea></label>
+                <div class="full form-actions"><button class="primary-button" type="submit">Registrar abono</button></div>
+              </form>
+            </article>
+          </div>
+
+          <div class="two-column-grid">
+            <article id="salesCashFormPanel" class="panel-card">
+              <div class="panel-heading"><div><p class="eyebrow">Caja</p><h3>Ingreso o egreso manual</h3></div></div>
+              <form id="cashMovementForm" class="form-grid">
+                <label><span>Tipo</span><select name="movement_type"><option value="ingreso">Ingreso</option><option value="gasto">Gasto</option></select></label>
+                <label><span>Fecha</span><input name="movement_date" type="date" required /></label>
+                <label class="full"><span>Concepto</span><input name="concept" required /></label>
+                <label><span>Monto</span><input name="amount" type="number" step="0.01" min="0.01" required /></label>
+                <label><span>Cuenta</span><select name="cash_account"><option value="caja_menor">Caja menor</option><option value="caja_mayor">Caja mayor</option><option value="transferencia">Transferencia</option></select></label>
+                <label><span>Categoria</span><input name="category" placeholder="Factura, compra, servicio" /></label>
+                <label class="full"><span>Notas</span><textarea name="notes" rows="2"></textarea></label>
+                <div class="full form-actions"><button class="primary-button" type="submit">Guardar movimiento</button></div>
+              </form>
+            </article>
+
+            <article id="salesStockFormPanel" class="panel-card">
+              <div class="panel-heading"><div><p class="eyebrow">Inventario</p><h3>Ajuste manual</h3></div></div>
+              <form id="stockAdjustmentForm" class="form-grid">
+                <label class="full"><span>Item</span><select id="stockAdjustmentItemSelect" name="item_id" required></select></label>
+                <label><span>Tipo</span><select name="movement_type"><option value="entrada">Entrada</option><option value="salida">Salida</option></select></label>
+                <label><span>Fecha</span><input name="movement_date" type="date" required /></label>
+                <label><span>Cantidad</span><input name="quantity" type="number" step="0.01" min="0.01" required /></label>
+                <label class="full"><span>Nota</span><textarea name="note" rows="2"></textarea></label>
+                <div class="full form-actions"><button class="primary-button" type="submit">Aplicar ajuste</button></div>
+              </form>
+            </article>
+          </div>
+
+          <div class="three-column-grid">
+            <article id="salesSummaryPanel" class="panel-card">
+              <div class="panel-heading"><div><p class="eyebrow">Resumen</p><h3>Facturacion e inventario</h3></div></div>
+              <div id="billingSummaryList" class="summary-list"></div>
+            </article>
+            <article id="salesProvidersPanel" class="panel-card">
+              <div class="panel-heading"><div><p class="eyebrow">Proveedores</p><h3>Directorio</h3></div></div>
+              <div id="providersList" class="list-surface"></div>
+            </article>
+            <article id="salesClientsPanel" class="panel-card">
+              <div class="panel-heading"><div><p class="eyebrow">Clientes</p><h3>Propietarios con facturacion</h3></div></div>
+              <div id="billingClientsList" class="list-surface"></div>
+            </article>
+          </div>
+
+          <div class="three-column-grid">
+            <article id="salesDocumentsPanel" class="panel-card">
+              <div class="panel-heading"><div><p class="eyebrow">Documentos</p><h3>Facturas y cotizaciones</h3></div></div>
+              <div id="billingDocumentsList" class="list-surface"></div>
+            </article>
+            <article id="salesCatalogPanel" class="panel-card">
+              <div class="panel-heading"><div><p class="eyebrow">Inventario</p><h3>Catalogo activo</h3></div></div>
+              <div id="catalogItemsList" class="list-surface"></div>
+            </article>
+            <article id="salesCashPanel" class="panel-card">
+              <div class="panel-heading"><div><p class="eyebrow">Caja</p><h3>Movimientos recientes</h3></div></div>
+              <div id="cashMovementsList" class="list-surface"></div>
+            </article>
+          </div>
+
+          <article id="salesStockHistoryPanel" class="panel-card">
+            <div class="panel-heading"><div><p class="eyebrow">Inventario</p><h3>Historial de movimientos</h3></div></div>
+            <div id="stockMovementsList" class="list-surface"></div>
+          </article>
+
+          <article id="salesSettingsPanel" class="panel-card">
+            <div class="panel-heading"><div><p class="eyebrow">Ventas</p><h3>Configuracion de facturacion</h3></div></div>
+            <form id="billingSettingsForm" class="form-grid">
+              <label><span>Habilitar correo</span><input name="smtp_enabled" type="checkbox" /></label>
+              <label><span>Correo remitente</span><input name="smtp_from" type="email" /></label>
+              <label><span>Servidor SMTP</span><input name="smtp_host" /></label>
+              <label><span>Puerto SMTP</span><input name="smtp_port" type="number" min="1" max="65535" /></label>
+              <label><span>App password</span><input name="smtp_app_password" type="password" /></label>
+              <label><span>Caja por defecto</span><select name="billing_default_cash_account"><option value="caja_menor">Caja menor</option><option value="caja_mayor">Caja mayor</option><option value="transferencia">Transferencia</option></select></label>
+              <label class="full"><span>Footer de facturacion</span><textarea name="billing_footer" rows="2"></textarea></label>
+              <label class="full"><span>Asunto de correo</span><input name="email_subject_template" /></label>
+              <label class="full"><span>Cuerpo de correo</span><textarea name="email_body_template" rows="3"></textarea></label>
+              <div class="full form-actions"><button class="primary-button" type="submit">Guardar facturacion</button></div>
+            </form>
+          </article>
+        </section>
+
+        <section id="consultorio" class="workspace-section">
+          <div class="section-hero">
+            <div>
+              <p class="eyebrow">Consultorio</p>
+              <h2>Pacientes, historias, consultas, consentimientos y peluqueria</h2>
+              <p class="section-copy">
+                La historia clinica contiene sus consultas internas, seguimientos, documentos y remisiones.
+              </p>
+            </div>
+          </div>
+
+          <div class="menu-strip">
+            <article class="menu-card">
+              <h3>Historias clinicas</h3>
+              <p>Historia base por caso o episodio.</p>
+            </article>
+            <article class="menu-card">
+              <h3>Consultas</h3>
+              <p>Vacunacion, formulas, ambulatorio, cirugia, laboratorio, imagenes y mas.</p>
+            </article>
+            <article class="menu-card">
+              <h3>Consentimientos</h3>
+              <p>Adjuntos a historia o consulta.</p>
+            </article>
+            <article class="menu-card">
+              <h3>Peluqueria</h3>
+              <p>Documentos y seguimiento estetico.</p>
+            </article>
+          </div>
+
+          <div class="two-column-grid">
+            <article id="consultorioPatientFormPanel" class="panel-card">
+              <div class="panel-heading"><div><p class="eyebrow">Mascotas</p><h3>Nuevo paciente</h3></div></div>
+              <form id="patientForm" class="form-grid">
+                <label class="full"><span>Propietario</span><select id="patientOwnerSelect" name="owner_id" required></select></label>
+                <label><span>Nombre</span><input name="name" required /></label>
+                <label><span>Especie</span><input name="species" required /></label>
+                <label><span>Raza</span><input name="breed" /></label>
+                <label><span>Sexo</span><select name="sex" required><option value="">Selecciona</option><option>Macho</option><option>Hembra</option></select></label>
+                <label><span>Nacimiento</span><input name="birth_date" type="date" /></label>
+                <label><span>Peso (kg)</span><input name="weight_kg" type="number" step="0.01" /></label>
+                <label><span>Vacunacion</span><input name="vaccination_status" /></label>
+                <label><span>Desparasitacion</span><input name="deworming_status" /></label>
+                <label class="full"><span>Notas</span><textarea name="notes" rows="3"></textarea></label>
+                <div class="full form-actions"><button class="primary-button" type="submit">Guardar paciente</button></div>
+              </form>
+            </article>
+
+            <article id="consultorioRecordFormPanel" class="panel-card">
+              <div class="panel-heading"><div><p class="eyebrow">Historia clinica</p><h3>Nueva historia</h3></div></div>
+              <form id="recordForm" class="form-grid">
+                <label class="full"><span>Paciente</span><select id="recordPatientSelect" name="patient_id" required></select></label>
+                <label><span>Fecha</span><input name="opened_at" type="datetime-local" /></label>
+                <label><span>Area</span><select name="care_area"><option value="">Selecciona</option><option>Consultorio</option><option>Hospitalizacion</option><option>Ambulatorio</option></select></label>
+                <label><span>Foco</span><input name="history_focus" placeholder="Ej. medicina interna" /></label>
+                <label><span>Profesional</span><input name="professional_name" required /></label>
+                <label><span>Matricula</span><input name="professional_license" required /></label>
+                <label class="full"><span>Motivo de consulta</span><textarea name="reason_for_consultation" rows="2"></textarea></label>
+                <label class="full"><span>Anamnesis</span><textarea name="anamnesis" rows="2"></textarea></label>
+                <label class="full"><span>Examen fisico</span><textarea name="physical_exam_summary" rows="2"></textarea></label>
+                <label class="full"><span>Diagnostico presuntivo</span><textarea name="presumptive_diagnosis" rows="2"></textarea></label>
+                <label class="full"><span>Plan terapeutico</span><textarea name="procedures_plan" rows="2"></textarea></label>
+                <label class="full"><span>Recomendaciones</span><textarea name="recommendations" rows="2"></textarea></label>
+                <label class="checkbox-row full"><input name="consent_required" type="checkbox" /><span>Requiere consentimiento</span></label>
+                <label class="full"><span>Resumen del consentimiento</span><textarea name="consent_summary" rows="2"></textarea></label>
+                <div class="full form-actions">
+                  <button id="saveDraftButton" class="secondary-button" type="button">Guardar borrador</button>
+                  <button id="finalizeRecordButton" class="primary-button" type="button">Finalizar historia</button>
+                </div>
+              </form>
+            </article>
+          </div>
+
+          <div class="two-column-grid">
+            <article id="consultorioConsultationFormPanel" class="panel-card">
+              <div class="panel-heading"><div><p class="eyebrow">Consultas internas</p><h3>Nueva consulta</h3></div></div>
+              <form id="consultationForm" class="form-grid">
+                <label class="full"><span>Historia clinica</span><select id="consultationRecordSelect" name="record_id" required></select></label>
+                <label><span>Fecha</span><input name="consultation_at" type="datetime-local" /></label>
+                <label><span>Tipo</span><select id="consultationTypeSelect" name="consultation_type" required><option value="">Selecciona</option><option>Vacunacion</option><option>Formula</option><option>Desparasitacion</option><option>Ambulatorio</option><option>Hospitalizacion</option><option>Cirugia / procedimiento</option><option>Examen de laboratorio</option><option>Imagen diagnostica</option><option>Seguimiento</option><option>Documento</option><option>Remision</option></select></label>
+                <label class="full"><span>Titulo</span><input name="title" required /></label>
+                <label><span>Profesional</span><input name="professional_name" required /></label>
+                <label><span>Matricula</span><input name="professional_license" required /></label>
+                <label class="full"><span>Resumen</span><textarea name="summary" rows="3" required></textarea></label>
+                <label class="full"><span>Indicaciones / formula</span><textarea name="indications" rows="2"></textarea></label>
+                <label><span>Documento / referencia</span><input name="document_reference" /></label>
+                <label><span>Remitido a</span><input name="referred_to" /></label>
+                <label class="full"><span>Documentos adjuntos</span><textarea name="attachments_summary" rows="2"></textarea></label>
+                <label><span>Consentimiento relacionado</span><select id="consultationConsentSelect" name="consent_id"></select></label>
+                <label class="checkbox-row"><input name="consent_required" type="checkbox" /><span>Requiere consentimiento</span></label>
+                <div class="full form-actions"><button class="primary-button" type="submit">Guardar consulta</button></div>
+              </form>
+            </article>
+
+            <article id="consultorioEvolutionFormPanel" class="panel-card">
+              <div class="panel-heading"><div><p class="eyebrow">Seguimiento</p><h3>Nueva evolucion</h3></div></div>
+              <form id="evolutionForm" class="form-grid">
+                <label class="full"><span>Historia clinica</span><select id="evolutionRecordSelect" name="record_id" required></select></label>
+                <label><span>Fecha</span><input name="evolution_at" type="datetime-local" /></label>
+                <label><span>Profesional</span><input name="author_name" required /></label>
+                <label><span>Matricula</span><input name="author_license" required /></label>
+                <label class="full"><span>Subjetivo</span><textarea name="subjective" rows="2"></textarea></label>
+                <label class="full"><span>Objetivo</span><textarea name="objective" rows="2"></textarea></label>
+                <label class="full"><span>Analisis</span><textarea name="assessment" rows="2"></textarea></label>
+                <label class="full"><span>Plan</span><textarea name="plan" rows="3" required></textarea></label>
+                <div class="full form-actions"><button class="primary-button" type="submit">Guardar evolucion</button></div>
+              </form>
+            </article>
+          </div>
+
+          <div class="two-column-grid">
+            <article id="consultorioConsentFormPanel" class="panel-card">
+              <div class="panel-heading"><div><p class="eyebrow">Consentimientos</p><h3>Registro legal</h3></div></div>
+              <form id="consentForm" class="form-grid">
+                <label class="full"><span>Paciente</span><select id="consentPatientSelect" name="patient_id" required></select></label>
+                <label><span>Historia relacionada</span><select id="consentRecordSelect" name="record_id"></select></label>
+                <label><span>Consulta relacionada</span><select id="consentConsultationSelect" name="consultation_id"></select></label>
+                <label><span>Fecha de firma</span><input name="signed_at" type="datetime-local" required /></label>
+                <label><span>Tipo</span><select id="consentTypeSelect" name="consent_type" required><option value="">Selecciona</option><option>Cirugia</option><option>Anestesia</option><option>Procedimiento invasivo</option><option>Hospitalizacion</option><option>Eutanasia</option><option>Tratamiento de riesgo</option></select></label>
+                <label class="full"><span>Procedimiento</span><input name="procedure_name" required /></label>
+                <label class="full"><span>Riesgos explicados</span><textarea name="risks_explained" rows="3" required></textarea></label>
+                <label class="full"><span>Beneficios esperados</span><textarea name="benefits_expected" rows="2"></textarea></label>
+                <label class="full"><span>Alternativas</span><textarea name="alternatives" rows="2"></textarea></label>
+                <label><span>Nombre de quien autoriza</span><input name="owner_signature_name" required /></label>
+                <label><span>Identificacion</span><input name="owner_identification" required /></label>
+                <label><span>Profesional</span><input name="professional_name" required /></label>
+                <label><span>Matricula</span><input name="professional_license" required /></label>
+                <label class="full"><span>Manifestacion del tutor</span><textarea name="owner_statement" rows="3" required></textarea></label>
+                <label class="full"><span>Notas</span><textarea name="notes" rows="2"></textarea></label>
+                <div class="full form-actions"><button class="primary-button" type="submit">Guardar consentimiento</button></div>
+              </form>
+            </article>
+
+            <article id="consultorioGroomingFormPanel" class="panel-card">
+              <div class="panel-heading"><div><p class="eyebrow">Peluqueria</p><h3>Documento de servicio</h3></div></div>
+              <form id="groomingForm" class="form-grid">
+                <label class="full"><span>Paciente</span><select id="groomingPatientSelect" name="patient_id" required></select></label>
+                <label><span>Fecha</span><input name="service_at" type="datetime-local" /></label>
+                <label><span>Tipo de documento</span><input name="document_type" placeholder="Orden, ficha o salida" required /></label>
+                <label class="full"><span>Servicio</span><input name="service_name" placeholder="Bano, corte, spa" required /></label>
+                <label><span>Responsable</span><input name="stylist_name" required /></label>
+                <label><span>Estado</span><select name="status"><option value="scheduled">Programado</option><option value="in_progress">En proceso</option><option value="completed">Completado</option><option value="cancelled">Cancelado</option></select></label>
+                <label class="full"><span>Productos usados</span><textarea name="products_used" rows="2"></textarea></label>
+                <label class="full"><span>Recomendaciones</span><textarea name="recommendations" rows="2"></textarea></label>
+                <label><span>Proxima visita</span><input name="next_visit_at" type="datetime-local" /></label>
+                <label class="full"><span>Notas</span><textarea name="notes" rows="2"></textarea></label>
+                <div class="full form-actions"><button class="primary-button" type="submit">Guardar documento</button></div>
+              </form>
+            </article>
+          </div>
+
+          <div class="two-column-grid">
+            <article id="consultorioPatientsPanel" class="panel-card">
+              <div class="panel-heading"><div><p class="eyebrow">Mascotas</p><h3>Pacientes registrados</h3></div></div>
+              <div id="patientsList" class="list-surface"></div>
+            </article>
+            <article id="consultorioRecordsPanel" class="panel-card">
+              <div class="panel-heading"><div><p class="eyebrow">Historias</p><h3>Historias recientes</h3></div></div>
+              <div id="recordsList" class="list-surface"></div>
+            </article>
+          </div>
+
+          <div class="three-column-grid">
+            <article id="consultorioConsultationsPanel" class="panel-card">
+              <div class="panel-heading"><div><p class="eyebrow">Consultas</p><h3>Consultas internas</h3></div></div>
+              <div id="consultationsList" class="list-surface"></div>
+            </article>
+            <article id="consultorioConsentsPanel" class="panel-card">
+              <div class="panel-heading"><div><p class="eyebrow">Consentimientos</p><h3>Archivo legal</h3></div></div>
+              <div id="consentTypeList" class="summary-list"></div>
+              <div id="consentsList" class="list-surface"></div>
+            </article>
+            <article id="consultorioGroomingPanel" class="panel-card">
+              <div class="panel-heading"><div><p class="eyebrow">Peluqueria</p><h3>Documentos recientes</h3></div></div>
+              <div id="groomingList" class="list-surface"></div>
+            </article>
+          </div>
+        </section>
+
+        <section id="hospamb" class="workspace-section">
+          <div class="section-hero">
+            <div>
+              <p class="eyebrow">Hosp./Amb.</p>
+              <h2>Hospitalizacion y ambulatorio</h2>
+              <p class="section-copy">
+                Vista rapida de las consultas clasificadas para hospitalizacion, ambulatorio y procedimientos.
+              </p>
+            </div>
+          </div>
+
+          <div class="two-column-grid">
+            <article id="hospambHospitalizationPanel" class="panel-card">
+              <div class="panel-heading"><div><p class="eyebrow">Hospitalizacion</p><h3>Consultas relacionadas</h3></div></div>
+              <div id="hospitalizationList" class="list-surface"></div>
+            </article>
+            <article id="hospambAmbulatoryPanel" class="panel-card">
+              <div class="panel-heading"><div><p class="eyebrow">Ambulatorio</p><h3>Consultas relacionadas</h3></div></div>
+              <div id="ambulatoryList" class="list-surface"></div>
+            </article>
+          </div>
+
+          <article id="hospambProcedurePanel" class="panel-card">
+            <div class="panel-heading"><div><p class="eyebrow">Procedimientos</p><h3>Cirugias, seguimientos y remisiones</h3></div></div>
+            <div id="procedureList" class="list-surface"></div>
+          </article>
+        </section>
+
+        <section id="requests" class="workspace-section">
+          <div class="section-hero">
+            <div>
+              <p class="eyebrow">Solicitudes</p>
+              <h2>Bandejas operativas</h2>
+              <p class="section-copy">
+                Historias por cerrar, citas por confirmar, ordenes derivadas de consultas y facturas pendientes.
+              </p>
+            </div>
+          </div>
+
+          <div class="three-column-grid">
+            <article id="requestsRecordsPanel" class="panel-card">
+              <div class="panel-heading"><div><p class="eyebrow">Historias</p><h3>Solicitudes de historias clinicas</h3></div></div>
+              <div id="requestRecordsList" class="list-surface"></div>
+            </article>
+            <article id="requestsAppointmentsPanel" class="panel-card">
+              <div class="panel-heading"><div><p class="eyebrow">Agenda</p><h3>Solicitudes de agendamiento</h3></div></div>
+              <div id="requestAppointmentsList" class="list-surface"></div>
+            </article>
+            <article id="requestsOrdersPanel" class="panel-card">
+              <div class="panel-heading"><div><p class="eyebrow">Ordenes</p><h3>Solicitudes de ordenes</h3></div></div>
+              <div id="requestOrdersList" class="list-surface"></div>
+            </article>
+          </div>
+
+          <article id="requestsBillingPanel" class="panel-card">
+            <div class="panel-heading"><div><p class="eyebrow">Ventas</p><h3>Documentos pendientes</h3></div></div>
+            <div id="requestBillingList" class="list-surface"></div>
+          </article>
+        </section>
+
+        <section id="reports" class="workspace-section">
+          <div class="section-hero">
+            <div>
+              <p class="eyebrow">Informes</p>
+              <h2>Indicadores, exportables y seguimiento</h2>
+              <p class="section-copy">
+                Lectura ejecutiva de propietarios, mascotas, registros clinicos, agenda, peluqueria, facturacion e inventario.
+              </p>
+            </div>
+          </div>
+
+          <div class="menu-strip">
+            <article class="menu-card">
+              <h3>Dashboard clasico</h3>
+              <p>Totales operativos y actividad reciente.</p>
+            </article>
+            <article class="menu-card">
+              <h3>Propietarios y mascotas</h3>
+              <p>Directorio resumido para gestion.</p>
+            </article>
+            <article class="menu-card">
+              <h3>Historico de registros</h3>
+              <p>Historias, consultas y auditoria.</p>
+            </article>
+            <article class="menu-card">
+              <h3>Ultima gestion</h3>
+              <p>Eventos recientes sobre la base local.</p>
+            </article>
+          </div>
+
+          <div id="reportsStatsBlock" class="stats-grid stats-grid--nine">
+            <article class="metric-card"><span>Propietarios</span><strong id="reportOwnersTotal">0</strong></article>
+            <article class="metric-card"><span>Mascotas</span><strong id="reportPatientsTotal">0</strong></article>
+            <article class="metric-card"><span>Historias</span><strong id="reportRecordsTotal">0</strong></article>
+            <article class="metric-card"><span>Consultas</span><strong id="reportConsultationsTotal">0</strong></article>
+            <article class="metric-card"><span>Citas</span><strong id="reportAppointmentsTotal">0</strong></article>
+            <article class="metric-card"><span>Peluqueria</span><strong id="reportGroomingTotal">0</strong></article>
+            <article class="metric-card"><span>Documentos</span><strong id="reportBillingDocumentsTotal">0</strong></article>
+            <article class="metric-card"><span>Proveedores</span><strong id="reportProvidersTotal">0</strong></article>
+            <article class="metric-card"><span>Catalogo</span><strong id="reportCatalogItemsTotal">0</strong></article>
+          </div>
+
+          <div class="three-column-grid">
+            <article id="reportsOwnersPanel" class="panel-card">
+              <div class="panel-heading"><div><p class="eyebrow">Propietarios</p><h3>Resumen</h3></div></div>
+              <div id="reportsOwnersList" class="list-surface"></div>
+            </article>
+            <article id="reportsPatientsPanel" class="panel-card">
+              <div class="panel-heading"><div><p class="eyebrow">Mascotas</p><h3>Resumen</h3></div></div>
+              <div id="reportsPatientsList" class="list-surface"></div>
+            </article>
+            <article id="reportsConsultationTypesPanel" class="panel-card">
+              <div class="panel-heading"><div><p class="eyebrow">Consultas</p><h3>Por tipo</h3></div></div>
+              <div id="reportsConsultationTypeList" class="summary-list"></div>
+            </article>
+          </div>
+
+          <div class="two-column-grid">
+            <article id="reportsAgendaPanel" class="panel-card">
+              <div class="panel-heading"><div><p class="eyebrow">Agenda</p><h3>Citas por dia</h3></div></div>
+              <div id="reportsAppointmentsDayList" class="summary-list"></div>
+            </article>
+            <article id="reportsGroomingPanel" class="panel-card">
+              <div class="panel-heading"><div><p class="eyebrow">Peluqueria</p><h3>Estado de documentos</h3></div></div>
+              <div id="reportsGroomingStatusList" class="summary-list"></div>
+            </article>
+          </div>
+
+          <div class="two-column-grid">
+            <article id="reportsRecordsPanel" class="panel-card">
+              <div class="panel-heading"><div><p class="eyebrow">Historias</p><h3>Historico de registros</h3></div></div>
+              <div id="reportsRecentRecordsList" class="list-surface"></div>
+            </article>
+            <article id="reportsAuditPanel" class="panel-card">
+              <div class="panel-heading"><div><p class="eyebrow">Ultima gestion</p><h3>Auditoria reciente</h3></div></div>
+              <div id="reportsAuditList" class="list-surface"></div>
+            </article>
+          </div>
+
+          <div class="three-column-grid">
+            <article id="reportsBillingSummaryPanel" class="panel-card">
+              <div class="panel-heading"><div><p class="eyebrow">Ventas</p><h3>Resumen financiero</h3></div></div>
+              <div id="reportsBillingSummaryList" class="summary-list"></div>
+            </article>
+            <article id="reportsProvidersPanel" class="panel-card">
+              <div class="panel-heading"><div><p class="eyebrow">Proveedores</p><h3>Directorio</h3></div></div>
+              <div id="reportsProvidersList" class="list-surface"></div>
+            </article>
+            <article id="reportsCatalogPanel" class="panel-card">
+              <div class="panel-heading"><div><p class="eyebrow">Inventario</p><h3>Catalogo</h3></div></div>
+              <div id="reportsCatalogList" class="list-surface"></div>
+            </article>
+          </div>
+
+          <div class="two-column-grid">
+            <article id="reportsBillingDocumentsPanel" class="panel-card">
+              <div class="panel-heading"><div><p class="eyebrow">Documentos</p><h3>Facturacion reciente</h3></div></div>
+              <div id="reportsBillingDocumentsList" class="list-surface"></div>
+            </article>
+            <article id="reportsCashPanel" class="panel-card">
+              <div class="panel-heading"><div><p class="eyebrow">Caja</p><h3>Movimientos recientes</h3></div></div>
+              <div id="reportsCashMovementsList" class="list-surface"></div>
+            </article>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div id="appointmentModal" class="modal-shell is-hidden" aria-hidden="true">
+      <div class="modal-backdrop" data-close-appointment-modal="true"></div>
+      <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="appointmentModalTitle">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Agenda general</p>
+            <h3 id="appointmentModalTitle">Crear cita</h3>
+            <p id="appointmentModalSelectedDate" class="meta-copy"></p>
+          </div>
+          <button id="closeAppointmentModalButton" class="ghost-button" type="button">Cerrar</button>
+        </div>
+        <form id="appointmentForm" class="form-grid">
+          <label class="full"><span>Paciente</span><select id="appointmentPatientSelect" name="patient_id" required></select></label>
+          <label><span>Fecha y hora</span><input name="appointment_at" type="datetime-local" required /></label>
+          <label><span>Estado</span><select name="status"><option value="scheduled">Programada</option><option value="confirmed">Confirmada</option></select></label>
+          <label><span>Encargado / recurso</span><input name="professional_name" placeholder="Agenda general, Dra. Laura, Sala 1" /></label>
+          <label><span>Duracion (min)</span><input name="duration_minutes" type="number" min="15" step="15" value="30" /></label>
+          <label class="full"><span>Titulo o motivo</span><textarea name="reason" rows="2" required></textarea></label>
+          <label class="full"><span>Descripcion</span><textarea name="notes" rows="3"></textarea></label>
+          <div class="full form-actions">
+            <button class="primary-button" type="submit">Guardar cita</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <script src="/app.js"></script>
+  </body>
+</html>
