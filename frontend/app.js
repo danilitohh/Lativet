@@ -2897,8 +2897,8 @@ async function initApp() {
     authState.requiresLogin = Boolean(status.requires_login);
     authState.authenticated = Boolean(status.authenticated);
   } catch (error) {
-    authState.requiresLogin = false;
-    authState.authenticated = true;
+    authState.requiresLogin = true;
+    authState.authenticated = false;
   }
   setAuthUI(authState.authenticated);
   if (authState.requiresLogin && !authState.authenticated) {
