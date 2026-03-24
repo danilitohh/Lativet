@@ -109,11 +109,22 @@ def normalize_postgres_dsn(dsn: str) -> str:
     if not parsed.scheme.startswith("postgres"):
         return dsn
     query = dict(parse_qsl(parsed.query))
-    if "sslmode" not in query:
-        query["sslmode"] = "require"
-        parsed = parsed._replace(query=urlencode(query))
-        return urlunparse(parsed)
-    return dsn
+    # Drop unsupported query params (Vercel/Supabase may add custom ones like "supa")
+    allowed = {
+        "sslmode",
+        "sslrootcert",
+        "connect_timeout",
+        "application_name",
+        "options",
+        "target_session_attrs",
+        "gssencmode",
+        "channel_binding",
+    }
+    cleaned = {key: value for key, value in query.items() if key in allowed}
+    if "sslmode" not in cleaned:
+        cleaned["sslmode"] = "require"
+    parsed = parsed._replace(query=urlencode(cleaned))
+    return urlunparse(parsed)
 
 
 def _split_sql_script(script: str) -> list[str]:
