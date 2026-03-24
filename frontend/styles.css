@@ -448,6 +448,19 @@ button:active {
   padding: 22px;
 }
 
+.panel-card--action {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: left;
+  width: 100%;
+}
+
+.panel-card--action .meta-copy--cta {
+  color: var(--brand);
+  font-weight: 600;
+}
+
 .section-hero {
   display: flex;
   align-items: end;

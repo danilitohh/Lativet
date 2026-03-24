@@ -585,7 +585,6 @@ function cacheElements() {
     "appointmentForm",
     "availabilityForm",
     "googleCalendarForm",
-    "googleCalendarManageButton",
     "googleCalendarModal",
     "closeGoogleCalendarModalButton",
     "appointmentsList",
@@ -596,6 +595,7 @@ function cacheElements() {
     "agendaDaySlots",
     "agendaSelectedDayAppointments",
     "agendaConnectionBadge",
+    "agendaGoogleCalendarPanel",
     "agendaPrevMonthButton",
     "agendaTodayButton",
     "agendaNextMonthButton",
@@ -603,7 +603,7 @@ function cacheElements() {
     "appointmentModal",
     "appointmentModalSelectedDate",
     "closeAppointmentModalButton",
-    "googleCalendarStatus",
+    "googleCalendarInlineStatus",
     "googleCalendarConnectButton",
     "googleCalendarDisconnectButton",
     "patientForm",
@@ -1391,25 +1391,31 @@ function renderGoogleCalendarStatus() {
   const info = state.google_calendar || {};
   elements.agendaConnectionBadge.textContent = info.connected ? "Google conectado" : "Google pendiente";
   elements.agendaConnectionBadge.className = `pill ${info.connected ? "pill--confirmed" : "pill--draft"}`;
-  elements.googleCalendarStatus.innerHTML = `
-    <div class="summary-item"><span>Estado</span><strong>${escapeHtml(
-      info.connected ? "Conectado" : "Sin conectar"
-    )}</strong></div>
-    <div class="summary-item"><span>Calendar ID</span><strong>${escapeHtml(
-      info.calendar_id || "primary"
-    )}</strong></div>
-    <div class="summary-item"><span>Credenciales OAuth</span><strong>${escapeHtml(
-      info.credentials_present ? "Guardadas" : "Pendientes"
-    )}</strong></div>
-    <div class="summary-item"><span>Zona horaria</span><strong>${escapeHtml(
-      info.timezone || state.settings.agenda_timezone || "America/Bogota"
-    )}</strong></div>
-    ${
-      info.error
-        ? `<div class="summary-item"><span>Detalle</span><strong>${escapeHtml(info.error)}</strong></div>`
-        : ""
-    }
-  `;
+  if (elements.googleCalendarInlineStatus) {
+    elements.googleCalendarInlineStatus.textContent = info.connected ? "Conectado" : "Pendiente";
+    elements.googleCalendarInlineStatus.className = `pill ${info.connected ? "pill--confirmed" : "pill--draft"}`;
+  }
+  if (elements.googleCalendarStatus) {
+    elements.googleCalendarStatus.innerHTML = `
+      <div class="summary-item"><span>Estado</span><strong>${escapeHtml(
+        info.connected ? "Conectado" : "Sin conectar"
+      )}</strong></div>
+      <div class="summary-item"><span>Calendar ID</span><strong>${escapeHtml(
+        info.calendar_id || "primary"
+      )}</strong></div>
+      <div class="summary-item"><span>Credenciales OAuth</span><strong>${escapeHtml(
+        info.credentials_present ? "Guardadas" : "Pendientes"
+      )}</strong></div>
+      <div class="summary-item"><span>Zona horaria</span><strong>${escapeHtml(
+        info.timezone || state.settings.agenda_timezone || "America/Bogota"
+      )}</strong></div>
+      ${
+        info.error
+          ? `<div class="summary-item"><span>Detalle</span><strong>${escapeHtml(info.error)}</strong></div>`
+          : ""
+      }
+    `;
+  }
 }
 
 function renderRecords() {
@@ -2303,7 +2309,9 @@ function bindForms() {
       closeAppointmentModal();
     }
   });
-  elements.googleCalendarManageButton.addEventListener("click", openGoogleCalendarModal);
+  if (elements.agendaGoogleCalendarPanel) {
+    elements.agendaGoogleCalendarPanel.addEventListener("click", openGoogleCalendarModal);
+  }
   elements.closeGoogleCalendarModalButton.addEventListener("click", closeGoogleCalendarModal);
   elements.googleCalendarModal.addEventListener("click", (event) => {
     if (event.target.dataset.closeGoogleCalendarModal) {

@@ -306,19 +306,17 @@
               </form>
             </article>
 
-            <article id="agendaGoogleCalendarPanel" class="panel-card">
+            <button id="agendaGoogleCalendarPanel" class="panel-card panel-card--action" type="button">
               <div class="panel-heading">
                 <div>
                   <p class="eyebrow">Google Calendar</p>
                   <h3>Sincronizacion externa</h3>
                 </div>
-                <div class="form-actions">
-                  <button id="googleCalendarManageButton" class="secondary-button" type="button">Gestionar</button>
-                </div>
+                <span id="googleCalendarInlineStatus" class="pill pill--draft">Google pendiente</span>
               </div>
-              <p class="meta-copy">Conexion activa para sincronizar citas sin intervencion manual.</p>
-              <div id="googleCalendarStatus" class="summary-list"></div>
-            </article>
+              <p class="meta-copy">Conexion automatica en segundo plano. Haz click para gestionar.</p>
+              <p class="meta-copy meta-copy--cta">Abrir configuracion</p>
+            </button>
           </div>
 
           <div class="two-column-grid">
