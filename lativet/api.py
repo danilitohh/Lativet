@@ -48,6 +48,39 @@ class LativetService:
             get_secret=self._db.get_secret_setting,
             set_secret=self._db.set_secret_setting,
         )
+        self._apply_smtp_env_defaults()
+
+    def _apply_smtp_env_defaults(self) -> None:
+        smtp_from = os.getenv("SMTP_FROM", "").strip()
+        smtp_password = os.getenv("SMTP_APP_PASSWORD", "").strip()
+        if not smtp_from or not smtp_password:
+            return
+        smtp_host = os.getenv("SMTP_HOST", "").strip() or "smtp.gmail.com"
+        smtp_port_raw = os.getenv("SMTP_PORT", "").strip()
+        try:
+            smtp_port = int(smtp_port_raw) if smtp_port_raw else 587
+        except ValueError:
+            smtp_port = 587
+        smtp_enabled_raw = os.getenv("SMTP_ENABLED", "").strip().lower()
+        if smtp_enabled_raw:
+            smtp_enabled = smtp_enabled_raw in {"1", "true", "on", "yes", "si", "s"}
+        else:
+            smtp_enabled = True
+
+        settings = self._db.get_settings()
+        updated = {
+            **settings,
+            "smtp_enabled": smtp_enabled,
+            "smtp_from": smtp_from,
+            "smtp_host": smtp_host,
+            "smtp_port": smtp_port,
+            "smtp_app_password": smtp_password,
+        }
+        try:
+            self._db.save_settings(updated)
+        except Exception:
+            # Avoid breaking startup if SMTP env values are invalid.
+            return
 
     def close(self) -> None:
         self._db.close()
