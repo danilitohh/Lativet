@@ -983,6 +983,15 @@ textarea:focus {
   display: none;
 }
 
+body.auth-locked {
+  overflow: hidden;
+}
+
+body.auth-locked .page-shell > :not(#loginModal) {
+  visibility: hidden;
+  pointer-events: none;
+}
+
 .modal-backdrop {
   position: absolute;
   inset: 0;

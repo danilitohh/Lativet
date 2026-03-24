@@ -2170,14 +2170,19 @@ function closeLoginModal() {
   if (!elements.loginModal) {
     return;
   }
-  if (elements.loginModal.dataset.force === "1") {
+  if (elements.loginModal.dataset.force === "1" && !authState.authenticated) {
     return;
   }
+  elements.loginModal.dataset.force = "0";
   elements.loginModal.classList.add("is-hidden");
   elements.loginModal.setAttribute("aria-hidden", "true");
 }
 
 function setAuthUI(authenticated) {
+  if (document?.body) {
+    const shouldLock = authState.requiresLogin && !authenticated;
+    document.body.classList.toggle("auth-locked", shouldLock);
+  }
   if (elements.logoutButton) {
     elements.logoutButton.classList.toggle("is-hidden", !authenticated);
   }
