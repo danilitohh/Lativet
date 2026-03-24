@@ -4,6 +4,7 @@ import json
 import sqlite3
 import threading
 import uuid
+import time
 from contextlib import contextmanager
 from datetime import date, datetime, time, timedelta
 from pathlib import Path
@@ -2891,19 +2892,31 @@ class PostgresDatabase(Database):
         self._lock = threading.RLock()
         self.connection = PostgresConnection(dsn)
         lock_id = 9245021
+        lock_acquired = False
         with self._lock:
-            try:
-                self.connection.execute("SELECT pg_advisory_lock(?)", (lock_id,))
-                self._init_schema()
-                self.connection.commit()
-                if not self._has_settings():
-                    self.save_settings(DEFAULT_SETTINGS)
-            finally:
+            for _ in range(25):
                 try:
-                    self.connection.execute("SELECT pg_advisory_unlock(?)", (lock_id,))
-                    self.connection.commit()
+                    row = self.connection.execute(
+                        "SELECT pg_try_advisory_lock(?) AS locked", (lock_id,)
+                    ).fetchone()
+                    lock_acquired = bool(row["locked"]) if row else False
                 except Exception:
-                    pass
+                    lock_acquired = False
+                if lock_acquired:
+                    break
+                time.sleep(0.2)
+            if lock_acquired:
+                try:
+                    self._init_schema()
+                    self.connection.commit()
+                    if not self._has_settings():
+                        self.save_settings(DEFAULT_SETTINGS)
+                finally:
+                    try:
+                        self.connection.execute("SELECT pg_advisory_unlock(?)", (lock_id,))
+                        self.connection.commit()
+                    except Exception:
+                        pass
 
     def _ensure_column(self, table: str, column: str, definition: str) -> None:
         self.connection.execute(
