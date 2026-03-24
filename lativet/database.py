@@ -7,6 +7,7 @@ import uuid
 from contextlib import contextmanager
 from datetime import date, datetime, time, timedelta
 from pathlib import Path
+from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 from .validators import (
     ValidationError,
@@ -99,6 +100,20 @@ def compute_catalog_pricing(
     unit_price = round_money(unit_cost * (1 + (float(margin_percent or 0) / 100)))
     profit_amount = round_money(unit_price - unit_cost)
     return unit_cost, unit_price, profit_amount
+
+
+def normalize_postgres_dsn(dsn: str) -> str:
+    if not dsn:
+        return dsn
+    parsed = urlparse(dsn)
+    if not parsed.scheme.startswith("postgres"):
+        return dsn
+    query = dict(parse_qsl(parsed.query))
+    if "sslmode" not in query:
+        query["sslmode"] = "require"
+        parsed = parsed._replace(query=urlencode(query))
+        return urlunparse(parsed)
+    return dsn
 
 
 def _split_sql_script(script: str) -> list[str]:

@@ -6,7 +6,7 @@ from pathlib import Path
 
 from .compliance import get_compliance_context
 from .consent_pdf import ConsentBundle, build_consent_pdf
-from .database import Database, PostgresDatabase
+from .database import Database, PostgresDatabase, normalize_postgres_dsn
 from .google_calendar import GoogleCalendarBridge
 from .mailer import SmtpConfig, send_email_with_attachment
 from .validators import ValidationError, validate_google_calendar_config
@@ -30,9 +30,13 @@ class LativetService:
         self._project_dir = project_dir
         self._data_dir = data_dir
         self._data_dir.mkdir(parents=True, exist_ok=True)
-        db_url = os.getenv("DATABASE_URL", "").strip()
+        db_url = (
+            os.getenv("DATABASE_URL", "").strip()
+            or os.getenv("POSTGRES_URL", "").strip()
+            or os.getenv("POSTGRES_PRISMA_URL", "").strip()
+        )
         if db_url:
-            self._db = PostgresDatabase(db_url, self._data_dir)
+            self._db = PostgresDatabase(normalize_postgres_dsn(db_url), self._data_dir)
         else:
             self._db = Database(self._data_dir)
         self._exports_dir = self._data_dir / "exports"
