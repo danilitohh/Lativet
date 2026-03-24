@@ -676,6 +676,18 @@ class Database:
         ).fetchone()
         return row["value"] if row else ""
 
+    def set_secret_setting(self, key: str, value: str) -> None:
+        timestamp = now_iso()
+        with self._tx():
+            self.connection.execute(
+                """
+                INSERT INTO settings (key, value, updated_at)
+                VALUES (?, ?, ?)
+                ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at
+                """,
+                (key, value, timestamp),
+            )
+
     def get_owner(self, owner_id: str) -> dict:
         row = self.connection.execute(
             "SELECT * FROM owners WHERE id = ?",

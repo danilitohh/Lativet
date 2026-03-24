@@ -135,10 +135,26 @@ def create_app(base_dir: Path | None = None, data_dir: Path | None = None) -> Fl
 
     @app.post("/api/google-calendar/connect")
     def connect_google_calendar():
-        return respond(service.connect_google_calendar())
+        base_url = request.host_url.rstrip("/")
+        redirect_uri = f"{base_url}/api/google-calendar/callback"
+        return respond(service.connect_google_calendar(redirect_uri))
 
     @app.post("/api/google-calendar/disconnect")
     def disconnect_google_calendar():
         return respond(service.disconnect_google_calendar())
+
+    @app.get("/api/google-calendar/callback")
+    def google_calendar_callback():
+        redirect_uri = request.base_url
+        result = service.complete_google_calendar_oauth(redirect_uri, request.url)
+        if not result.get("ok"):
+            return (
+                f"<h2>Error al conectar Google Calendar</h2><p>{result.get('error','')}</p>",
+                400,
+            )
+        return (
+            "<h2>Google Calendar conectado</h2>"
+            "<p>Ya puedes volver a Lativet y actualizar la pagina.</p>"
+        )
 
     return app

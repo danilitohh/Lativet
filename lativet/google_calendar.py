@@ -11,17 +11,19 @@ GOOGLE_CALENDAR_SCOPES = ["https://www.googleapis.com/auth/calendar.events"]
 
 
 class GoogleCalendarBridge:
-    def __init__(self, data_dir: Path):
+    def __init__(self, data_dir: Path, get_secret=None, set_secret=None):
         self._base_dir = data_dir / "integrations" / "google_calendar"
         self._base_dir.mkdir(parents=True, exist_ok=True)
         self._credentials_path = self._base_dir / "credentials.json"
         self._token_path = self._base_dir / "token.json"
+        self._get_secret = get_secret
+        self._set_secret = set_secret
 
     def status(self, settings: dict | None = None) -> dict:
         settings = settings or {}
         connected = False
-        token_present = self._token_path.exists()
-        credentials_present = self._credentials_path.exists()
+        token_present = bool(self._read_secret("google_calendar_token_json")) or self._token_path.exists()
+        credentials_present = bool(self._read_secret("google_calendar_credentials_json")) or self._credentials_path.exists()
         error = ""
         try:
             connected = bool(self._load_credentials(allow_refresh=False))
@@ -51,22 +53,67 @@ class GoogleCalendarBridge:
             raise ValidationError(
                 "Las credenciales deben corresponder a un cliente OAuth de Google."
             )
-        self._credentials_path.write_text(
-            json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8"
-        )
+        if self._set_secret:
+            self._set_secret("google_calendar_credentials_json", json.dumps(data))
+        try:
+            self._credentials_path.write_text(
+                json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8"
+            )
+        except Exception:
+            pass
         return {"saved": True, "path": str(self._credentials_path)}
 
-    def connect(self) -> dict:
+    def begin_web_oauth(self, redirect_uri: str) -> dict:
         self._require_google_packages()
-        if not self._credentials_path.exists():
+        client_config = self._load_client_config()
+        if "web" not in client_config:
+            raise ValidationError(
+                "Para produccion debes usar credenciales OAuth de tipo Aplicacion web."
+            )
+        from google_auth_oauthlib.flow import Flow
+
+        flow = Flow.from_client_config(client_config, scopes=GOOGLE_CALENDAR_SCOPES)
+        flow.redirect_uri = redirect_uri
+        auth_url, state = flow.authorization_url(
+            access_type="offline",
+            prompt="consent",
+            include_granted_scopes="true",
+        )
+        if self._set_secret:
+            self._set_secret("google_calendar_oauth_state", state)
+        return {"auth_url": auth_url}
+
+    def complete_web_oauth(self, redirect_uri: str, authorization_response: str) -> dict:
+        self._require_google_packages()
+        client_config = self._load_client_config()
+        if "web" not in client_config:
+            raise ValidationError(
+                "Para produccion debes usar credenciales OAuth de tipo Aplicacion web."
+            )
+        from google_auth_oauthlib.flow import Flow
+
+        state = self._read_secret("google_calendar_oauth_state") or None
+        flow = Flow.from_client_config(
+            client_config, scopes=GOOGLE_CALENDAR_SCOPES, state=state
+        )
+        flow.redirect_uri = redirect_uri
+        flow.fetch_token(authorization_response=authorization_response)
+        creds = flow.credentials
+        self._save_token(creds.to_json())
+        if self._set_secret:
+            self._set_secret("google_calendar_oauth_state", "")
+        return {"connected": True}
+
+    def connect_local(self) -> dict:
+        self._require_google_packages()
+        client_config = self._load_client_config()
+        if not client_config:
             raise ValidationError(
                 "Primero guarda el JSON del cliente OAuth de Google Calendar."
             )
         from google_auth_oauthlib.flow import InstalledAppFlow
 
-        flow = InstalledAppFlow.from_client_secrets_file(
-            str(self._credentials_path), GOOGLE_CALENDAR_SCOPES
-        )
+        flow = InstalledAppFlow.from_client_config(client_config, GOOGLE_CALENDAR_SCOPES)
         creds = flow.run_local_server(
             host="127.0.0.1",
             port=0,
@@ -79,11 +126,13 @@ class GoogleCalendarBridge:
                 "Google Calendar conectado. Puedes volver a Lativet y cerrar esta ventana."
             ),
         )
-        self._token_path.write_text(creds.to_json(), encoding="utf-8")
+        self._save_token(creds.to_json())
         return {"connected": True, "path": str(self._token_path)}
 
     def disconnect(self) -> dict:
         removed = False
+        if self._set_secret:
+            self._set_secret("google_calendar_token_json", "")
         if self._token_path.exists():
             self._token_path.unlink()
             removed = True
@@ -163,21 +212,71 @@ class GoogleCalendarBridge:
         return build("calendar", "v3", credentials=creds, cache_discovery=False)
 
     def _load_credentials(self, allow_refresh: bool):
-        if not self._token_path.exists():
+        raw_token = self._read_secret("google_calendar_token_json")
+        if not raw_token and not self._token_path.exists():
             return None
         self._require_google_packages()
         from google.auth.transport.requests import Request
         from google.oauth2.credentials import Credentials
 
-        creds = Credentials.from_authorized_user_file(
-            str(self._token_path), GOOGLE_CALENDAR_SCOPES
-        )
+        if raw_token:
+            try:
+                token_payload = json.loads(raw_token)
+            except json.JSONDecodeError:
+                token_payload = None
+            creds = (
+                Credentials.from_authorized_user_info(token_payload, GOOGLE_CALENDAR_SCOPES)
+                if token_payload
+                else None
+            )
+        else:
+            creds = Credentials.from_authorized_user_file(
+                str(self._token_path), GOOGLE_CALENDAR_SCOPES
+            )
         if allow_refresh and creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
-            self._token_path.write_text(creds.to_json(), encoding="utf-8")
+            self._save_token(creds.to_json())
         if not creds or not creds.valid:
             return None
         return creds
+
+    def _read_secret(self, key: str) -> str:
+        if not self._get_secret:
+            return ""
+        try:
+            return self._get_secret(key) or ""
+        except Exception:
+            return ""
+
+    def _save_token(self, token_json: str) -> None:
+        if self._set_secret:
+            try:
+                self._set_secret("google_calendar_token_json", token_json)
+            except Exception:
+                pass
+        try:
+            self._token_path.write_text(token_json, encoding="utf-8")
+        except Exception:
+            pass
+
+    def _load_client_config(self) -> dict:
+        raw = self._read_secret("google_calendar_credentials_json")
+        if not raw and self._credentials_path.exists():
+            try:
+                raw = self._credentials_path.read_text(encoding="utf-8")
+            except Exception:
+                raw = ""
+        if not raw:
+            return {}
+        try:
+            data = json.loads(raw)
+        except json.JSONDecodeError as exc:
+            raise ValidationError("El JSON de credenciales de Google no es valido.") from exc
+        if not isinstance(data, dict) or not any(key in data for key in ("installed", "web")):
+            raise ValidationError(
+                "Las credenciales deben corresponder a un cliente OAuth de Google."
+            )
+        return data
 
     def _require_google_packages(self) -> None:
         try:

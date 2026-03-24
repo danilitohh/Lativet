@@ -42,7 +42,11 @@ class LativetService:
         self._exports_dir = self._data_dir / "exports"
         self._consents_dir = self._exports_dir / "consents"
         self._logo_path = self._project_dir / "images" / "logo.png"
-        self._google_calendar = GoogleCalendarBridge(self._data_dir)
+        self._google_calendar = GoogleCalendarBridge(
+            self._data_dir,
+            get_secret=self._db.get_secret_setting,
+            set_secret=self._db.set_secret_setting,
+        )
 
     def close(self) -> None:
         self._db.close()
@@ -116,14 +120,24 @@ class LativetService:
         return self._google_calendar.status(settings)
 
     @safe_api_call
-    def connect_google_calendar(self) -> dict:
-        self._google_calendar.connect()
+    def connect_google_calendar(self, redirect_uri: str | None = None) -> dict:
+        if redirect_uri:
+            return self._google_calendar.begin_web_oauth(redirect_uri)
+        self._google_calendar.connect_local()
         return self._google_calendar.status(self._db.get_settings())
 
     @safe_api_call
     def disconnect_google_calendar(self) -> dict:
         self._google_calendar.disconnect()
         return self._google_calendar.status(self._db.get_settings())
+
+    @safe_api_call
+    def complete_google_calendar_oauth(self, redirect_uri: str, authorization_response: str) -> dict:
+        result = self._google_calendar.complete_web_oauth(
+            redirect_uri=redirect_uri,
+            authorization_response=authorization_response,
+        )
+        return {**result, **self._google_calendar.status(self._db.get_settings())}
 
     @safe_api_call
     def save_cash_movement(self, payload: dict) -> dict:
