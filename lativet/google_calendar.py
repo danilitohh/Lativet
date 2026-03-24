@@ -81,6 +81,8 @@ class GoogleCalendarBridge:
         )
         if self._set_secret:
             self._set_secret("google_calendar_oauth_state", state)
+            verifier = getattr(flow, "code_verifier", "") or ""
+            self._set_secret("google_calendar_oauth_verifier", verifier)
         return {"auth_url": auth_url}
 
     def complete_web_oauth(self, redirect_uri: str, authorization_response: str) -> dict:
@@ -93,15 +95,24 @@ class GoogleCalendarBridge:
         from google_auth_oauthlib.flow import Flow
 
         state = self._read_secret("google_calendar_oauth_state") or None
+        verifier = self._read_secret("google_calendar_oauth_verifier") or None
         flow = Flow.from_client_config(
             client_config, scopes=GOOGLE_CALENDAR_SCOPES, state=state
         )
         flow.redirect_uri = redirect_uri
-        flow.fetch_token(authorization_response=authorization_response)
+        if verifier:
+            flow.code_verifier = verifier
+            flow.fetch_token(
+                authorization_response=authorization_response,
+                code_verifier=verifier,
+            )
+        else:
+            flow.fetch_token(authorization_response=authorization_response)
         creds = flow.credentials
         self._save_token(creds.to_json())
         if self._set_secret:
             self._set_secret("google_calendar_oauth_state", "")
+            self._set_secret("google_calendar_oauth_verifier", "")
         return {"connected": True}
 
     def connect_local(self) -> dict:
