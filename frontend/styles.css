@@ -533,6 +533,12 @@ button:active {
   width: 100%;
 }
 
+.button-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .panel-card--action .meta-copy--cta {
   color: var(--brand);
   font-weight: 600;

@@ -137,7 +137,6 @@ const sectionSubsections = {
           "agendaDayPanel",
           "agendaAvailabilityFormPanel",
           "agendaGeneralListPanel",
-          "agendaAvailabilityRulesPanel",
         ],
       },
     ],
@@ -608,10 +607,7 @@ function cacheElements() {
     "closeAvailabilityModalButton",
     "agendaAppointmentsModal",
     "closeAgendaAppointmentsModalButton",
-    "availabilityRulesModal",
-    "closeAvailabilityRulesModalButton",
     "appointmentsList",
-    "availabilityRulesList",
     "agendaMonthLabel",
     "agendaMonthGrid",
     "agendaSelectedDateLabel",
@@ -620,7 +616,6 @@ function cacheElements() {
     "agendaConnectionBadge",
     "agendaAvailabilityFormPanel",
     "agendaGeneralListPanel",
-    "agendaAvailabilityRulesPanel",
     "agendaPrevMonthButton",
     "agendaTodayButton",
     "agendaNextMonthButton",
@@ -1400,21 +1395,23 @@ function renderAppointments() {
 }
 
 function renderAvailability() {
-  renderList(
-    elements.availabilityRulesList,
-    state.availability_rules,
-    (rule) => `
-      <article class="list-card">
-        <h4>${escapeHtml(rule.professional_name)}</h4>
-        <p>Dia: ${Number(rule.day_of_week) + 1} / ${escapeHtml(rule.start_time)} - ${escapeHtml(rule.end_time)}</p>
-        <p>Bloque: ${rule.slot_minutes} min${rule.location ? ` / ${escapeHtml(rule.location)}` : ""}</p>
-        <div class="item-actions">
-          <button data-delete-availability="${escapeHtml(rule.id)}">Eliminar</button>
-        </div>
-      </article>
-    `,
-    "Aun no hay bloques configurados."
-  );
+  if (elements.availabilityRulesList) {
+    renderList(
+      elements.availabilityRulesList,
+      state.availability_rules,
+      (rule) => `
+        <article class="list-card">
+          <h4>${escapeHtml(rule.professional_name)}</h4>
+          <p>Dia: ${Number(rule.day_of_week) + 1} / ${escapeHtml(rule.start_time)} - ${escapeHtml(rule.end_time)}</p>
+          <p>Bloque: ${rule.slot_minutes} min${rule.location ? ` / ${escapeHtml(rule.location)}` : ""}</p>
+          <div class="item-actions">
+            <button data-delete-availability="${escapeHtml(rule.id)}">Eliminar</button>
+          </div>
+        </article>
+      `,
+      "Aun no hay bloques configurados."
+    );
+  }
   renderAgendaMonth();
   renderAgendaSelectedDay();
   renderGoogleCalendarStatus();
@@ -2019,15 +2016,6 @@ function closeAgendaAppointmentsModal() {
   elements.agendaAppointmentsModal.setAttribute("aria-hidden", "true");
 }
 
-function openAvailabilityRulesModal() {
-  elements.availabilityRulesModal.classList.remove("is-hidden");
-  elements.availabilityRulesModal.setAttribute("aria-hidden", "false");
-}
-
-function closeAvailabilityRulesModal() {
-  elements.availabilityRulesModal.classList.add("is-hidden");
-  elements.availabilityRulesModal.setAttribute("aria-hidden", "true");
-}
 
 function applyConsentTemplate(type) {
   const template = consentTemplates[type];
@@ -2321,15 +2309,6 @@ async function handleAppointmentsClick(event) {
   await refreshData("Estado de cita actualizado.");
 }
 
-async function handleAvailabilityRulesClick(event) {
-  const button = event.target.closest("button[data-delete-availability]");
-  if (!button) {
-    return;
-  }
-  await api.deleteAvailability(button.dataset.deleteAvailability);
-  await refreshData("Horario de atencion eliminado.");
-}
-
 function handleAgendaMonthClick(event) {
   const dateButton = event.target.closest("[data-agenda-date]");
   if (dateButton) {
@@ -2408,7 +2387,6 @@ function bindNavigation() {
       closeAppointmentModal();
       closeAvailabilityModal();
       closeAgendaAppointmentsModal();
-      closeAvailabilityRulesModal();
     }
   });
 }
@@ -2477,9 +2455,6 @@ function bindForms() {
   if (elements.appointmentsList) {
     elements.appointmentsList.addEventListener("click", wrapAsync(handleAppointmentsClick));
   }
-  if (elements.availabilityRulesList) {
-    elements.availabilityRulesList.addEventListener("click", wrapAsync(handleAvailabilityRulesClick));
-  }
   elements.agendaMonthGrid.addEventListener("click", handleAgendaMonthClick);
   elements.agendaDaySlots.addEventListener("click", handleAgendaMonthClick);
   elements.recordsList.addEventListener("click", handleRecordsClick);
@@ -2513,19 +2488,6 @@ function bindForms() {
     elements.agendaAppointmentsModal.addEventListener("click", (event) => {
       if (event.target.dataset.closeAgendaAppointmentsModal) {
         closeAgendaAppointmentsModal();
-      }
-    });
-  }
-  if (elements.agendaAvailabilityRulesPanel) {
-    elements.agendaAvailabilityRulesPanel.addEventListener("click", openAvailabilityRulesModal);
-  }
-  if (elements.closeAvailabilityRulesModalButton) {
-    elements.closeAvailabilityRulesModalButton.addEventListener("click", closeAvailabilityRulesModal);
-  }
-  if (elements.availabilityRulesModal) {
-    elements.availabilityRulesModal.addEventListener("click", (event) => {
-      if (event.target.dataset.closeAvailabilityRulesModal) {
-        closeAvailabilityRulesModal();
       }
     });
   }

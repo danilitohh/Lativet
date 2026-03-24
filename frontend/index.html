@@ -312,27 +312,19 @@
           </div>
 
           <div class="two-column-grid">
-            <button id="agendaAvailabilityFormPanel" class="panel-card panel-card--action" type="button">
-              <div class="panel-heading">
-                <div>
-                  <p class="eyebrow">Horario de atencion</p>
-                  <h3>Disponibilidad operativa</h3>
-                </div>
-              </div>
-              <p class="meta-copy">Configura el horario y los bloques de la agenda.</p>
-            </button>
+            <div class="button-row">
+              <button id="agendaAvailabilityFormPanel" class="primary-button" type="button">
+                Disponibilidad operativa
+              </button>
+            </div>
           </div>
 
           <div class="two-column-grid">
-            <button id="agendaGeneralListPanel" class="panel-card panel-card--action" type="button">
-              <div class="panel-heading"><div><p class="eyebrow">Agenda general</p><h3>Citas recientes</h3></div></div>
-              <p class="meta-copy">Consulta las ultimas citas registradas.</p>
-            </button>
-
-            <button id="agendaAvailabilityRulesPanel" class="panel-card panel-card--action" type="button">
-              <div class="panel-heading"><div><p class="eyebrow">Horario de atencion</p><h3>Bloques configurados</h3></div></div>
-              <p class="meta-copy">Revisa los bloques actuales del calendario.</p>
-            </button>
+            <div class="button-row">
+              <button id="agendaGeneralListPanel" class="secondary-button" type="button">
+                Citas recientes
+              </button>
+            </div>
           </div>
         </section>
 
@@ -946,19 +938,6 @@
       </div>
     </div>
 
-    <div id="availabilityRulesModal" class="modal-shell is-hidden" aria-hidden="true">
-      <div class="modal-backdrop" data-close-availability-rules-modal="true"></div>
-      <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="availabilityRulesModalTitle">
-        <div class="panel-heading">
-          <div>
-            <p class="eyebrow">Horario de atencion</p>
-            <h3 id="availabilityRulesModalTitle">Bloques configurados</h3>
-          </div>
-          <button id="closeAvailabilityRulesModalButton" class="ghost-button" type="button">Cerrar</button>
-        </div>
-        <div id="availabilityRulesList" class="list-surface"></div>
-      </div>
-    </div>
 
     <script src="/app.js"></script>
   </body>
