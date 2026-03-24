@@ -138,7 +138,12 @@ class LativetService:
             redirect_uri=redirect_uri,
             authorization_response=authorization_response,
         )
-        return {**result, **self._google_calendar.status(self._db.get_settings())}
+        settings = self._db.get_settings()
+        if not settings.get("google_calendar_enabled"):
+            settings = self._db.save_settings(
+                {**settings, "google_calendar_enabled": True}
+            )
+        return {**result, **self._google_calendar.status(settings)}
 
     @safe_api_call
     def save_cash_movement(self, payload: dict) -> dict:

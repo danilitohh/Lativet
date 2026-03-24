@@ -307,18 +307,16 @@
             </article>
 
             <article id="agendaGoogleCalendarPanel" class="panel-card">
-              <div class="panel-heading"><div><p class="eyebrow">Google Calendar</p><h3>Sincronizacion externa</h3></div></div>
-              <form id="googleCalendarForm" class="form-grid">
-                <label class="checkbox-row full"><input name="google_calendar_enabled" type="checkbox" /><span>Sincronizar citas nuevas y cambios de estado</span></label>
-                <label><span>Calendar ID</span><input name="google_calendar_id" value="primary" placeholder="primary" /></label>
-                <label><span>Zona horaria</span><input name="agenda_timezone" value="America/Bogota" /></label>
-                <label class="full"><span>JSON del cliente OAuth</span><textarea name="credentials_json" rows="5" placeholder='Pega aqui el JSON del cliente OAuth de Google para Calendar'></textarea></label>
-                <div class="full form-actions">
-                  <button class="primary-button" type="submit">Guardar integracion</button>
-                  <button id="googleCalendarConnectButton" class="secondary-button" type="button">Conectar</button>
-                  <button id="googleCalendarDisconnectButton" class="ghost-button" type="button">Desconectar</button>
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">Google Calendar</p>
+                  <h3>Sincronizacion externa</h3>
                 </div>
-              </form>
+                <div class="form-actions">
+                  <button id="googleCalendarManageButton" class="secondary-button" type="button">Gestionar</button>
+                </div>
+              </div>
+              <p class="meta-copy">Conexion activa para sincronizar citas sin intervencion manual.</p>
               <div id="googleCalendarStatus" class="summary-list"></div>
             </article>
           </div>
@@ -905,6 +903,32 @@
           <label class="full"><span>Descripcion</span><textarea name="notes" rows="3"></textarea></label>
           <div class="full form-actions">
             <button class="primary-button" type="submit">Guardar cita</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div id="googleCalendarModal" class="modal-shell is-hidden" aria-hidden="true">
+      <div class="modal-backdrop" data-close-google-calendar-modal="true"></div>
+      <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="googleCalendarModalTitle">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Google Calendar</p>
+            <h3 id="googleCalendarModalTitle">Sincronizacion externa</h3>
+            <p class="meta-copy">Usa este panel solo si necesitas reconectar o cambiar credenciales.</p>
+          </div>
+          <button id="closeGoogleCalendarModalButton" class="ghost-button" type="button">Cerrar</button>
+        </div>
+        <form id="googleCalendarForm" class="form-grid">
+          <input type="hidden" name="google_calendar_enabled" value="true" />
+          <p class="meta-copy full">Sincronizacion automatica activa para citas nuevas y cambios de estado.</p>
+          <label><span>Calendar ID</span><input name="google_calendar_id" value="primary" placeholder="primary" /></label>
+          <label><span>Zona horaria</span><input name="agenda_timezone" value="America/Bogota" /></label>
+          <label class="full"><span>JSON del cliente OAuth</span><textarea name="credentials_json" rows="5" placeholder='Pega aqui el JSON del cliente OAuth de Google para Calendar'></textarea></label>
+          <div class="full form-actions">
+            <button class="primary-button" type="submit">Guardar integracion</button>
+            <button id="googleCalendarConnectButton" class="secondary-button" type="button">Conectar</button>
+            <button id="googleCalendarDisconnectButton" class="ghost-button" type="button">Desconectar</button>
           </div>
         </form>
       </div>

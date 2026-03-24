@@ -585,6 +585,9 @@ function cacheElements() {
     "appointmentForm",
     "availabilityForm",
     "googleCalendarForm",
+    "googleCalendarManageButton",
+    "googleCalendarModal",
+    "closeGoogleCalendarModalButton",
     "appointmentsList",
     "availabilityRulesList",
     "agendaMonthLabel",
@@ -1197,6 +1200,10 @@ function applySettingsForm() {
   applySettingsValues(elements.settingsForm);
   applySettingsValues(elements.billingSettingsForm);
   applySettingsValues(elements.googleCalendarForm);
+  const googleEnabled = elements.googleCalendarForm?.elements?.google_calendar_enabled;
+  if (googleEnabled) {
+    googleEnabled.value = "true";
+  }
 }
 
 function renderOwners() {
@@ -1867,6 +1874,16 @@ function closeAppointmentModal() {
   elements.appointmentModal.setAttribute("aria-hidden", "true");
 }
 
+function openGoogleCalendarModal() {
+  elements.googleCalendarModal.classList.remove("is-hidden");
+  elements.googleCalendarModal.setAttribute("aria-hidden", "false");
+}
+
+function closeGoogleCalendarModal() {
+  elements.googleCalendarModal.classList.add("is-hidden");
+  elements.googleCalendarModal.setAttribute("aria-hidden", "true");
+}
+
 function applyConsentTemplate(type) {
   const template = consentTemplates[type];
   if (!template) {
@@ -2235,6 +2252,7 @@ function bindNavigation() {
     if (event.key === "Escape") {
       closeNavDropdowns();
       closeAppointmentModal();
+      closeGoogleCalendarModal();
     }
   });
 }
@@ -2283,6 +2301,13 @@ function bindForms() {
   elements.appointmentModal.addEventListener("click", (event) => {
     if (event.target.dataset.closeAppointmentModal) {
       closeAppointmentModal();
+    }
+  });
+  elements.googleCalendarManageButton.addEventListener("click", openGoogleCalendarModal);
+  elements.closeGoogleCalendarModalButton.addEventListener("click", closeGoogleCalendarModal);
+  elements.googleCalendarModal.addEventListener("click", (event) => {
+    if (event.target.dataset.closeGoogleCalendarModal) {
+      closeGoogleCalendarModal();
     }
   });
   elements.agendaPrevMonthButton.addEventListener("click", () => {
