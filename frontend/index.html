@@ -265,7 +265,6 @@
               </div>
               <div class="agenda-month-header">
                 <strong id="agendaMonthLabel"></strong>
-                <span id="agendaConnectionBadge" class="pill pill--draft">Google pendiente</span>
               </div>
               <div class="agenda-weekdays">
                 <span>Lu</span>
@@ -292,43 +291,30 @@
           </div>
 
           <div class="two-column-grid">
-            <article id="agendaAvailabilityFormPanel" class="panel-card">
-              <div class="panel-heading"><div><p class="eyebrow">Horario de atencion</p><h3>Disponibilidad operativa</h3></div></div>
-              <form id="availabilityForm" class="form-grid">
-                <label><span>Dia</span><select name="day_of_week" required><option value="0">Lunes</option><option value="1">Martes</option><option value="2">Miercoles</option><option value="3">Jueves</option><option value="4">Viernes</option><option value="5">Sabado</option><option value="6">Domingo</option></select></label>
-                <label><span>Responsable o recurso</span><input name="professional_name" placeholder="Agenda general, Dra. Laura, Sala 1" /></label>
-                <label><span>Hora inicial</span><input name="start_time" type="time" required /></label>
-                <label><span>Hora final</span><input name="end_time" type="time" required /></label>
-                <label><span>Bloque (min)</span><input name="slot_minutes" type="number" min="15" step="15" value="30" /></label>
-                <label><span>Lugar</span><input name="location" /></label>
-                <label class="full"><span>Notas</span><textarea name="notes" rows="2"></textarea></label>
-                <div class="full form-actions"><button class="primary-button" type="submit">Guardar disponibilidad</button></div>
-              </form>
-            </article>
-
-            <button id="agendaGoogleCalendarPanel" class="panel-card panel-card--action" type="button">
+            <button id="agendaAvailabilityFormPanel" class="panel-card panel-card--action" type="button">
               <div class="panel-heading">
                 <div>
-                  <p class="eyebrow">Google Calendar</p>
-                  <h3>Sincronizacion externa</h3>
+                  <p class="eyebrow">Horario de atencion</p>
+                  <h3>Disponibilidad operativa</h3>
                 </div>
-                <span id="googleCalendarInlineStatus" class="pill pill--draft">Google pendiente</span>
               </div>
-              <p class="meta-copy">Conexion automatica en segundo plano. Haz click para gestionar.</p>
+              <p class="meta-copy">Configura el horario y los bloques de la agenda.</p>
               <p class="meta-copy meta-copy--cta">Abrir configuracion</p>
             </button>
           </div>
 
           <div class="two-column-grid">
-            <article id="agendaGeneralListPanel" class="panel-card">
+            <button id="agendaGeneralListPanel" class="panel-card panel-card--action" type="button">
               <div class="panel-heading"><div><p class="eyebrow">Agenda general</p><h3>Citas recientes</h3></div></div>
-              <div id="appointmentsList" class="list-surface"></div>
-            </article>
+              <p class="meta-copy">Consulta las ultimas citas registradas.</p>
+              <p class="meta-copy meta-copy--cta">Ver citas</p>
+            </button>
 
-            <article id="agendaAvailabilityRulesPanel" class="panel-card">
+            <button id="agendaAvailabilityRulesPanel" class="panel-card panel-card--action" type="button">
               <div class="panel-heading"><div><p class="eyebrow">Horario de atencion</p><h3>Bloques configurados</h3></div></div>
-              <div id="availabilityRulesList" class="list-surface"></div>
-            </article>
+              <p class="meta-copy">Revisa los bloques actuales del calendario.</p>
+              <p class="meta-copy meta-copy--cta">Ver bloques</p>
+            </button>
           </div>
         </section>
 
@@ -905,30 +891,54 @@
         </form>
       </div>
     </div>
-
-    <div id="googleCalendarModal" class="modal-shell is-hidden" aria-hidden="true">
-      <div class="modal-backdrop" data-close-google-calendar-modal="true"></div>
-      <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="googleCalendarModalTitle">
+    <div id="availabilityModal" class="modal-shell is-hidden" aria-hidden="true">
+      <div class="modal-backdrop" data-close-availability-modal="true"></div>
+      <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="availabilityModalTitle">
         <div class="panel-heading">
           <div>
-            <p class="eyebrow">Google Calendar</p>
-            <h3 id="googleCalendarModalTitle">Sincronizacion externa</h3>
-            <p class="meta-copy">Usa este panel solo si necesitas reconectar o cambiar credenciales.</p>
+            <p class="eyebrow">Horario de atencion</p>
+            <h3 id="availabilityModalTitle">Disponibilidad operativa</h3>
           </div>
-          <button id="closeGoogleCalendarModalButton" class="ghost-button" type="button">Cerrar</button>
+          <button id="closeAvailabilityModalButton" class="ghost-button" type="button">Cerrar</button>
         </div>
-        <form id="googleCalendarForm" class="form-grid">
-          <input type="hidden" name="google_calendar_enabled" value="true" />
-          <p class="meta-copy full">Sincronizacion automatica activa para citas nuevas y cambios de estado.</p>
-          <label><span>Calendar ID</span><input name="google_calendar_id" value="primary" placeholder="primary" /></label>
-          <label><span>Zona horaria</span><input name="agenda_timezone" value="America/Bogota" /></label>
-          <label class="full"><span>JSON del cliente OAuth</span><textarea name="credentials_json" rows="5" placeholder='Pega aqui el JSON del cliente OAuth de Google para Calendar'></textarea></label>
-          <div class="full form-actions">
-            <button class="primary-button" type="submit">Guardar integracion</button>
-            <button id="googleCalendarConnectButton" class="secondary-button" type="button">Conectar</button>
-            <button id="googleCalendarDisconnectButton" class="ghost-button" type="button">Desconectar</button>
-          </div>
+        <form id="availabilityForm" class="form-grid">
+          <label><span>Dia</span><select name="day_of_week" required><option value="0">Lunes</option><option value="1">Martes</option><option value="2">Miercoles</option><option value="3">Jueves</option><option value="4">Viernes</option><option value="5">Sabado</option><option value="6">Domingo</option></select></label>
+          <label><span>Responsable o recurso</span><input name="professional_name" placeholder="Agenda general, Dra. Laura, Sala 1" /></label>
+          <label><span>Hora inicial</span><input name="start_time" type="time" required /></label>
+          <label><span>Hora final</span><input name="end_time" type="time" required /></label>
+          <label><span>Bloque (min)</span><input name="slot_minutes" type="number" min="15" step="15" value="30" /></label>
+          <label><span>Lugar</span><input name="location" /></label>
+          <label class="full"><span>Notas</span><textarea name="notes" rows="2"></textarea></label>
+          <div class="full form-actions"><button class="primary-button" type="submit">Guardar disponibilidad</button></div>
         </form>
+      </div>
+    </div>
+
+    <div id="agendaAppointmentsModal" class="modal-shell is-hidden" aria-hidden="true">
+      <div class="modal-backdrop" data-close-agenda-appointments-modal="true"></div>
+      <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="agendaAppointmentsModalTitle">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Agenda general</p>
+            <h3 id="agendaAppointmentsModalTitle">Citas recientes</h3>
+          </div>
+          <button id="closeAgendaAppointmentsModalButton" class="ghost-button" type="button">Cerrar</button>
+        </div>
+        <div id="appointmentsList" class="list-surface"></div>
+      </div>
+    </div>
+
+    <div id="availabilityRulesModal" class="modal-shell is-hidden" aria-hidden="true">
+      <div class="modal-backdrop" data-close-availability-rules-modal="true"></div>
+      <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="availabilityRulesModalTitle">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Horario de atencion</p>
+            <h3 id="availabilityRulesModalTitle">Bloques configurados</h3>
+          </div>
+          <button id="closeAvailabilityRulesModalButton" class="ghost-button" type="button">Cerrar</button>
+        </div>
+        <div id="availabilityRulesList" class="list-surface"></div>
       </div>
     </div>
 

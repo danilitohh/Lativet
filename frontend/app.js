@@ -133,7 +133,6 @@ const sectionSubsections = {
           "agendaGeneralPanel",
           "agendaDayPanel",
           "agendaAvailabilityFormPanel",
-          "agendaGoogleCalendarPanel",
           "agendaGeneralListPanel",
           "agendaAvailabilityRulesPanel",
         ],
@@ -584,9 +583,12 @@ function cacheElements() {
     "complianceSources",
     "appointmentForm",
     "availabilityForm",
-    "googleCalendarForm",
-    "googleCalendarModal",
-    "closeGoogleCalendarModalButton",
+    "availabilityModal",
+    "closeAvailabilityModalButton",
+    "agendaAppointmentsModal",
+    "closeAgendaAppointmentsModalButton",
+    "availabilityRulesModal",
+    "closeAvailabilityRulesModalButton",
     "appointmentsList",
     "availabilityRulesList",
     "agendaMonthLabel",
@@ -594,8 +596,9 @@ function cacheElements() {
     "agendaSelectedDateLabel",
     "agendaDaySlots",
     "agendaSelectedDayAppointments",
-    "agendaConnectionBadge",
-    "agendaGoogleCalendarPanel",
+    "agendaAvailabilityFormPanel",
+    "agendaGeneralListPanel",
+    "agendaAvailabilityRulesPanel",
     "agendaPrevMonthButton",
     "agendaTodayButton",
     "agendaNextMonthButton",
@@ -603,9 +606,6 @@ function cacheElements() {
     "appointmentModal",
     "appointmentModalSelectedDate",
     "closeAppointmentModalButton",
-    "googleCalendarInlineStatus",
-    "googleCalendarConnectButton",
-    "googleCalendarDisconnectButton",
     "patientForm",
     "providerForm",
     "catalogForm",
@@ -1389,13 +1389,21 @@ function renderAgendaSelectedDay() {
 
 function renderGoogleCalendarStatus() {
   const info = state.google_calendar || {};
-  elements.agendaConnectionBadge.textContent = info.connected ? "Google conectado" : "Google pendiente";
-  elements.agendaConnectionBadge.className = `pill ${info.connected ? "pill--confirmed" : "pill--draft"}`;
-  if (elements.googleCalendarInlineStatus) {
+  const hasBadge = Boolean(elements.agendaConnectionBadge);
+  const hasInline = Boolean(elements.googleCalendarInlineStatus);
+  const hasSummary = Boolean(elements.googleCalendarStatus);
+  if (!hasBadge && !hasInline && !hasSummary) {
+    return;
+  }
+  if (hasBadge) {
+    elements.agendaConnectionBadge.textContent = info.connected ? "Google conectado" : "Google pendiente";
+    elements.agendaConnectionBadge.className = `pill ${info.connected ? "pill--confirmed" : "pill--draft"}`;
+  }
+  if (hasInline) {
     elements.googleCalendarInlineStatus.textContent = info.connected ? "Conectado" : "Pendiente";
     elements.googleCalendarInlineStatus.className = `pill ${info.connected ? "pill--confirmed" : "pill--draft"}`;
   }
-  if (elements.googleCalendarStatus) {
+  if (hasSummary) {
     elements.googleCalendarStatus.innerHTML = `
       <div class="summary-item"><span>Estado</span><strong>${escapeHtml(
         info.connected ? "Conectado" : "Sin conectar"
@@ -1887,14 +1895,34 @@ function closeAppointmentModal() {
   elements.appointmentModal.setAttribute("aria-hidden", "true");
 }
 
-function openGoogleCalendarModal() {
-  elements.googleCalendarModal.classList.remove("is-hidden");
-  elements.googleCalendarModal.setAttribute("aria-hidden", "false");
+function openAvailabilityModal() {
+  elements.availabilityModal.classList.remove("is-hidden");
+  elements.availabilityModal.setAttribute("aria-hidden", "false");
 }
 
-function closeGoogleCalendarModal() {
-  elements.googleCalendarModal.classList.add("is-hidden");
-  elements.googleCalendarModal.setAttribute("aria-hidden", "true");
+function closeAvailabilityModal() {
+  elements.availabilityModal.classList.add("is-hidden");
+  elements.availabilityModal.setAttribute("aria-hidden", "true");
+}
+
+function openAgendaAppointmentsModal() {
+  elements.agendaAppointmentsModal.classList.remove("is-hidden");
+  elements.agendaAppointmentsModal.setAttribute("aria-hidden", "false");
+}
+
+function closeAgendaAppointmentsModal() {
+  elements.agendaAppointmentsModal.classList.add("is-hidden");
+  elements.agendaAppointmentsModal.setAttribute("aria-hidden", "true");
+}
+
+function openAvailabilityRulesModal() {
+  elements.availabilityRulesModal.classList.remove("is-hidden");
+  elements.availabilityRulesModal.setAttribute("aria-hidden", "false");
+}
+
+function closeAvailabilityRulesModal() {
+  elements.availabilityRulesModal.classList.add("is-hidden");
+  elements.availabilityRulesModal.setAttribute("aria-hidden", "true");
 }
 
 function applyConsentTemplate(type) {
@@ -2033,6 +2061,7 @@ async function handleAvailabilitySubmit(event) {
   await api.saveAvailability(serializeForm(event.currentTarget));
   resetForm(event.currentTarget);
   await refreshData("Disponibilidad guardada.");
+  closeAvailabilityModal();
   setActiveSection("agenda");
 }
 
@@ -2265,7 +2294,9 @@ function bindNavigation() {
     if (event.key === "Escape") {
       closeNavDropdowns();
       closeAppointmentModal();
-      closeGoogleCalendarModal();
+      closeAvailabilityModal();
+      closeAgendaAppointmentsModal();
+      closeAvailabilityRulesModal();
     }
   });
 }
@@ -2288,8 +2319,12 @@ function bindForms() {
   elements.patientForm.addEventListener("submit", wrapAsync(handlePatientSubmit));
   elements.catalogForm.addEventListener("submit", wrapAsync(handleCatalogSubmit));
   elements.appointmentForm.addEventListener("submit", wrapAsync(handleAppointmentSubmit));
-  elements.availabilityForm.addEventListener("submit", wrapAsync(handleAvailabilitySubmit));
-  elements.googleCalendarForm.addEventListener("submit", wrapAsync(handleGoogleCalendarSubmit));
+  if (elements.availabilityForm) {
+    elements.availabilityForm.addEventListener("submit", wrapAsync(handleAvailabilitySubmit));
+  }
+  if (elements.googleCalendarForm) {
+    elements.googleCalendarForm.addEventListener("submit", wrapAsync(handleGoogleCalendarSubmit));
+  }
   elements.billingDocumentForm.addEventListener("submit", wrapAsync(handleBillingDocumentSubmit));
   elements.billingPaymentForm.addEventListener("submit", wrapAsync(handleBillingPaymentSubmit));
   elements.cashMovementForm.addEventListener("submit", wrapAsync(handleCashMovementSubmit));
@@ -2304,8 +2339,12 @@ function bindForms() {
   elements.addBillingLineButton.addEventListener("click", wrapAsync(async () => addDraftBillingLine()));
   elements.billingDraftLines.addEventListener("click", handleBillingDraftClick);
   elements.billingDocumentsList.addEventListener("click", handleBillingDocumentsClick);
-  elements.appointmentsList.addEventListener("click", wrapAsync(handleAppointmentsClick));
-  elements.availabilityRulesList.addEventListener("click", wrapAsync(handleAvailabilityRulesClick));
+  if (elements.appointmentsList) {
+    elements.appointmentsList.addEventListener("click", wrapAsync(handleAppointmentsClick));
+  }
+  if (elements.availabilityRulesList) {
+    elements.availabilityRulesList.addEventListener("click", wrapAsync(handleAvailabilityRulesClick));
+  }
   elements.agendaMonthGrid.addEventListener("click", handleAgendaMonthClick);
   elements.agendaDaySlots.addEventListener("click", handleAgendaMonthClick);
   elements.recordsList.addEventListener("click", handleRecordsClick);
@@ -2316,15 +2355,45 @@ function bindForms() {
       closeAppointmentModal();
     }
   });
-  if (elements.agendaGoogleCalendarPanel) {
-    elements.agendaGoogleCalendarPanel.addEventListener("click", openGoogleCalendarModal);
+  if (elements.agendaAvailabilityFormPanel) {
+    elements.agendaAvailabilityFormPanel.addEventListener("click", openAvailabilityModal);
   }
-  elements.closeGoogleCalendarModalButton.addEventListener("click", closeGoogleCalendarModal);
-  elements.googleCalendarModal.addEventListener("click", (event) => {
-    if (event.target.dataset.closeGoogleCalendarModal) {
-      closeGoogleCalendarModal();
-    }
-  });
+  if (elements.closeAvailabilityModalButton) {
+    elements.closeAvailabilityModalButton.addEventListener("click", closeAvailabilityModal);
+  }
+  if (elements.availabilityModal) {
+    elements.availabilityModal.addEventListener("click", (event) => {
+      if (event.target.dataset.closeAvailabilityModal) {
+        closeAvailabilityModal();
+      }
+    });
+  }
+  if (elements.agendaGeneralListPanel) {
+    elements.agendaGeneralListPanel.addEventListener("click", openAgendaAppointmentsModal);
+  }
+  if (elements.closeAgendaAppointmentsModalButton) {
+    elements.closeAgendaAppointmentsModalButton.addEventListener("click", closeAgendaAppointmentsModal);
+  }
+  if (elements.agendaAppointmentsModal) {
+    elements.agendaAppointmentsModal.addEventListener("click", (event) => {
+      if (event.target.dataset.closeAgendaAppointmentsModal) {
+        closeAgendaAppointmentsModal();
+      }
+    });
+  }
+  if (elements.agendaAvailabilityRulesPanel) {
+    elements.agendaAvailabilityRulesPanel.addEventListener("click", openAvailabilityRulesModal);
+  }
+  if (elements.closeAvailabilityRulesModalButton) {
+    elements.closeAvailabilityRulesModalButton.addEventListener("click", closeAvailabilityRulesModal);
+  }
+  if (elements.availabilityRulesModal) {
+    elements.availabilityRulesModal.addEventListener("click", (event) => {
+      if (event.target.dataset.closeAvailabilityRulesModal) {
+        closeAvailabilityRulesModal();
+      }
+    });
+  }
   elements.agendaPrevMonthButton.addEventListener("click", () => {
     agendaViewDate = new Date(agendaViewDate.getFullYear(), agendaViewDate.getMonth() - 1, 1);
     renderAvailability();
@@ -2338,14 +2407,18 @@ function bindForms() {
     agendaViewDate = new Date(agendaViewDate.getFullYear(), agendaViewDate.getMonth() + 1, 1);
     renderAvailability();
   });
-  elements.googleCalendarConnectButton.addEventListener(
-    "click",
-    wrapAsync(handleGoogleCalendarConnect)
-  );
-  elements.googleCalendarDisconnectButton.addEventListener(
-    "click",
-    wrapAsync(handleGoogleCalendarDisconnect)
-  );
+  if (elements.googleCalendarConnectButton) {
+    elements.googleCalendarConnectButton.addEventListener(
+      "click",
+      wrapAsync(handleGoogleCalendarConnect)
+    );
+  }
+  if (elements.googleCalendarDisconnectButton) {
+    elements.googleCalendarDisconnectButton.addEventListener(
+      "click",
+      wrapAsync(handleGoogleCalendarDisconnect)
+    );
+  }
   elements.billingDocumentTypeSelect.addEventListener("change", syncBillingDocumentFormState);
   elements.billingPaymentMethodSelect.addEventListener("change", syncBillingDocumentFormState);
   elements.consentTypeSelect.addEventListener("change", () =>
