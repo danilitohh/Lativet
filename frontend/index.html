@@ -171,16 +171,12 @@
               <p class="eyebrow">Administracion</p>
               <h2>Configuracion y directorio base</h2>
               <p class="section-copy">
-                Propietarios, datos de la veterinaria, usuarios y variables operativas.
+                Propietarios, usuarios y variables operativas.
               </p>
             </div>
           </div>
 
           <div class="menu-strip">
-            <article class="menu-card">
-              <h3>Configuracion de la veterinaria</h3>
-              <p>Datos institucionales, retencion y correo.</p>
-            </article>
             <article class="menu-card">
               <h3>Usuarios</h3>
               <p>Espacio preparado para la administracion futura de perfiles.</p>
@@ -196,28 +192,6 @@
           </div>
 
           <div class="two-column-grid">
-            <article id="administrationSettingsPanel" class="panel-card">
-              <div class="panel-heading"><div><p class="eyebrow">Veterinaria</p><h3>Configuracion</h3></div></div>
-              <form id="settingsForm" class="form-grid">
-                <label class="full"><span>Nombre de la clinica</span><input name="clinic_name" required /></label>
-                <label><span>Registro</span><input name="clinic_registration" /></label>
-                <label><span>Telefono</span><input name="clinic_phone" /></label>
-                <label class="full"><span>Direccion</span><input name="clinic_address" /></label>
-                <label><span>Correo</span><input name="clinic_email" type="email" /></label>
-                <label><span>Retencion (anos)</span><input name="retention_years" type="number" min="5" max="30" /></label>
-                <label class="checkbox-row full"><input name="smtp_enabled" type="checkbox" /><span>Habilitar envio por correo</span></label>
-                <label><span>Correo remitente</span><input name="smtp_from" type="email" /></label>
-                <label><span>Servidor SMTP</span><input name="smtp_host" /></label>
-                <label><span>Puerto SMTP</span><input name="smtp_port" type="number" min="1" max="65535" /></label>
-                <label><span>App password</span><input name="smtp_app_password" type="password" /></label>
-                <label><span>Caja por defecto</span><select name="billing_default_cash_account"><option value="caja_menor">Caja menor</option><option value="caja_mayor">Caja mayor</option><option value="transferencia">Transferencia</option></select></label>
-                <label class="full"><span>Footer de facturacion</span><textarea name="billing_footer" rows="2"></textarea></label>
-                <label class="full"><span>Asunto de correo para documentos</span><input name="email_subject_template" placeholder="Documento {document_number} - {clinic_name}" /></label>
-                <label class="full"><span>Cuerpo de correo para documentos</span><textarea name="email_body_template" rows="3"></textarea></label>
-                <div class="full form-actions"><button class="primary-button" type="submit">Guardar configuracion</button></div>
-              </form>
-            </article>
-
             <article id="administrationOwnersFormPanel" class="panel-card">
               <div class="panel-heading"><div><p class="eyebrow">Propietarios</p><h3>Nuevo propietario</h3></div></div>
               <form id="ownerForm" class="form-grid">

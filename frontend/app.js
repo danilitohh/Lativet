@@ -120,7 +120,6 @@ const sectionSubsections = {
   administration: {
     label: "Que quieres administrar",
     options: [
-      { value: "clinic", label: "Configuracion de la veterinaria", panels: ["administrationSettingsPanel"] },
       { value: "users", label: "Usuarios", panels: ["administrationUsersPanel"] },
       { value: "owners", label: "Propietarios", panels: ["administrationOwnersFormPanel", "administrationOwnersListPanel"] },
       { value: "variables", label: "Variables", panels: ["administrationVariablesPanel"] },
@@ -2425,7 +2424,9 @@ function bindForms() {
       }
     });
   }
-  elements.settingsForm.addEventListener("submit", wrapAsync(handleSettingsSubmit));
+  if (elements.settingsForm) {
+    elements.settingsForm.addEventListener("submit", wrapAsync(handleSettingsSubmit));
+  }
   elements.billingSettingsForm.addEventListener("submit", wrapAsync(handleBillingSettingsSubmit));
   elements.ownerForm.addEventListener("submit", wrapAsync(handleOwnerSubmit));
   elements.providerForm.addEventListener("submit", wrapAsync(handleProviderSubmit));
