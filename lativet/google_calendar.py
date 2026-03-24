@@ -26,7 +26,7 @@ class GoogleCalendarBridge:
         credentials_present = bool(self._read_secret("google_calendar_credentials_json")) or self._credentials_path.exists()
         error = ""
         try:
-            connected = bool(self._load_credentials(allow_refresh=False))
+            connected = bool(self._load_credentials(allow_refresh=True))
         except ValidationError as exc:
             error = str(exc)
         return {
@@ -151,7 +151,8 @@ class GoogleCalendarBridge:
 
     def sync_appointment(self, appointment: dict, settings: dict) -> dict:
         if not settings.get("google_calendar_enabled"):
-            return {"synced": False, "skipped": True, "reason": "disabled"}
+            if not self._load_credentials(allow_refresh=True):
+                return {"synced": False, "skipped": True, "reason": "disabled"}
 
         service = self._build_service()
         calendar_id = settings.get("google_calendar_id") or "primary"
@@ -260,15 +261,44 @@ class GoogleCalendarBridge:
             return ""
 
     def _save_token(self, token_json: str) -> None:
+        merged_json = token_json
+        try:
+            payload = json.loads(token_json) if token_json else None
+        except json.JSONDecodeError:
+            payload = None
+        if isinstance(payload, dict):
+            existing_payload = self._read_token_payload()
+            if (
+                isinstance(existing_payload, dict)
+                and existing_payload.get("refresh_token")
+                and not payload.get("refresh_token")
+            ):
+                payload["refresh_token"] = existing_payload["refresh_token"]
+                merged_json = json.dumps(payload)
         if self._set_secret:
             try:
-                self._set_secret("google_calendar_token_json", token_json)
+                self._set_secret("google_calendar_token_json", merged_json)
             except Exception:
                 pass
         try:
-            self._token_path.write_text(token_json, encoding="utf-8")
+            self._token_path.write_text(merged_json, encoding="utf-8")
         except Exception:
             pass
+
+    def _read_token_payload(self) -> dict | None:
+        raw = self._read_secret("google_calendar_token_json")
+        if not raw and self._token_path.exists():
+            try:
+                raw = self._token_path.read_text(encoding="utf-8")
+            except Exception:
+                raw = ""
+        if not raw:
+            return None
+        try:
+            data = json.loads(raw)
+        except json.JSONDecodeError:
+            return None
+        return data if isinstance(data, dict) else None
 
     def _load_client_config(self) -> dict:
         raw = self._read_secret("google_calendar_credentials_json")
