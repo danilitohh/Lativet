@@ -2017,7 +2017,11 @@ async function handleGoogleCalendarSubmit(event) {
 async function handleGoogleCalendarConnect() {
   const result = await api.connectGoogleCalendar();
   if (result?.auth_url) {
-    window.open(result.auth_url, "_blank", "noopener,noreferrer");
+    const popup = window.open(result.auth_url, "_blank", "noopener,noreferrer");
+    if (!popup) {
+      window.location.href = result.auth_url;
+      return;
+    }
     showStatus(
       "Se abrio la ventana de autorizacion de Google Calendar. Completa el permiso y luego actualiza la pagina.",
       "info"
