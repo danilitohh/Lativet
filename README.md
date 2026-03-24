@@ -65,6 +65,32 @@ Variables utiles:
 - `LATIVET_PORT` para cambiar el puerto.
 - `LATIVET_DEBUG=1` para modo debug.
 
+## Despliegue
+
+Este proyecto tiene dos partes:
+
+- `frontend/` es una web estatica (HTML/CSS/JS).
+- El backend es `Python + Flask` y guarda datos en `data/`.
+
+Si vas a publicar en Vercel, lo ideal es **separar** el frontend del backend:
+
+1. **Frontend**: despliega la carpeta `frontend/` como sitio estatico.
+2. **Backend**: despliega el servidor Flask en un hosting con **disco persistente**, porque escribe en `data/`.
+
+Nota importante: las funciones serverless (como Vercel Functions) **no** conservan archivos entre ejecuciones, por lo que `SQLite` y `data/` se pierden si no hay almacenamiento persistente.
+
+## Google Calendar en produccion
+
+La integracion actual usa flujo **"App de escritorio"** (OAuth instalado) y abre un servidor local para autorizar. Eso funciona en local, pero **no es valido para produccion**.
+
+Para produccion necesitas:
+
+- Crear credenciales **OAuth Web Application**.
+- Definir un `redirect URI` publico en tu backend (por ejemplo `/google/oauth/callback`).
+- Actualizar el flujo en `lativet/google_calendar.py` para usar OAuth web.
+
+Si necesitas esa migracion, avisa y la dejamos lista.
+
 ## Base de datos
 
 - Archivo principal: `data/lativet.sqlite3`
