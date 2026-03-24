@@ -32,9 +32,9 @@ class LativetService:
         self._data_dir.mkdir(parents=True, exist_ok=True)
         db_url = (
             os.getenv("DATABASE_URL", "").strip()
-            or os.getenv("POSTGRES_URL_NON_POOLING", "").strip()
             or os.getenv("POSTGRES_URL", "").strip()
             or os.getenv("POSTGRES_PRISMA_URL", "").strip()
+            or os.getenv("POSTGRES_URL_NON_POOLING", "").strip()
         )
         if db_url:
             self._db = PostgresDatabase(normalize_postgres_dsn(db_url), self._data_dir)
