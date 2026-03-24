@@ -847,14 +847,22 @@ function positionNotificationsPanel() {
     return;
   }
   const buttonRect = elements.notificationsButton.getBoundingClientRect();
-  const nav = document.querySelector(".app-switcher");
-  const navRect = nav ? nav.getBoundingClientRect() : null;
-  const baseBottom = navRect ? navRect.bottom : buttonRect.bottom;
+  const navRect = document.querySelector(".app-switcher")?.getBoundingClientRect() || null;
+  const statusRect = elements.statusBanner?.getBoundingClientRect() || null;
+  const baseBottom = Math.max(
+    buttonRect.bottom,
+    navRect ? navRect.bottom : 0,
+    statusRect ? statusRect.bottom : 0
+  );
   const top = Math.min(baseBottom + 12, window.innerHeight - 120);
   const right = Math.max(16, window.innerWidth - buttonRect.right);
   elements.notificationsPanel.style.top = `${Math.max(16, top)}px`;
   elements.notificationsPanel.style.right = `${right}px`;
   elements.notificationsPanel.style.left = "auto";
+  elements.notificationsPanel.style.maxHeight = `${Math.max(
+    180,
+    window.innerHeight - Math.max(16, top) - 24
+  )}px`;
 }
 
 function addNotification(message, tone = "info") {

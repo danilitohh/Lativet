@@ -87,6 +87,16 @@ button:active {
   box-shadow: var(--shadow);
 }
 
+.app-switcher {
+  position: relative;
+  z-index: 20;
+}
+
+.status-banner {
+  position: relative;
+  z-index: 15;
+}
+
 .site-header {
   display: flex;
   align-items: center;
@@ -213,7 +223,7 @@ button:active {
   border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.98);
   box-shadow: var(--shadow);
-  z-index: 30;
+  z-index: 10;
 }
 
 .notifications-panel.is-hidden {
