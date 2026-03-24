@@ -842,6 +842,21 @@ function renderNotifications() {
   }
 }
 
+function positionNotificationsPanel() {
+  if (!elements.notificationsPanel || !elements.notificationsButton) {
+    return;
+  }
+  const buttonRect = elements.notificationsButton.getBoundingClientRect();
+  const nav = document.querySelector(".app-switcher");
+  const navRect = nav ? nav.getBoundingClientRect() : null;
+  const baseBottom = navRect ? navRect.bottom : buttonRect.bottom;
+  const top = Math.min(baseBottom + 12, window.innerHeight - 120);
+  const right = Math.max(16, window.innerWidth - buttonRect.right);
+  elements.notificationsPanel.style.top = `${Math.max(16, top)}px`;
+  elements.notificationsPanel.style.right = `${right}px`;
+  elements.notificationsPanel.style.left = "auto";
+}
+
 function addNotification(message, tone = "info") {
   const timestamp = new Date();
   const titleMap = {
@@ -869,6 +884,7 @@ function openNotificationsPanel() {
   if (!elements.notificationsPanel) {
     return;
   }
+  positionNotificationsPanel();
   elements.notificationsPanel.classList.remove("is-hidden");
   elements.notificationsPanel.setAttribute("aria-hidden", "false");
   unreadNotifications = 0;
@@ -2587,6 +2603,12 @@ window.addEventListener("DOMContentLoaded", () => {
   initApp().catch((error) => {
     showStatus(error.message || "No fue posible inicializar la app.", "error");
   });
+});
+
+window.addEventListener("resize", () => {
+  if (elements.notificationsPanel && !elements.notificationsPanel.classList.contains("is-hidden")) {
+    positionNotificationsPanel();
+  }
 });
 
 window.addEventListener("error", (event) => {

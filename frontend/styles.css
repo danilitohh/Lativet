@@ -199,9 +199,9 @@ button:active {
 }
 
 .notifications-panel {
-  position: absolute;
-  right: 0;
-  top: calc(100% + 12px);
+  position: fixed;
+  right: 24px;
+  top: 120px;
   width: min(360px, 90vw);
   max-height: 420px;
   overflow: hidden;
