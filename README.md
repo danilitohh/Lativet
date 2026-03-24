@@ -72,12 +72,17 @@ Este proyecto tiene dos partes:
 - `frontend/` es una web estatica (HTML/CSS/JS).
 - El backend es `Python + Flask` y guarda datos en `data/`.
 
-Si vas a publicar en Vercel, lo ideal es **separar** el frontend del backend:
+Opciones recomendadas:
 
-1. **Frontend**: despliega la carpeta `frontend/` como sitio estatico.
-2. **Backend**: despliega el servidor Flask en un hosting con **disco persistente**, porque escribe en `data/`.
+1. **Frontend en Vercel + backend dedicado** (Render/Railway/VPS) si vas a seguir con `SQLite`.
+2. **Frontend en Vercel + backend en Vercel Functions** usando **Supabase Postgres** (recomendado para serverless).
 
-Nota importante: las funciones serverless (como Vercel Functions) **no** conservan archivos entre ejecuciones, por lo que `SQLite` y `data/` se pierden si no hay almacenamiento persistente.
+Para Vercel con Supabase:
+
+- Configura `DATABASE_URL` con la cadena de conexion de Supabase.
+- Usa `LATIVET_DATA_DIR=/tmp/lativet` para archivos temporales (PDFs y tokens locales).
+
+Nota: las funciones serverless no conservan archivos entre ejecuciones. Si necesitas persistencia de PDFs o tokens de integraciones, hay que moverlos a almacenamiento externo (por ejemplo Supabase Storage).
 
 ## Google Calendar en produccion
 
@@ -93,19 +98,12 @@ Si necesitas esa migracion, avisa y la dejamos lista.
 
 ## Base de datos
 
-- Archivo principal: `data/lativet.sqlite3`
-- Respaldos: `data/backups/`
-- Exportaciones PDF: `data/exports/consents/`
-- Motor: `SQLite` con `WAL`, indices y auditoria basica
+Opciones disponibles:
 
-Para un consultorio local o una clinica pequena, `SQLite` sigue siendo suficiente si se acompana de:
+1. **SQLite local**: usa `data/lativet.sqlite3`, `data/backups/` y `data/exports/consents/`.
+2. **Supabase Postgres**: define `DATABASE_URL` y el esquema se crea automaticamente al iniciar.
 
-- copias de seguridad periodicas,
-- control de acceso al equipo,
-- cifrado del disco,
-- politica de privacidad y retencion formal.
-
-Si luego quieres multiusuario real en red o varias sedes concurrentes, conviene migrar a PostgreSQL y agregar autenticacion.
+Para ambientes serverless (Vercel), la opcion 2 es la correcta.
 
 ## Pruebas
 

@@ -7,11 +7,13 @@ from lativet.web import create_app
 
 
 BASE_DIR = Path(__file__).resolve().parent
-DATA_DIR = BASE_DIR / "data"
+DATA_DIR = Path(os.getenv("LATIVET_DATA_DIR", str(BASE_DIR / "data")))
+
+# Entry point for WSGI servers (Vercel, gunicorn, etc.)
+app = create_app(BASE_DIR, DATA_DIR)
 
 
 def main() -> None:
-    app = create_app(BASE_DIR, DATA_DIR)
     host = os.getenv("LATIVET_HOST", "127.0.0.1")
     port = int(os.getenv("LATIVET_PORT", "8000"))
     debug = os.getenv("LATIVET_DEBUG", "").strip().lower() in {"1", "true", "yes", "on"}

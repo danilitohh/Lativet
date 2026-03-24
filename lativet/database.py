@@ -101,6 +101,67 @@ def compute_catalog_pricing(
     return unit_cost, unit_price, profit_amount
 
 
+def _split_sql_script(script: str) -> list[str]:
+    statements: list[str] = []
+    buffer: list[str] = []
+    in_single = False
+    in_double = False
+    for char in script:
+        if char == "'" and not in_double:
+            in_single = not in_single
+        elif char == '"' and not in_single:
+            in_double = not in_double
+        if char == ";" and not in_single and not in_double:
+            statement = "".join(buffer).strip()
+            if statement:
+                statements.append(statement)
+            buffer = []
+        else:
+            buffer.append(char)
+    trailing = "".join(buffer).strip()
+    if trailing:
+        statements.append(trailing)
+    return statements
+
+
+def _normalize_postgres_schema(script: str) -> str:
+    return script.replace("INTEGER PRIMARY KEY AUTOINCREMENT", "SERIAL PRIMARY KEY")
+
+
+def _convert_postgres_placeholders(query: str) -> str:
+    if "?" not in query:
+        return query
+    return query.replace("?", "%s")
+
+
+class PostgresConnection:
+    def __init__(self, dsn: str):
+        import psycopg
+        from psycopg.rows import dict_row
+
+        self._conn = psycopg.connect(dsn, row_factory=dict_row)
+
+    def execute(self, query: str, params: tuple | list | None = None):
+        sql = _convert_postgres_placeholders(query)
+        if params is None:
+            return self._conn.execute(sql)
+        return self._conn.execute(sql, params)
+
+    def executescript(self, script: str) -> None:
+        normalized = _normalize_postgres_schema(script)
+        for statement in _split_sql_script(normalized):
+            self.execute(statement)
+
+    def commit(self) -> None:
+        self._conn.commit()
+
+    def rollback(self) -> None:
+        self._conn.rollback()
+
+    def close(self) -> None:
+        self._conn.close()
+
+
 class Database:
     def __init__(self, base_dir: Path):
         self.base_dir = base_dir
@@ -2772,3 +2833,29 @@ class Database:
             "database_path": str(self.db_path),
             "backups_path": str(self.backups_dir),
         }
+
+
+class PostgresDatabase(Database):
+    def __init__(self, dsn: str, base_dir: Path):
+        self.base_dir = base_dir
+        self.base_dir.mkdir(parents=True, exist_ok=True)
+        self.backups_dir = self.base_dir / "backups"
+        self.backups_dir.mkdir(parents=True, exist_ok=True)
+        self.db_path = Path("supabase")
+        self._lock = threading.RLock()
+        self.connection = PostgresConnection(dsn)
+        with self._lock:
+            self._init_schema()
+            self.connection.commit()
+            if not self._has_settings():
+                self.save_settings(DEFAULT_SETTINGS)
+
+    def _ensure_column(self, table: str, column: str, definition: str) -> None:
+        self.connection.execute(
+            f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS {column} {definition}"
+        )
+
+    def backup_database(self) -> dict:
+        raise ValidationError(
+            "El respaldo automatico no esta disponible en PostgreSQL/Supabase."
+        )
