@@ -2640,10 +2640,20 @@ async function handleProviderSubmit(event) {
 
 async function handlePatientSubmit(event) {
   event.preventDefault();
-  await api.savePatient(serializeForm(event.currentTarget));
+  const payload = serializeForm(event.currentTarget);
+  if (!payload.owner_id) {
+    payload.owner_id =
+      consultorioOwnerId ||
+      elements.patientOwnerSelect?.value ||
+      "";
+  }
+  await api.savePatient(payload);
   resetForm(event.currentTarget);
   await refreshData("Paciente guardado.");
   setActiveSection("consultorio");
+  setSectionSubsection("consultorio", "patients");
+  renderConsultorioOwnerDetail();
+  renderPatients();
 }
 
 async function handleCatalogSubmit(event) {
