@@ -473,6 +473,23 @@ function listAppointmentsForDate(dateValue, { activeOnly = false } = {}) {
     .sort((left, right) => String(left.appointment_at).localeCompare(String(right.appointment_at)));
 }
 
+function getLatestAppointmentEnd(dateValue) {
+  const appointments = listAppointmentsForDate(dateValue);
+  let latest = null;
+  appointments.forEach((appointment) => {
+    const start = new Date(appointment.appointment_at);
+    if (Number.isNaN(start.getTime())) {
+      return;
+    }
+    const minutes = Number(appointment.duration_minutes || 30);
+    const end = addMinutes(start, minutes);
+    if (!latest || end > latest) {
+      latest = end;
+    }
+  });
+  return latest;
+}
+
 function buildAgendaSlots(dateValue) {
   const target = parseIsoDate(dateValue);
   const activeAppointments = listAppointmentsForDate(dateValue, { activeOnly: true });
@@ -1712,6 +1729,17 @@ function renderAgendaMonth() {
     const current = addDays(gridStart, index);
     const currentIso = toIsoDate(current);
     const slots = buildAgendaSlots(currentIso);
+    const latestEnd = getLatestAppointmentEnd(currentIso);
+    const availableSlots = slots.filter((slot) => {
+      if (slot.occupied) {
+        return false;
+      }
+      if (!latestEnd) {
+        return true;
+      }
+      const slotStart = new Date(slot.slot_at);
+      return slotStart >= latestEnd;
+    });
     const appointments = listAppointmentsForDate(currentIso);
     cards.push(`
       <button
@@ -1723,7 +1751,7 @@ function renderAgendaMonth() {
       >
         <span class="agenda-date-card__day">${escapeHtml(String(current.getDate()))}</span>
         <span class="agenda-date-card__meta">${appointments.length} citas</span>
-        <span class="agenda-date-card__meta">${slots.filter((slot) => !slot.occupied).length} libres</span>
+        <span class="agenda-date-card__meta">${availableSlots.length} libres</span>
       </button>
     `);
   }
@@ -1782,7 +1810,17 @@ function renderAgendaWeekSlots() {
   for (let index = 0; index < 7; index += 1) {
     const current = addDays(weekStart, index);
     const currentIso = toIsoDate(current);
-    const slots = buildAgendaSlots(currentIso).filter((slot) => !slot.occupied);
+    const latestEnd = getLatestAppointmentEnd(currentIso);
+    const slots = buildAgendaSlots(currentIso).filter((slot) => {
+      if (slot.occupied) {
+        return false;
+      }
+      if (!latestEnd) {
+        return true;
+      }
+      const slotStart = new Date(slot.slot_at);
+      return slotStart >= latestEnd;
+    });
     const slotMarkup = slots.length
       ? slots
           .map(
