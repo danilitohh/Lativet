@@ -238,9 +238,8 @@ class Database:
                 self.connection.rollback()
                 raise
 
-    def _init_schema(self) -> None:
-        self.connection.executescript(
-            """
+    def _init_schema(self, skip_indexes: bool = False) -> None:
+        script = """
             CREATE TABLE IF NOT EXISTS settings (
                 key TEXT PRIMARY KEY,
                 value TEXT NOT NULL,
@@ -591,7 +590,16 @@ class Database:
             CREATE INDEX IF NOT EXISTS idx_billing_stock_item ON billing_stock_movements(catalog_item_id);
             CREATE INDEX IF NOT EXISTS idx_staff_users_email ON staff_users(email);
             """
-        )
+        if skip_indexes:
+            statements = [
+                statement
+                for statement in _split_sql_script(script)
+                if not statement.strip().upper().startswith("CREATE INDEX")
+            ]
+            script = ";\n".join(statements)
+            if script:
+                script = f"{script};"
+        self.connection.executescript(script)
         self._ensure_column("appointments", "professional_name", "TEXT")
         self._ensure_column(
             "appointments", "duration_minutes", "INTEGER NOT NULL DEFAULT 30"
@@ -3164,16 +3172,30 @@ class PostgresDatabase(Database):
                     break
                 time_module.sleep(0.2)
             try:
+                try:
+                    self.connection.execute("SET statement_timeout = '60s'")
+                except Exception:
+                    pass
                 self._init_schema()
                 self.connection.commit()
                 if not self._has_settings():
                     self.save_settings(DEFAULT_SETTINGS)
-            except Exception:
+            except Exception as exc:
                 try:
                     self.connection.rollback()
                 except Exception:
                     pass
-                raise
+                message = str(exc).lower()
+                if "statement timeout" in message:
+                    try:
+                        self._init_schema(skip_indexes=True)
+                        self.connection.commit()
+                        if not self._has_settings():
+                            self.save_settings(DEFAULT_SETTINGS)
+                    except Exception:
+                        raise
+                else:
+                    raise
             finally:
                 if lock_acquired:
                     try:
