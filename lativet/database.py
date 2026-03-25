@@ -1938,6 +1938,90 @@ class Database:
             if other_start < end and other_end > start:
                 raise ValidationError("Ya existe una cita activa en ese horario.")
 
+    def _get_available_slots_next_days_count(self, days: int = 14) -> int:
+        if days <= 0:
+            return 0
+        rules_rows = self.connection.execute(
+            """
+            SELECT day_of_week, start_time, end_time, slot_minutes
+            FROM agenda_availability_rules
+            ORDER BY day_of_week, start_time
+            """
+        ).fetchall()
+        if not rules_rows:
+            return 0
+
+        rules_by_weekday: dict[int, list[dict]] = {}
+        for row in rules_rows:
+            slot_minutes = max(int(row["slot_minutes"] or 30), 1)
+            start_time = time.fromisoformat(row["start_time"])
+            end_time = time.fromisoformat(row["end_time"])
+            total_minutes = int(
+                (
+                    datetime.combine(date.min, end_time)
+                    - datetime.combine(date.min, start_time)
+                ).total_seconds()
+                / 60
+            )
+            if total_minutes <= 0:
+                continue
+            rules_by_weekday.setdefault(int(row["day_of_week"]), []).append(
+                {
+                    "start_time": start_time,
+                    "end_time": end_time,
+                    "slot_minutes": slot_minutes,
+                    "slot_count": max(total_minutes // slot_minutes, 0),
+                }
+            )
+
+        today = date.today()
+        end_date = today + timedelta(days=days - 1)
+        total_slots = 0
+        for offset in range(days):
+            current_date = today + timedelta(days=offset)
+            total_slots += sum(
+                rule["slot_count"]
+                for rule in rules_by_weekday.get(current_date.weekday(), [])
+            )
+        if total_slots <= 0:
+            return 0
+
+        appointment_rows = self.connection.execute(
+            """
+            SELECT appointment_at, duration_minutes
+            FROM appointments
+            WHERE status IN ('scheduled', 'confirmed')
+              AND appointment_at >= ?
+              AND appointment_at <= ?
+            """,
+            (today.isoformat(), f"{end_date.isoformat()}T23:59:59"),
+        ).fetchall()
+        occupied_slots = 0
+        for row in appointment_rows:
+            appointment_at = row["appointment_at"]
+            if not appointment_at:
+                continue
+            start = datetime.fromisoformat(appointment_at)
+            duration = max(int(row["duration_minutes"] or 30), 1)
+            matched_rule = None
+            for rule in rules_by_weekday.get(start.weekday(), []):
+                rule_start = datetime.combine(start.date(), rule["start_time"])
+                rule_end = datetime.combine(start.date(), rule["end_time"])
+                if start < rule_start or start + timedelta(minutes=duration) > rule_end:
+                    continue
+                offset_minutes = int((start - rule_start).total_seconds() / 60)
+                if offset_minutes % rule["slot_minutes"] != 0:
+                    continue
+                if duration % rule["slot_minutes"] != 0:
+                    continue
+                matched_rule = rule
+                break
+            if matched_rule:
+                occupied_slots += max(1, duration // matched_rule["slot_minutes"])
+            else:
+                occupied_slots += 1
+        return max(total_slots - occupied_slots, 0)
+
     def save_grooming_document(self, payload: dict) -> dict:
         data = validate_grooming_document(payload)
         patient = self._get_patient(data["patient_id"])
@@ -3205,8 +3289,8 @@ class Database:
             """,
             (retention_window,),
         ).fetchone()["total"]
-        counts["available_slots_next_14_days"] = sum(
-            day["available_count"] for day in self.get_agenda_calendar(days=14)
+        counts["available_slots_next_14_days"] = self._get_available_slots_next_days_count(
+            days=14
         )
         return counts
 

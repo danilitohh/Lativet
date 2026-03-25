@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import tempfile
 import unittest
+from datetime import date
 from pathlib import Path
 
 from lativet.database import Database
@@ -253,6 +254,52 @@ class DatabaseSmokeTests(unittest.TestCase):
         deleted = self.db.delete_patient(patient["id"])
         self.assertTrue(deleted["deleted"])
         self.assertEqual(len(self.db.list_patients()), 0)
+
+    def test_available_slots_summary_counts_without_building_full_calendar(self) -> None:
+        owner = self.db.save_owner(
+            {
+                "full_name": "Luisa Herrera",
+                "identification_type": "CC",
+                "identification_number": "223344",
+                "phone": "3001234567",
+                "email": "luisa@example.com",
+                "address": "Calle 21",
+            }
+        )
+        patient = self.db.save_patient(
+            {
+                "owner_id": owner["id"],
+                "name": "Kira",
+                "species": "Canino",
+                "breed": "Criollo",
+                "sex": "Hembra",
+                "age_years": "3",
+                "weight_kg": "8.5",
+                "reproductive_status": "Esterilizado",
+                "notes": "Paciente estable.",
+            }
+        )
+        self.db.save_availability_rule(
+            {
+                "professional_name": "Agenda general",
+                "day_of_week": str(date.today().weekday()),
+                "start_time": "08:00",
+                "end_time": "10:00",
+                "slot_minutes": "30",
+                "location": "Consultorio 1",
+            }
+        )
+        self.db.save_appointment(
+            {
+                "patient_id": patient["id"],
+                "appointment_at": f"{date.today().isoformat()}T08:30",
+                "reason": "Chequeo",
+                "status": "scheduled",
+                "duration_minutes": "30",
+            }
+        )
+
+        self.assertEqual(self.db._get_available_slots_next_days_count(days=1), 3)
 
     def test_consultations_availability_and_grooming_are_reported(self) -> None:
         owner = self.db.save_owner(

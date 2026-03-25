@@ -19,16 +19,19 @@ class GoogleCalendarBridge:
         self._get_secret = get_secret
         self._set_secret = set_secret
 
-    def status(self, settings: dict | None = None) -> dict:
+    def status(self, settings: dict | None = None, refresh_connection: bool = True) -> dict:
         settings = settings or {}
         connected = False
         token_present = bool(self._read_secret("google_calendar_token_json")) or self._token_path.exists()
         credentials_present = bool(self._read_secret("google_calendar_credentials_json")) or self._credentials_path.exists()
         error = ""
-        try:
-            connected = bool(self._load_credentials(allow_refresh=True))
-        except ValidationError as exc:
-            error = str(exc)
+        if refresh_connection:
+            try:
+                connected = bool(self._load_credentials(allow_refresh=True))
+            except ValidationError as exc:
+                error = str(exc)
+        else:
+            connected = bool(token_present and credentials_present)
         return {
             "enabled": bool(settings.get("google_calendar_enabled")),
             "calendar_id": settings.get("google_calendar_id") or "primary",

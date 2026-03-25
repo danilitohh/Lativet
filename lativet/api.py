@@ -104,7 +104,9 @@ class LativetService:
     def bootstrap(self, lite: bool = False, sections: set[str] | None = None) -> dict:
         payload = self._db.bootstrap(lite=lite, sections=sections)
         payload["compliance"] = get_compliance_context()
-        payload["google_calendar"] = self._google_calendar.status(payload.get("settings"))
+        payload["google_calendar"] = self._google_calendar.status(
+            payload.get("settings"), refresh_connection=False
+        )
         return payload
 
     @safe_api_call

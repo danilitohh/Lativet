@@ -73,18 +73,13 @@ const AUTH_SESSION_KEY = "lativet_auth_session";
 const BOOTSTRAP_CACHE_KEY = "lativet_bootstrap_v2";
 const BOOTSTRAP_CACHE_TTL_MS = 5 * 60 * 1000;
 let bootstrapFullRequested = false;
-const BOOTSTRAP_CORE_SECTIONS = [
-  "settings",
-  "dashboard",
-  "appointments",
-  "availability_rules",
-];
-const BOOTSTRAP_BACKGROUND_GROUPS = [
-  ["users", "owners", "patients"],
-];
+let bootstrapReadyForSectionLoads = false;
+const BOOTSTRAP_CORE_SECTIONS = ["settings"];
+const BOOTSTRAP_BACKGROUND_GROUPS = [["appointments"]];
 const SECTION_DATA_REQUIREMENTS = {
+  dashboard: ["dashboard"],
   administration: ["users"],
-  agenda: ["owners", "patients"],
+  agenda: ["appointments", "availability_rules", "owners", "patients"],
   sales: [
     "providers",
     "catalog_items",
@@ -1075,7 +1070,9 @@ function setActiveSection(sectionId) {
   });
   applySectionSubsection(sectionId);
   renderAll();
-  ensureSectionData(sectionId);
+  if (bootstrapReadyForSectionLoads) {
+    ensureSectionData(sectionId);
+  }
   updateNavDropdownState();
 }
 
@@ -1087,7 +1084,9 @@ function setSectionSubsection(sectionId, subsectionValue) {
   applySectionSubsection(sectionId);
   if (getActiveSectionId() === sectionId) {
     renderAll();
-    ensureSectionData(sectionId);
+    if (bootstrapReadyForSectionLoads) {
+      ensureSectionData(sectionId);
+    }
   }
   updateNavDropdownState();
 }
@@ -5081,19 +5080,19 @@ function scheduleFullBootstrapLoad() {
   }
   bootstrapFullRequested = true;
   const run = async () => {
-    let loadError = null;
-    try {
-      for (const group of BOOTSTRAP_BACKGROUND_GROUPS) {
+    let loadedAny = false;
+    for (const group of BOOTSTRAP_BACKGROUND_GROUPS) {
+      try {
         await refreshData({ sections: group, render: false });
+        loadedAny = true;
+      } catch (error) {
+        console.warn("Bootstrap secundario omitido:", error);
       }
-    } catch (error) {
-      loadError = error;
-    } finally {
-      if (loadError) {
-        showStatus(loadError.message || "No fue posible cargar algunos datos secundarios.", "error");
-      }
-      bootstrapFullRequested = false;
     }
+    if (loadedAny) {
+      renderAll();
+    }
+    bootstrapFullRequested = false;
   };
   if (typeof window.requestIdleCallback === "function") {
     window.requestIdleCallback(() => run(), { timeout: 2000 });
@@ -5113,6 +5112,8 @@ async function startDataLoad() {
     }
     renderAll();
     showStatus("Datos basicos cargados.", "success");
+    bootstrapReadyForSectionLoads = true;
+    ensureSectionData(getActiveSectionId());
   }
   if (cached) {
     scheduleFullBootstrapLoad();
@@ -5120,9 +5121,12 @@ async function startDataLoad() {
   }
   refreshData({ sections: BOOTSTRAP_CORE_SECTIONS, message: "Datos basicos cargados." })
     .then(() => {
+      bootstrapReadyForSectionLoads = true;
+      ensureSectionData(getActiveSectionId());
       scheduleFullBootstrapLoad();
     })
     .catch((error) => {
+      bootstrapReadyForSectionLoads = false;
       showStatus(error.message || "No fue posible cargar la configuracion.", "error");
     });
 }
