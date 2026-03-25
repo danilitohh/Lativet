@@ -54,6 +54,9 @@ const permissionLabelMap = permissionOptions.reduce((acc, option) => {
 const usersFilters = { query: "", pageSize: 10, showInactive: false };
 const authState = { requiresLogin: false, authenticated: false, currentUser: null };
 const AUTH_SESSION_KEY = "lativet_auth_session";
+const BOOTSTRAP_CACHE_KEY = "lativet_bootstrap_v1";
+const BOOTSTRAP_CACHE_TTL_MS = 5 * 60 * 1000;
+let bootstrapFullRequested = false;
 const consultationTypes = [
   "Vacunacion",
   "Formula",
@@ -616,6 +619,58 @@ const api = {
     apiRequest("/api/auth/login", { method: "POST", body: JSON.stringify(payload) }),
   authLogout: () => apiRequest("/api/auth/logout", { method: "POST", body: "{}" }),
 };
+
+function getBootstrapCacheKey(userIdOverride) {
+  const userId = userIdOverride || authState.currentUser?.id || "anon";
+  return `${BOOTSTRAP_CACHE_KEY}_${userId}`;
+}
+
+function loadBootstrapCache() {
+  if (authState.requiresLogin && !authState.currentUser) {
+    return null;
+  }
+  try {
+    const key = getBootstrapCacheKey();
+    const raw = localStorage.getItem(key);
+    if (!raw) {
+      return null;
+    }
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object" || !parsed.data) {
+      localStorage.removeItem(key);
+      return null;
+    }
+    if (!parsed.at || Date.now() - parsed.at > BOOTSTRAP_CACHE_TTL_MS) {
+      localStorage.removeItem(key);
+      return null;
+    }
+    return parsed.data;
+  } catch (error) {
+    return null;
+  }
+}
+
+function saveBootstrapCache(payload) {
+  if ((authState.requiresLogin && !authState.currentUser) || !payload || typeof payload !== "object") {
+    return;
+  }
+  try {
+    const key = getBootstrapCacheKey();
+    const snapshot = { at: Date.now(), data: payload };
+    localStorage.setItem(key, JSON.stringify(snapshot));
+  } catch (error) {
+    // ignore cache write errors
+  }
+}
+
+function clearBootstrapCache(userIdOverride) {
+  try {
+    const key = getBootstrapCacheKey(userIdOverride);
+    localStorage.removeItem(key);
+  } catch (error) {
+    // ignore cache cleanup errors
+  }
+}
 
 function cacheElements() {
   [
@@ -2200,6 +2255,9 @@ async function refreshData(options = {}) {
   }
   const payload = await api.bootstrap(lite);
   Object.assign(state, payload);
+  if (!lite) {
+    saveBootstrapCache(payload);
+  }
   if (!toIsoDate(agendaSelectedDate)) {
     agendaSelectedDate = toIsoDate(new Date());
   }
@@ -2569,6 +2627,7 @@ async function handleLogout() {
   } catch (error) {
     // ignore
   }
+  clearBootstrapCache(authState.currentUser?.id);
   sessionStorage.removeItem(AUTH_SESSION_KEY);
   authState.currentUser = null;
   authState.authenticated = false;
@@ -3054,17 +3113,47 @@ function bindForms() {
   );
 }
 
+function scheduleFullBootstrapLoad() {
+  if (bootstrapFullRequested) {
+    return;
+  }
+  bootstrapFullRequested = true;
+  const run = async () => {
+    try {
+      await refreshData("Datos completos cargados.");
+    } catch (error) {
+      showStatus(error.message || "No fue posible cargar datos completos.", "error");
+    } finally {
+      bootstrapFullRequested = false;
+    }
+  };
+  if (typeof window.requestIdleCallback === "function") {
+    window.requestIdleCallback(() => run(), { timeout: 2000 });
+  } else {
+    setTimeout(run, 350);
+  }
+}
+
 async function startDataLoad() {
   showStatus("Version web lista. Cargando datos...", "info");
-  refreshData({ lite: true }).catch((error) => {
-    showStatus(error.message || "No fue posible cargar la configuracion.", "error");
-  });
-  refreshData()
-    .then(() => {
-      showStatus("Datos completos cargados.", "info");
-    })
+  const cached = loadBootstrapCache();
+  if (cached) {
+    Object.assign(state, cached);
+    if (!toIsoDate(agendaSelectedDate)) {
+      agendaSelectedDate = toIsoDate(new Date());
+    }
+    renderAll();
+  }
+  if (cached) {
+    scheduleFullBootstrapLoad();
+    return;
+  }
+  refreshData({ lite: true })
     .catch((error) => {
-      showStatus(error.message || "No fue posible cargar datos completos.", "error");
+      showStatus(error.message || "No fue posible cargar la configuracion.", "error");
+    })
+    .finally(() => {
+      scheduleFullBootstrapLoad();
     });
 }
 

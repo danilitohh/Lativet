@@ -87,21 +87,27 @@ def create_app(base_dir: Path | None = None, data_dir: Path | None = None) -> Fl
             return jsonify({"ok": False, "error": "No autorizado"}), 401
         return None
 
+    def send_cached(directory: Path, filename: str, cache_control: str | None = None):
+        response = send_from_directory(directory, filename)
+        if cache_control:
+            response.headers["Cache-Control"] = cache_control
+        return response
+
     @app.get("/")
     def index():
-        return send_from_directory(frontend_dir, "index.html")
+        return send_cached(frontend_dir, "index.html", "no-store")
 
     @app.get("/styles.css")
     def styles():
-        return send_from_directory(frontend_dir, "styles.css")
+        return send_cached(frontend_dir, "styles.css", "public, max-age=31536000, immutable")
 
     @app.get("/app.js")
     def javascript():
-        return send_from_directory(frontend_dir, "app.js")
+        return send_cached(frontend_dir, "app.js", "public, max-age=31536000, immutable")
 
     @app.get("/images/<path:filename>")
     def images(filename: str):
-        return send_from_directory(images_dir, filename)
+        return send_cached(images_dir, filename, "public, max-age=31536000, immutable")
 
     @app.get("/exports/<path:filename>")
     def exports(filename: str):
