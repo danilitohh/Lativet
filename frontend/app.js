@@ -76,6 +76,8 @@ let bootstrapFullRequested = false;
 let bootstrapReadyForSectionLoads = false;
 const BOOTSTRAP_CORE_SECTIONS = ["settings"];
 const BOOTSTRAP_BACKGROUND_GROUPS = [["appointments"]];
+const OWNER_PATIENT_REFRESH_SECTIONS = ["owners", "patients"];
+const AGENDA_REFRESH_SECTIONS = ["appointments", "owners", "patients", "availability_rules"];
 const SECTION_DATA_REQUIREMENTS = {
   dashboard: ["dashboard"],
   administration: ["users"],
@@ -89,16 +91,37 @@ const SECTION_DATA_REQUIREMENTS = {
     "stock_movements",
     "billing_summary",
   ],
-  consultorio: ["owners", "patients", "records", "consultations", "consents", "grooming_documents"],
+  consultorio: ["owners", "patients"],
   hospamb: ["consultations"],
   requests: ["requests"],
   reports: ["reports"],
+};
+const SUBSECTION_DATA_REQUIREMENTS = {
+  consultorio: {
+    patients: ["owners", "patients"],
+    records: ["owners", "patients", "records"],
+    vacunacion: ["owners", "patients", "records", "consultations"],
+    formula: ["owners", "patients", "records", "consultations"],
+    desparasitacion: ["owners", "patients", "records", "consultations"],
+    ambulatorio: ["owners", "patients", "records", "consultations"],
+    cirugia: ["owners", "patients", "records", "consultations"],
+    laboratorio: ["owners", "patients", "records", "consultations"],
+    imagenes: ["owners", "patients", "records", "consultations"],
+    seguimiento: ["owners", "patients", "records", "consultations"],
+    documentos: ["owners", "patients", "records", "consultations"],
+    remision: ["owners", "patients", "records", "consultations"],
+    consents: ["owners", "patients", "records", "consultations", "consents"],
+    grooming: ["owners", "patients", "grooming_documents"],
+  },
 };
 const ALL_BOOTSTRAP_SECTIONS = Array.from(
   new Set([
     ...BOOTSTRAP_CORE_SECTIONS,
     ...BOOTSTRAP_BACKGROUND_GROUPS.flat(),
     ...Object.values(SECTION_DATA_REQUIREMENTS).flat(),
+    ...Object.values(SUBSECTION_DATA_REQUIREMENTS)
+      .flatMap((section) => Object.values(section))
+      .flat(),
   ])
 );
 const loadedBootstrapSections = new Set();
@@ -3247,8 +3270,15 @@ function getMissingBootstrapSections(sections) {
   );
 }
 
+function getSectionDataRequirements(sectionId) {
+  const subsectionValue = activeSubsections[sectionId];
+  const subsectionRequirements =
+    SUBSECTION_DATA_REQUIREMENTS[sectionId]?.[subsectionValue] || null;
+  return subsectionRequirements || SECTION_DATA_REQUIREMENTS[sectionId] || [];
+}
+
 async function ensureSectionData(sectionId) {
-  const requiredSections = SECTION_DATA_REQUIREMENTS[sectionId] || [];
+  const requiredSections = getSectionDataRequirements(sectionId);
   const missingSections = getMissingBootstrapSections(requiredSections);
   if (!missingSections.length) {
     return;
@@ -3936,7 +3966,10 @@ async function handleOwnerDelete(ownerId) {
     consultorioOwnerId = "";
   }
   resetPatientEditor();
-  await refreshData("Propietario eliminado.");
+  await refreshData({
+    sections: OWNER_PATIENT_REFRESH_SECTIONS,
+    message: "Propietario eliminado.",
+  });
   setActiveSection("consultorio");
   setSectionSubsection("consultorio", "patients");
 }
@@ -3956,7 +3989,10 @@ async function handlePatientDelete(patientId) {
   if (elements.patientForm?.elements?.id?.value === patientId) {
     resetPatientEditor();
   }
-  await refreshData("Paciente eliminado.");
+  await refreshData({
+    sections: OWNER_PATIENT_REFRESH_SECTIONS,
+    message: "Paciente eliminado.",
+  });
   setActiveSection("consultorio");
   setSectionSubsection("consultorio", "patients");
 }
@@ -4094,7 +4130,10 @@ async function handleOwnerSubmit(event) {
   resetForm(event.currentTarget);
   const shouldReturn = returnToAppointmentModal;
   closeOwnerModal({ suppressReturn: true });
-  await refreshData("Propietario guardado.");
+  await refreshData({
+    sections: OWNER_PATIENT_REFRESH_SECTIONS,
+    message: "Propietario guardado.",
+  });
   if (shouldReturn) {
     if (owner) {
       pendingAppointmentDraft = {
@@ -4135,7 +4174,10 @@ async function handlePatientSubmit(event) {
     consultorioOwnerId = patient.owner_id;
   }
   resetPatientEditor();
-  await refreshData("Paciente guardado.");
+  await refreshData({
+    sections: OWNER_PATIENT_REFRESH_SECTIONS,
+    message: "Paciente guardado.",
+  });
   setActiveSection("consultorio");
   setSectionSubsection("consultorio", "patients");
   renderConsultorioOwnerDetail();
@@ -4187,7 +4229,10 @@ async function handleAppointmentSubmit(event) {
   resetForm(event.currentTarget);
   closeAppointmentModal();
   setDateTimeDefaults();
-  await refreshData("Cita guardada.");
+  await refreshData({
+    sections: AGENDA_REFRESH_SECTIONS,
+    message: "Cita guardada.",
+  });
   setActiveSection("agenda");
 }
 
@@ -4195,7 +4240,10 @@ async function handleAvailabilitySubmit(event) {
   event.preventDefault();
   await api.saveAvailability(serializeForm(event.currentTarget));
   resetForm(event.currentTarget);
-  await refreshData("Disponibilidad guardada.");
+  await refreshData({
+    sections: AGENDA_REFRESH_SECTIONS,
+    message: "Disponibilidad guardada.",
+  });
   closeAvailabilityModal();
   setActiveSection("agenda");
 }
@@ -4471,7 +4519,10 @@ async function handleAppointmentsClick(event) {
         return;
       }
       await api.deleteAppointment(appointmentId);
-      await refreshData("Cita eliminada.");
+      await refreshData({
+        sections: AGENDA_REFRESH_SECTIONS,
+        message: "Cita eliminada.",
+      });
       return;
     }
     if (action === "reactivate") {
@@ -4479,7 +4530,10 @@ async function handleAppointmentsClick(event) {
         return;
       }
       await api.updateAppointmentStatus(appointmentId, "scheduled");
-      await refreshData("Cita reactivada.");
+      await refreshData({
+        sections: AGENDA_REFRESH_SECTIONS,
+        message: "Cita reactivada.",
+      });
       return;
     }
   }
@@ -4488,7 +4542,10 @@ async function handleAppointmentsClick(event) {
     return;
   }
   await api.updateAppointmentStatus(button.dataset.appointmentId, button.dataset.status);
-  await refreshData("Estado de cita actualizado.");
+  await refreshData({
+    sections: AGENDA_REFRESH_SECTIONS,
+    message: "Estado de cita actualizado.",
+  });
 }
 
 async function handleAvailabilityListClick(event) {
@@ -4497,7 +4554,10 @@ async function handleAvailabilityListClick(event) {
     return;
   }
   await api.deleteAvailability(button.dataset.deleteAvailability);
-  await refreshData("Disponibilidad eliminada.");
+  await refreshData({
+    sections: AGENDA_REFRESH_SECTIONS,
+    message: "Disponibilidad eliminada.",
+  });
 }
 
 function handleAgendaMiniCalendarClick(event) {
