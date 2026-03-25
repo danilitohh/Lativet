@@ -15,7 +15,22 @@ def create_app(base_dir: Path | None = None, data_dir: Path | None = None) -> Fl
     images_dir = project_dir / "images"
     exports_dir = runtime_data_dir / "exports"
 
-    service = LativetService(project_dir, runtime_data_dir)
+    service = None
+    service_error: Exception | None = None
+
+    def init_service() -> LativetService | None:
+        nonlocal service, service_error
+        if service is not None:
+            return service
+        try:
+            service = LativetService(project_dir, runtime_data_dir)
+            service_error = None
+            app.extensions["lativet_service"] = service
+            return service
+        except Exception as exc:
+            service_error = exc
+            service = None
+            return None
     app = Flask(__name__)
     app.secret_key = (
         os.getenv("ADMIN_SESSION_SECRET")
@@ -53,13 +68,17 @@ def create_app(base_dir: Path | None = None, data_dir: Path | None = None) -> Fl
         user_id = session.get("user_id")
         if not user_id:
             return None
+        if init_service() is None:
+            session.pop("user_authenticated", None)
+            session.pop("user_id", None)
+            return None
         try:
-            user = service.get_user(user_id)
+            user = init_service().get_user(user_id) if init_service() else None
         except Exception:
             session.pop("user_authenticated", None)
             session.pop("user_id", None)
             return None
-        if not user.get("is_active"):
+        if not user or not user.get("is_active"):
             session.pop("user_authenticated", None)
             session.pop("user_id", None)
             return None
@@ -73,6 +92,13 @@ def create_app(base_dir: Path | None = None, data_dir: Path | None = None) -> Fl
         status_code = 200 if result.get("ok") else 400
         return jsonify(result), status_code
 
+    def service_unavailable():
+        detail = f": {service_error}" if service_error else ""
+        return (
+            jsonify({"ok": False, "error": f"Servicio no disponible{detail}."}),
+            503,
+        )
+
     @app.before_request
     def enforce_auth():
         if not request.path.startswith("/api/"):
@@ -83,6 +109,8 @@ def create_app(base_dir: Path | None = None, data_dir: Path | None = None) -> Fl
             "/api/google-calendar/callback",
         ):
             return None
+        if init_service() is None:
+            return service_unavailable()
         if admin_configured() and not is_authenticated():
             return jsonify({"ok": False, "error": "No autorizado"}), 401
         return None
@@ -150,8 +178,10 @@ def create_app(base_dir: Path | None = None, data_dir: Path | None = None) -> Fl
                     "data": {"authenticated": True, "user": current_user()},
                 }
             )
+        if init_service() is None:
+            return service_unavailable()
         try:
-            user = service.authenticate_user(email, password)
+            user = init_service().authenticate_user(email, password)
         except Exception:
             user = None
         if user:
