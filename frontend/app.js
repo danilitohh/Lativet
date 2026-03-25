@@ -4341,6 +4341,68 @@ function handleAgendaMonthClick(event) {
   }
 }
 
+function resolveAgendaTimelineSelection(event) {
+  const column = event.target.closest(".agenda-timeline__day-column[data-agenda-date]");
+  if (!column) {
+    return null;
+  }
+  const dateValue = column.dataset.agendaDate || "";
+  if (!dateValue) {
+    return null;
+  }
+  const rect = column.getBoundingClientRect();
+  if (!rect.height) {
+    return null;
+  }
+  const totalMinutes = (AGENDA_TIMELINE_END_HOUR - AGENDA_TIMELINE_START_HOUR) * 60;
+  const offsetY = Math.min(Math.max(event.clientY - rect.top, 0), rect.height);
+  const rawMinutes = (offsetY / rect.height) * totalMinutes;
+  const roundedMinutes = Math.min(
+    totalMinutes - 15,
+    Math.max(0, Math.round(rawMinutes / 15) * 15)
+  );
+  const selectedDateTime = new Date(
+    `${dateValue}T${String(AGENDA_TIMELINE_START_HOUR).padStart(2, "0")}:00:00`
+  );
+  selectedDateTime.setMinutes(selectedDateTime.getMinutes() + roundedMinutes);
+
+  const matchingSlot = buildAgendaSlots(dateValue).find((slot) => {
+    if (slot.occupied) {
+      return false;
+    }
+    const slotStart = new Date(slot.slot_at);
+    const slotEnd = addMinutes(slotStart, Number(slot.duration_minutes || 30));
+    return selectedDateTime >= slotStart && selectedDateTime < slotEnd;
+  });
+  if (matchingSlot) {
+    return {
+      slotAt: matchingSlot.slot_at,
+      durationMinutes: Number(matchingSlot.duration_minutes || 30),
+    };
+  }
+  return {
+    slotAt: toInputDateTime(selectedDateTime),
+    durationMinutes: Number(elements.appointmentDurationInput?.value || 30),
+  };
+}
+
+function handleAgendaTimelineClick(event) {
+  const appointmentButton = event.target.closest("[data-appointment-id]");
+  if (appointmentButton) {
+    openAppointmentDetailModal(appointmentButton.dataset.appointmentId);
+    return;
+  }
+  const timelineSelection = resolveAgendaTimelineSelection(event);
+  if (timelineSelection) {
+    openAppointmentModalForSlot(timelineSelection.slotAt, timelineSelection.durationMinutes);
+    return;
+  }
+  const dateButton = event.target.closest("[data-agenda-date]");
+  if (dateButton) {
+    openAppointmentModalForDate(dateButton.dataset.agendaDate);
+  }
+}
+
 function handleAgendaWeekClick(event) {
   const appointmentButton = event.target.closest("[data-appointment-id]");
   if (appointmentButton) {
@@ -4641,10 +4703,10 @@ function bindForms() {
     elements.agendaWeekSlots.addEventListener("click", handleAgendaWeekClick);
   }
   if (elements.agendaWeekTimeline) {
-    elements.agendaWeekTimeline.addEventListener("click", handleAgendaMonthClick);
+    elements.agendaWeekTimeline.addEventListener("click", handleAgendaTimelineClick);
   }
   if (elements.agendaDayTimeline) {
-    elements.agendaDayTimeline.addEventListener("click", handleAgendaMonthClick);
+    elements.agendaDayTimeline.addEventListener("click", handleAgendaTimelineClick);
   }
   if (elements.agendaListItems) {
     elements.agendaListItems.addEventListener("click", handleAgendaMonthClick);
