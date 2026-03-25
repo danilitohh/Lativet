@@ -50,6 +50,7 @@ let consultorioOwnerId = "";
 let consultorioPatientId = "";
 let consultorioProfileView = "records";
 let consultorioPatientEditorVisible = false;
+let consultorioPatientProfileOpen = false;
 let pendingAppointmentDraft = null;
 let returnToAppointmentModal = false;
 const notifications = [];
@@ -1157,6 +1158,12 @@ function showStatus(message, tone = "info", html = false) {
 }
 
 function setActiveSection(sectionId) {
+  if (sectionId !== "consultorio" && consultorioPatientProfileOpen) {
+    consultorioPatientProfileOpen = false;
+    document.body.classList.remove("consultorio-modal-open");
+    elements.consultorioPatientProfilePanel?.classList.add("is-hidden");
+    elements.consultorioPatientProfilePanel?.setAttribute("aria-hidden", "true");
+  }
   const config = sectionSubsections[sectionId];
   if (config && !activeSubsections[sectionId]) {
     activeSubsections[sectionId] = config.options[0]?.value || "";
@@ -1981,7 +1988,7 @@ function isConsultorioPatientsViewActive() {
 }
 
 function isConsultorioPatientProfileActive() {
-  return isConsultorioPatientsViewActive() && Boolean(getConsultorioPatient());
+  return isConsultorioPatientsViewActive() && Boolean(getConsultorioPatient()) && consultorioPatientProfileOpen;
 }
 
 function syncConsultorioSelectionState() {
@@ -1990,6 +1997,7 @@ function syncConsultorioSelectionState() {
   }
   if (consultorioPatientId && !getConsultorioPatient()) {
     consultorioPatientId = "";
+    consultorioPatientProfileOpen = false;
   }
   const patient = getConsultorioPatient();
   if (patient?.owner_id && consultorioOwnerId !== patient.owner_id) {
@@ -2051,11 +2059,10 @@ function getConsultorioVisiblePanels() {
     return new Set(["consultorioGroomingFormPanel", "consultorioGroomingPanel"]);
   }
   const visiblePanels = new Set(["consultorioOwnersPanel", "consultorioOwnerDetailPanel"]);
-  if (!consultorioPatientId) {
+  if (!consultorioPatientId || !consultorioPatientProfileOpen) {
     return visiblePanels;
   }
   visiblePanels.add("consultorioPatientProfilePanel");
-  (getConsultorioProfileViewConfig()?.panels || []).forEach((panelId) => visiblePanels.add(panelId));
   return visiblePanels;
 }
 
@@ -2069,6 +2076,28 @@ function setConsultorioProfileView(value) {
   if (bootstrapReadyForSectionLoads) {
     ensureSectionData("consultorio");
   }
+}
+
+function openConsultorioPatientProfile(patient) {
+  if (!patient) {
+    return;
+  }
+  consultorioPatientId = patient.id;
+  consultorioOwnerId = patient.owner_id || consultorioOwnerId;
+  consultorioPatientProfileOpen = true;
+  consultorioProfileView = consultorioProfileView || "records";
+  setSectionSubsection("consultorio", "patients");
+}
+
+function closeConsultorioPatientProfile(options = {}) {
+  const { preservePatient = false } = options;
+  consultorioPatientProfileOpen = false;
+  if (!preservePatient) {
+    consultorioPatientId = "";
+    consultorioProfileView = "records";
+  }
+  document.body.classList.remove("consultorio-modal-open");
+  setSectionSubsection("consultorio", "patients");
 }
 
 function renderOwners() {
@@ -2257,6 +2286,8 @@ function renderConsultorioPatientProfile() {
   }
   if (!isConsultorioPatientProfileActive()) {
     elements.consultorioPatientProfilePanel.classList.add("is-hidden");
+    elements.consultorioPatientProfilePanel.setAttribute("aria-hidden", "true");
+    document.body.classList.remove("consultorio-modal-open");
     if (elements.consultorioPatientEditButton) {
       elements.consultorioPatientEditButton.disabled = true;
     }
@@ -2300,6 +2331,8 @@ function renderConsultorioPatientProfile() {
     ["Notas", patient?.notes || "Sin observaciones"],
   ];
   elements.consultorioPatientProfilePanel.classList.remove("is-hidden");
+  elements.consultorioPatientProfilePanel.setAttribute("aria-hidden", "false");
+  document.body.classList.add("consultorio-modal-open");
   if (elements.consultorioPatientEditButton) {
     elements.consultorioPatientEditButton.disabled = false;
   }
@@ -4845,6 +4878,7 @@ async function handleOwnerDelete(ownerId) {
   if (getConsultorioPatient()?.owner_id === ownerId) {
     consultorioPatientId = "";
     consultorioProfileView = "records";
+    consultorioPatientProfileOpen = false;
   }
   if (consultorioOwnerId === ownerId) {
     consultorioOwnerId = "";
@@ -4873,6 +4907,7 @@ async function handlePatientDelete(patientId) {
   if (consultorioPatientId === patientId) {
     consultorioPatientId = "";
     consultorioProfileView = "records";
+    consultorioPatientProfileOpen = false;
   }
   if (elements.patientForm?.elements?.id?.value === patientId) {
     resetPatientEditor();
@@ -4892,11 +4927,8 @@ async function handleOwnersListClick(event) {
     if (!patient) {
       throw new Error("No se encontro la mascota seleccionada.");
     }
-    consultorioPatientId = patient.id;
-    consultorioOwnerId = patient.owner_id || consultorioOwnerId;
     consultorioProfileView = "records";
-    setSectionSubsection("consultorio", "patients");
-    renderConsultorioPatientProfile();
+    openConsultorioPatientProfile(patient);
     return;
   }
   const editButton = event.target.closest("[data-owner-edit]");
@@ -4920,6 +4952,7 @@ async function handleOwnersListClick(event) {
   consultorioOwnerId = selectButton.dataset.ownerSelect || "";
   consultorioPatientId = "";
   consultorioProfileView = "records";
+  consultorioPatientProfileOpen = false;
   consultorioPatientsFilters.query = "";
   if (elements.ownerPatientsSearchInput) {
     elements.ownerPatientsSearchInput.value = "";
@@ -4937,11 +4970,8 @@ async function handlePatientsListClick(event) {
     if (!patient) {
       throw new Error("No se encontro la mascota seleccionada.");
     }
-    consultorioPatientId = patient.id;
-    consultorioOwnerId = patient.owner_id || consultorioOwnerId;
     consultorioProfileView = "records";
-    setSectionSubsection("consultorio", "patients");
-    renderConsultorioPatientProfile();
+    openConsultorioPatientProfile(patient);
     return;
   }
   const editButton = event.target.closest("[data-patient-edit]");
@@ -5098,6 +5128,7 @@ async function handlePatientSubmit(event) {
   if (patient?.id) {
     consultorioPatientId = patient.id;
   }
+  consultorioPatientProfileOpen = false;
   resetPatientEditor();
   await refreshData({
     sections: OWNER_PATIENT_REFRESH_SECTIONS,
@@ -5661,6 +5692,9 @@ function bindNavigation() {
       closeUserModal();
       closeOwnerModal();
       closeLoginModal();
+      if (consultorioPatientProfileOpen) {
+        closeConsultorioPatientProfile();
+      }
     }
   });
 }
@@ -5792,6 +5826,7 @@ function bindForms() {
       consultorioOwnerId = "";
       consultorioPatientId = "";
       consultorioProfileView = "records";
+      consultorioPatientProfileOpen = false;
       consultorioPatientsFilters.query = "";
       if (elements.ownerPatientsSearchInput) {
         elements.ownerPatientsSearchInput.value = "";
@@ -5839,10 +5874,14 @@ function bindForms() {
       if (!patient) {
         return;
       }
-      consultorioPatientId = patient.id;
-      consultorioOwnerId = patient.owner_id || consultorioOwnerId;
-      consultorioProfileView = consultorioProfileView || "records";
-      setSectionSubsection("consultorio", "patients");
+      openConsultorioPatientProfile(patient);
+    });
+  }
+  if (elements.consultorioPatientProfilePanel) {
+    elements.consultorioPatientProfilePanel.addEventListener("click", (event) => {
+      if (event.target.closest("[data-close-consultorio-profile]")) {
+        closeConsultorioPatientProfile();
+      }
     });
   }
   if (elements.consultorioPatientProfileNav) {
@@ -5856,16 +5895,17 @@ function bindForms() {
   }
   if (elements.consultorioPatientBackButton) {
     elements.consultorioPatientBackButton.addEventListener("click", () => {
-      consultorioPatientId = "";
-      consultorioProfileView = "records";
-      setSectionSubsection("consultorio", "patients");
+      closeConsultorioPatientProfile();
     });
   }
   if (elements.consultorioPatientEditButton) {
     elements.consultorioPatientEditButton.addEventListener("click", () => {
       const patient = getConsultorioPatient();
       if (patient) {
+        consultorioPatientProfileOpen = false;
+        document.body.classList.remove("consultorio-modal-open");
         openPatientEditor(patient);
+        setSectionSubsection("consultorio", "patients");
       }
     });
   }

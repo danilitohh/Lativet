@@ -837,6 +837,20 @@ button:active {
   margin-top: 18px;
 }
 
+body.consultorio-modal-open {
+  overflow: hidden;
+}
+
+.consultorio-profile-modal {
+  z-index: 90;
+}
+
+.consultorio-profile-modal__card {
+  width: min(1600px, 100%);
+  max-height: calc(100vh - 40px);
+  padding: 24px 26px;
+}
+
 .consultorio-profile-copy {
   margin-top: 6px;
   max-width: 900px;
