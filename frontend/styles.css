@@ -1261,6 +1261,12 @@ body.auth-locked .page-shell > :not(#loginModal) {
   width: min(460px, 100%);
 }
 
+.availability-summary {
+  margin-top: 16px;
+  display: grid;
+  gap: 10px;
+}
+
 .empty-state {
   padding: 16px;
   border: 1px dashed rgba(11, 39, 49, 0.18);

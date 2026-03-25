@@ -659,6 +659,7 @@ function cacheElements() {
     "complianceSources",
     "appointmentForm",
     "availabilityForm",
+    "availabilityRulesList",
     "availabilityModal",
     "closeAvailabilityModalButton",
     "agendaAppointmentsModal",
@@ -2724,6 +2725,15 @@ async function handleAppointmentsClick(event) {
   await refreshData("Estado de cita actualizado.");
 }
 
+async function handleAvailabilityListClick(event) {
+  const button = event.target.closest("button[data-delete-availability]");
+  if (!button) {
+    return;
+  }
+  await api.deleteAvailability(button.dataset.deleteAvailability);
+  await refreshData("Disponibilidad eliminada.");
+}
+
 function handleAgendaMonthClick(event) {
   const dateButton = event.target.closest("[data-agenda-date]");
   if (dateButton) {
@@ -2942,6 +2952,12 @@ function bindForms() {
   elements.appointmentForm.addEventListener("submit", wrapAsync(handleAppointmentSubmit));
   if (elements.availabilityForm) {
     elements.availabilityForm.addEventListener("submit", wrapAsync(handleAvailabilitySubmit));
+  }
+  if (elements.availabilityRulesList) {
+    elements.availabilityRulesList.addEventListener(
+      "click",
+      wrapAsync(handleAvailabilityListClick)
+    );
   }
   if (elements.googleCalendarForm) {
     elements.googleCalendarForm.addEventListener("submit", wrapAsync(handleGoogleCalendarSubmit));
