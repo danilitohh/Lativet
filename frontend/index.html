@@ -747,30 +747,27 @@
             </article>
           </div>
 
-          <div id="consultorioPatientProfilePanel" class="modal-shell is-hidden consultorio-profile-modal" aria-hidden="true">
-            <div class="modal-backdrop" data-close-consultorio-profile="1"></div>
-            <article class="modal-card consultorio-profile-modal__card">
-              <div class="panel-heading">
-                <div>
-                  <p class="eyebrow">Perfil del paciente</p>
-                  <h3 id="consultorioPatientProfileTitle">Perfil del paciente</h3>
-                  <p id="consultorioPatientProfileSubtitle" class="section-copy consultorio-profile-copy">
-                    Selecciona una mascota para abrir su ficha clinica y desplegar sus secciones.
-                  </p>
-                </div>
-                <div class="form-actions">
-                  <button id="consultorioPatientEditButton" class="secondary-button" type="button">Editar mascota</button>
-                  <button id="consultorioPatientBackButton" class="ghost-button" type="button">Volver a mascotas</button>
-                </div>
+          <article id="consultorioPatientProfilePanel" class="panel-card is-hidden consultorio-profile-panel consultorio-profile-page" aria-hidden="true">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Perfil del paciente</p>
+                <h3 id="consultorioPatientProfileTitle">Perfil del paciente</h3>
+                <p id="consultorioPatientProfileSubtitle" class="section-copy consultorio-profile-copy">
+                  Selecciona una mascota para abrir su ficha clinica y desplegar sus secciones.
+                </p>
               </div>
-              <div class="consultorio-profile-layout">
-                <aside class="consultorio-profile-sidebar">
-                  <div id="consultorioPatientProfileNav" class="consultorio-profile-nav"></div>
-                </aside>
-                <div id="consultorioPatientProfileSummary" class="consultorio-profile-summary"></div>
+              <div class="form-actions">
+                <button id="consultorioPatientEditButton" class="secondary-button" type="button">Editar mascota</button>
+                <button id="consultorioPatientBackButton" class="ghost-button" type="button">Volver a mascotas</button>
               </div>
-            </article>
-          </div>
+            </div>
+            <div class="consultorio-profile-layout">
+              <aside class="consultorio-profile-sidebar">
+                <div id="consultorioPatientProfileNav" class="consultorio-profile-nav"></div>
+              </aside>
+              <div id="consultorioPatientProfileSummary" class="consultorio-profile-summary"></div>
+            </div>
+          </article>
 
           <div class="two-column-grid">
             <article id="consultorioRecordFormPanel" class="panel-card panel-card--wide">

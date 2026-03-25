@@ -1160,7 +1160,6 @@ function showStatus(message, tone = "info", html = false) {
 function setActiveSection(sectionId) {
   if (sectionId !== "consultorio" && consultorioPatientProfileOpen) {
     consultorioPatientProfileOpen = false;
-    document.body.classList.remove("consultorio-modal-open");
     elements.consultorioPatientProfilePanel?.classList.add("is-hidden");
     elements.consultorioPatientProfilePanel?.setAttribute("aria-hidden", "true");
   }
@@ -2058,12 +2057,10 @@ function getConsultorioVisiblePanels() {
   if (subsection === "grooming") {
     return new Set(["consultorioGroomingFormPanel", "consultorioGroomingPanel"]);
   }
-  const visiblePanels = new Set(["consultorioOwnersPanel", "consultorioOwnerDetailPanel"]);
   if (!consultorioPatientId || !consultorioPatientProfileOpen) {
-    return visiblePanels;
+    return new Set(["consultorioOwnersPanel", "consultorioOwnerDetailPanel"]);
   }
-  visiblePanels.add("consultorioPatientProfilePanel");
-  return visiblePanels;
+  return new Set(["consultorioPatientProfilePanel"]);
 }
 
 function setConsultorioProfileView(value) {
@@ -2096,7 +2093,6 @@ function closeConsultorioPatientProfile(options = {}) {
     consultorioPatientId = "";
     consultorioProfileView = "records";
   }
-  document.body.classList.remove("consultorio-modal-open");
   setSectionSubsection("consultorio", "patients");
 }
 
@@ -2287,7 +2283,6 @@ function renderConsultorioPatientProfile() {
   if (!isConsultorioPatientProfileActive()) {
     elements.consultorioPatientProfilePanel.classList.add("is-hidden");
     elements.consultorioPatientProfilePanel.setAttribute("aria-hidden", "true");
-    document.body.classList.remove("consultorio-modal-open");
     if (elements.consultorioPatientEditButton) {
       elements.consultorioPatientEditButton.disabled = true;
     }
@@ -2332,7 +2327,6 @@ function renderConsultorioPatientProfile() {
   ];
   elements.consultorioPatientProfilePanel.classList.remove("is-hidden");
   elements.consultorioPatientProfilePanel.setAttribute("aria-hidden", "false");
-  document.body.classList.add("consultorio-modal-open");
   if (elements.consultorioPatientEditButton) {
     elements.consultorioPatientEditButton.disabled = false;
   }
@@ -5877,13 +5871,6 @@ function bindForms() {
       openConsultorioPatientProfile(patient);
     });
   }
-  if (elements.consultorioPatientProfilePanel) {
-    elements.consultorioPatientProfilePanel.addEventListener("click", (event) => {
-      if (event.target.closest("[data-close-consultorio-profile]")) {
-        closeConsultorioPatientProfile();
-      }
-    });
-  }
   if (elements.consultorioPatientProfileNav) {
     elements.consultorioPatientProfileNav.addEventListener("click", (event) => {
       const button = event.target.closest("[data-consultorio-profile-view]");
@@ -5903,7 +5890,6 @@ function bindForms() {
       const patient = getConsultorioPatient();
       if (patient) {
         consultorioPatientProfileOpen = false;
-        document.body.classList.remove("consultorio-modal-open");
         openPatientEditor(patient);
         setSectionSubsection("consultorio", "patients");
       }
