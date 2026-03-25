@@ -3086,13 +3086,19 @@ class PostgresDatabase(Database):
                 if lock_acquired:
                     break
                 time_module.sleep(0.2)
-            if lock_acquired:
+            try:
+                self._init_schema()
+                self.connection.commit()
+                if not self._has_settings():
+                    self.save_settings(DEFAULT_SETTINGS)
+            except Exception:
                 try:
-                    self._init_schema()
-                    self.connection.commit()
-                    if not self._has_settings():
-                        self.save_settings(DEFAULT_SETTINGS)
-                finally:
+                    self.connection.rollback()
+                except Exception:
+                    pass
+                raise
+            finally:
+                if lock_acquired:
                     try:
                         self.connection.execute("SELECT pg_advisory_unlock(?)", (lock_id,))
                         self.connection.commit()
