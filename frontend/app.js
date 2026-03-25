@@ -30,6 +30,7 @@ const state = {
 const elements = {};
 const billingDraft = { lines: [] };
 const activeAppointmentStatuses = new Set(["scheduled", "confirmed"]);
+const hiddenCalendarStatuses = new Set(["cancelled", "no_show"]);
 const activeSubsections = {};
 let openNavDropdownSection = "";
 let agendaViewDate = new Date();
@@ -519,8 +520,14 @@ function listAppointmentsForDate(dateValue, { activeOnly = false } = {}) {
     .sort((left, right) => String(left.appointment_at).localeCompare(String(right.appointment_at)));
 }
 
+function listCalendarAppointmentsForDate(dateValue) {
+  return listAppointmentsForDate(dateValue).filter(
+    (item) => !hiddenCalendarStatuses.has(item.status)
+  );
+}
+
 function getLatestAppointmentEnd(dateValue) {
-  const appointments = listAppointmentsForDate(dateValue);
+  const appointments = listAppointmentsForDate(dateValue, { activeOnly: true });
   let latest = null;
   appointments.forEach((appointment) => {
     const start = new Date(appointment.appointment_at);
@@ -1798,7 +1805,7 @@ function renderAgendaMonth() {
       const slotStart = new Date(slot.slot_at);
       return slotStart >= latestEnd;
     });
-    const appointments = listAppointmentsForDate(currentIso);
+    const appointments = listCalendarAppointmentsForDate(currentIso);
     cards.push(`
       <button
         type="button"
@@ -1997,7 +2004,7 @@ function renderAgendaWeekTimeline() {
     const dayEnd = new Date(
       `${currentIso}T${String(AGENDA_TIMELINE_END_HOUR).padStart(2, "0")}:00:00`
     );
-    const appointments = listAppointmentsForDate(currentIso);
+    const appointments = listCalendarAppointmentsForDate(currentIso);
     const events = appointments
       .map((appointment) =>
         buildAgendaTimelineEventMarkup(appointment, { dayStart, dayEnd, minuteHeight })
@@ -2048,7 +2055,7 @@ function renderAgendaDayTimeline() {
   const dayEnd = new Date(
     `${currentIso}T${String(AGENDA_TIMELINE_END_HOUR).padStart(2, "0")}:00:00`
   );
-  const appointments = listAppointmentsForDate(currentIso);
+  const appointments = listCalendarAppointmentsForDate(currentIso);
   const events = appointments
     .map((appointment) =>
       buildAgendaTimelineEventMarkup(appointment, { dayStart, dayEnd, minuteHeight })
@@ -2093,7 +2100,7 @@ function renderAgendaListView() {
   for (let index = 0; index < 7; index += 1) {
     const current = addDays(weekStart, index);
     const currentIso = toIsoDate(current);
-    const appointments = listAppointmentsForDate(currentIso);
+    const appointments = listCalendarAppointmentsForDate(currentIso);
     const items = appointments.length
       ? appointments
           .map((appointment) => {
@@ -2149,7 +2156,7 @@ function renderAgendaLargeMonth() {
   for (let index = 0; index < 42; index += 1) {
     const current = addDays(gridStart, index);
     const currentIso = toIsoDate(current);
-    const appointments = listAppointmentsForDate(currentIso);
+    const appointments = listCalendarAppointmentsForDate(currentIso);
     const visible = appointments.slice(0, 3);
     const moreCount = appointments.length - visible.length;
     const events = visible
