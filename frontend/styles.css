@@ -75,6 +75,18 @@ button:active {
   padding: 24px 24px 40px;
 }
 
+.page-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 45;
+  display: grid;
+  gap: 18px;
+  padding-bottom: 14px;
+  background:
+    linear-gradient(180deg, rgba(242, 249, 249, 0.98) 0%, rgba(242, 249, 249, 0.94) 78%, rgba(242, 249, 249, 0) 100%);
+  backdrop-filter: blur(12px);
+}
+
 .site-header,
 .hero-panel,
 .workspace-nav,
@@ -366,11 +378,11 @@ button:active {
   flex-wrap: wrap;
   align-items: flex-start;
   gap: 12px;
-  margin-top: 22px;
-  position: sticky;
-  top: 8px;
-  z-index: 35;
-  padding: 6px 0 4px;
+  margin-top: 0;
+  position: relative;
+  top: auto;
+  z-index: 20;
+  padding: 2px 0 4px;
   background: transparent;
   backdrop-filter: none;
 }

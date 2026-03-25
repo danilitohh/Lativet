@@ -8,26 +8,39 @@
   </head>
   <body>
     <div class="page-shell">
-      <header class="site-header">
-        <div class="brand-lockup">
-          <img class="brand-logo" src="/images/logo.png" alt="Lativet" />
-          <div>
-            <p class="eyebrow">Operacion veterinaria centralizada</p>
-            <h1>Lativet</h1>
-            <p class="header-copy">
-              Historias clinicas, agenda, facturacion, inventario, caja, consentimientos, peluqueria e informes en una sola web.
-            </p>
+      <div class="page-topbar">
+        <header class="site-header">
+          <div class="brand-lockup">
+            <img class="brand-logo" src="/images/logo.png" alt="Lativet" />
+            <div>
+              <p class="eyebrow">Operacion veterinaria centralizada</p>
+              <h1>Lativet</h1>
+              <p class="header-copy">
+                Historias clinicas, agenda, facturacion, inventario, caja, consentimientos, peluqueria e informes en una sola web.
+              </p>
+            </div>
           </div>
-        </div>
-        <div class="header-actions">
-          <button id="notificationsButton" class="secondary-button" type="button">
-            Notificaciones
-            <span id="notificationsBadge" class="notify-badge is-hidden">0</span>
-          </button>
-          <button id="logoutButton" class="ghost-button is-hidden" type="button">Salir</button>
-          <button id="backupButton" class="secondary-button" type="button">Crear respaldo</button>
-        </div>
-      </header>
+          <div class="header-actions">
+            <button id="notificationsButton" class="secondary-button" type="button">
+              Notificaciones
+              <span id="notificationsBadge" class="notify-badge is-hidden">0</span>
+            </button>
+            <button id="logoutButton" class="ghost-button is-hidden" type="button">Salir</button>
+            <button id="backupButton" class="secondary-button" type="button">Crear respaldo</button>
+          </div>
+        </header>
+
+        <nav class="app-switcher">
+          <button class="switcher-tab is-active" type="button" data-section-target="dashboard">Dashboard</button>
+          <button class="switcher-tab" type="button" data-section-target="administration">Administracion</button>
+          <button class="switcher-tab" type="button" data-section-target="agenda">Agenda</button>
+          <button class="switcher-tab" type="button" data-section-target="sales">Ventas</button>
+          <button class="switcher-tab" type="button" data-section-target="consultorio">Consultorio</button>
+          <button class="switcher-tab" type="button" data-section-target="hospamb">Hosp./Amb.</button>
+          <button class="switcher-tab" type="button" data-section-target="requests">Solicitudes</button>
+          <button class="switcher-tab" type="button" data-section-target="reports">Informes</button>
+        </nav>
+      </div>
 
       <div id="notificationsPanel" class="notifications-panel is-hidden" aria-hidden="true">
         <div class="panel-heading">
@@ -42,17 +55,6 @@
         </div>
         <div id="notificationsList" class="notifications-list"></div>
       </div>
-
-      <nav class="app-switcher">
-        <button class="switcher-tab is-active" type="button" data-section-target="dashboard">Dashboard</button>
-        <button class="switcher-tab" type="button" data-section-target="administration">Administracion</button>
-        <button class="switcher-tab" type="button" data-section-target="agenda">Agenda</button>
-        <button class="switcher-tab" type="button" data-section-target="sales">Ventas</button>
-        <button class="switcher-tab" type="button" data-section-target="consultorio">Consultorio</button>
-        <button class="switcher-tab" type="button" data-section-target="hospamb">Hosp./Amb.</button>
-        <button class="switcher-tab" type="button" data-section-target="requests">Solicitudes</button>
-        <button class="switcher-tab" type="button" data-section-target="reports">Informes</button>
-      </nav>
 
       <div id="statusBanner" class="status-banner" data-tone="info">Cargando Lativet...</div>
 
