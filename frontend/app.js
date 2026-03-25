@@ -2129,6 +2129,9 @@ function renderSelects() {
 }
 
 function resetForm(form) {
+  if (!form || typeof form.reset !== "function") {
+    return;
+  }
   form.reset();
 }
 
