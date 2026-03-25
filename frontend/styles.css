@@ -850,7 +850,7 @@ textarea:focus {
 .agenda-layout {
   display: grid;
   gap: 18px;
-  grid-template-columns: minmax(210px, 260px) minmax(0, 1fr);
+  grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
   align-items: start;
 }
 
@@ -880,12 +880,12 @@ textarea:focus {
 }
 
 .agenda-calendar-panel .agenda-weekdays span {
-  font-size: 0.62rem;
+  font-size: 0.68rem;
 }
 
 .agenda-calendar-panel .agenda-date-card {
-  min-height: 30px;
-  padding: 3px;
+  min-height: 36px;
+  padding: 4px;
   border-radius: 8px;
   box-shadow: none;
   background: transparent;
@@ -901,10 +901,10 @@ textarea:focus {
 }
 
 .agenda-calendar-panel .agenda-date-card__day {
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   border-radius: 7px;
-  font-size: 0.72rem;
+  font-size: 0.8rem;
   background: transparent;
 }
 
@@ -937,14 +937,14 @@ textarea:focus {
 
 .agenda-calendar-panel .panel-heading .secondary-button,
 .agenda-calendar-panel .panel-heading .primary-button {
-  padding: 5px 10px;
-  font-size: 0.74rem;
+  padding: 6px 12px;
+  font-size: 0.78rem;
 }
 
 .agenda-calendar-panel .panel-heading .ghost-button {
   padding: 0;
-  width: 28px;
-  height: 28px;
+  width: 30px;
+  height: 30px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
