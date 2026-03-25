@@ -139,8 +139,6 @@ const sectionSubsections = {
     label: "Que quieres administrar",
     options: [
       { value: "users", label: "Usuarios", panels: ["administrationUsersPanel"] },
-      { value: "owners", label: "Propietarios", panels: ["administrationOwnersFormPanel", "administrationOwnersListPanel"] },
-      { value: "variables", label: "Variables", panels: ["administrationVariablesPanel"] },
     ],
   },
   agenda: {

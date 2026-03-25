@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Lativet Web</title>
-    <link rel="stylesheet" href="/styles.css?v=20260324-4" />
+    <link rel="stylesheet" href="/styles.css?v=20260325-1" />
   </head>
   <body>
     <div class="page-shell">
@@ -182,11 +182,11 @@
               <h3>Usuarios</h3>
               <p>Espacio preparado para la administracion futura de perfiles.</p>
             </article>
-            <article class="menu-card">
+            <article class="menu-card is-hidden">
               <h3>Propietarios</h3>
               <p>Registro central de tutores y responsables.</p>
             </article>
-            <article class="menu-card">
+            <article class="menu-card is-hidden">
               <h3>Variables</h3>
               <p>Base de cumplimiento y lineamientos clinicos.</p>
             </article>
@@ -235,7 +235,7 @@
               <p id="usersSummary" class="meta-copy"></p>
             </article>
 
-            <article id="administrationOwnersFormPanel" class="panel-card">
+            <article id="administrationOwnersFormPanel" class="panel-card is-hidden">
               <div class="panel-heading"><div><p class="eyebrow">Propietarios</p><h3>Nuevo propietario</h3></div></div>
               <form id="ownerForm" class="form-grid">
                 <label><span>Nombre completo</span><input name="full_name" required /></label>
@@ -250,12 +250,12 @@
           </div>
 
           <div class="two-column-grid">
-            <article id="administrationOwnersListPanel" class="panel-card">
+            <article id="administrationOwnersListPanel" class="panel-card is-hidden">
               <div class="panel-heading"><div><p class="eyebrow">Directorio</p><h3>Propietarios registrados</h3></div></div>
               <div id="ownersList" class="list-surface"></div>
             </article>
 
-            <article id="administrationVariablesPanel" class="panel-card">
+            <article id="administrationVariablesPanel" class="panel-card is-hidden">
               <div class="panel-heading"><div><p class="eyebrow">Variables</p><h3>Base operativa</h3></div></div>
               <div id="complianceNotes" class="compliance-surface"></div>
               <div id="complianceSources" class="list-surface"></div>
@@ -1018,6 +1018,6 @@
     </div>
   </div>
 
-  <script src="/app.js?v=20260324-4"></script>
+  <script src="/app.js?v=20260325-1"></script>
  </body>
 </html>
