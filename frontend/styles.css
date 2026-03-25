@@ -1404,6 +1404,10 @@ body.auth-locked .page-shell > :not(#loginModal) {
   color: var(--text);
 }
 
+.appointment-modal input[type="search"] {
+  margin-bottom: 2px;
+}
+
 .appointment-modal textarea {
   min-height: 110px;
 }
@@ -1443,6 +1447,12 @@ body.auth-locked .page-shell > :not(#loginModal) {
 .appointment-modal__hint {
   font-size: 0.78rem;
   color: #dc2626;
+}
+
+.appointment-modal__helper {
+  margin: 2px 0 0;
+  font-size: 0.78rem;
+  color: var(--muted);
 }
 
 .appointment-modal__footer {

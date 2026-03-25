@@ -734,6 +734,8 @@ function cacheElements() {
     "appointmentRegisterOwnerButton",
     "appointmentTypeSelect",
     "appointmentProfessionalSelect",
+    "appointmentPatientSearchInput",
+    "appointmentPatientHelper",
     "appointmentStartInput",
     "appointmentEndInput",
     "appointmentNoTimeCheckbox",
@@ -2264,6 +2266,91 @@ function getProfessionalOptions() {
     .map((label) => ({ id: label, label }));
 }
 
+function getOwnerById(ownerId) {
+  return (state.owners || []).find((owner) => owner.id === ownerId) || null;
+}
+
+function buildAppointmentPatientLabel(patient) {
+  const owner = getOwnerById(patient.owner_id);
+  const ownerName = owner?.full_name || patient.owner_name || "Sin propietario";
+  const ownerId = owner?.identification_number || "";
+  const ownerPhone = owner?.phone || owner?.alternate_phone || "";
+  const parts = [`${patient.name}`, `${patient.species}`, ownerName];
+  if (ownerId) {
+    parts.push(ownerId);
+  }
+  if (ownerPhone) {
+    parts.push(ownerPhone);
+  }
+  return parts.join(" / ");
+}
+
+function matchesAppointmentPatient(patient, query) {
+  if (!query) {
+    return true;
+  }
+  const owner = getOwnerById(patient.owner_id);
+  const haystack = [
+    patient.name,
+    patient.species,
+    patient.breed,
+    patient.owner_name,
+    owner?.full_name,
+    owner?.identification_number,
+    owner?.phone,
+    owner?.alternate_phone,
+    owner?.email,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+  return haystack.includes(query);
+}
+
+function renderAppointmentPatientSelect() {
+  const query = String(elements.appointmentPatientSearchInput?.value || "")
+    .trim()
+    .toLowerCase();
+  const patients = (state.patients || []).filter((patient) =>
+    matchesAppointmentPatient(patient, query)
+  );
+  populateSelect(
+    elements.appointmentPatientSelect,
+    patients,
+    buildAppointmentPatientLabel,
+    "Selecciona paciente"
+  );
+  if (elements.appointmentPatientHelper) {
+    let message = "";
+    if (!patients.length) {
+      const allPatientsEmpty = !(state.patients || []).length;
+      if (allPatientsEmpty) {
+        message = "Aun no hay mascotas registradas. Debes registrar una mascota para agendar.";
+      } else if (query) {
+        const ownerMatch = (state.owners || []).some((owner) => {
+          const haystack = [
+            owner.full_name,
+            owner.identification_number,
+            owner.phone,
+            owner.alternate_phone,
+            owner.email,
+          ]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase();
+          return haystack.includes(query);
+        });
+        message = ownerMatch
+          ? "Propietario encontrado, pero aun no tiene mascotas registradas."
+          : "No encontramos mascotas con ese propietario o documento.";
+      } else {
+        message = "No encontramos mascotas con ese propietario o documento.";
+      }
+    }
+    elements.appointmentPatientHelper.textContent = message;
+  }
+}
+
 function renderSelects() {
   populateSelect(
     elements.patientOwnerSelect,
@@ -2278,12 +2365,7 @@ function renderSelects() {
     "Proveedor opcional"
   );
   const patientLabel = (patient) => `${patient.name} / ${patient.species} / ${patient.owner_name}`;
-  populateSelect(
-    elements.appointmentPatientSelect,
-    state.patients,
-    patientLabel,
-    "Buscar propietario por identificacion, nombres o telefono"
-  );
+  renderAppointmentPatientSelect();
   [
     elements.billingPatientSelect,
     elements.recordPatientSelect,
@@ -2491,6 +2573,9 @@ function captureAppointmentDraft() {
     return null;
   }
   const payload = serializeForm(elements.appointmentForm);
+  if (elements.appointmentPatientSearchInput) {
+    payload.owner_search = elements.appointmentPatientSearchInput.value || "";
+  }
   if (elements.appointmentStartInput) {
     payload.appointment_at = elements.appointmentStartInput.value || "";
   }
@@ -2503,6 +2588,9 @@ function captureAppointmentDraft() {
 function restoreAppointmentDraft(draft) {
   if (!draft || !elements.appointmentForm) {
     return;
+  }
+  if (elements.appointmentPatientSearchInput) {
+    elements.appointmentPatientSearchInput.value = draft.owner_search || "";
   }
   if (elements.appointmentPatientSelect) {
     elements.appointmentPatientSelect.value = draft.patient_id || "";
@@ -2538,6 +2626,7 @@ function restoreAppointmentDraft(draft) {
   if (elements.appointmentForm.elements.notes) {
     elements.appointmentForm.elements.notes.value = draft.notes || "";
   }
+  renderAppointmentPatientSelect();
   syncAppointmentSelectedDate();
   if (elements.appointmentEndInput && !draft.appointment_end_at) {
     syncAppointmentEndTime({ force: true });
@@ -2573,6 +2662,9 @@ function openAppointmentModal(initialDateTime = "") {
   if (elements.appointmentEndInput) {
     elements.appointmentEndInput.value = buildAppointmentEndValue(dateTimeValue, 30);
   }
+  if (elements.appointmentPatientSearchInput) {
+    elements.appointmentPatientSearchInput.value = "";
+  }
   if (elements.appointmentReserveCheckbox) {
     elements.appointmentReserveCheckbox.checked = false;
   }
@@ -2594,6 +2686,7 @@ function openAppointmentModal(initialDateTime = "") {
       elements.appointmentProfessionalSelect.value = "Agenda general";
     }
   }
+  renderAppointmentPatientSelect();
   syncAppointmentSelectedDate();
 }
 
@@ -2833,6 +2926,13 @@ async function handleOwnerSubmit(event) {
   closeOwnerModal({ suppressReturn: true });
   await refreshData("Propietario guardado.");
   if (shouldReturn) {
+    if (owner) {
+      pendingAppointmentDraft = {
+        ...(pendingAppointmentDraft || {}),
+        owner_search:
+          owner.full_name || owner.identification_number || owner.phone || "",
+      };
+    }
     setActiveSection("agenda");
     maybeReturnToAppointmentModal();
     return;
@@ -3482,6 +3582,11 @@ function bindForms() {
   elements.closeAppointmentModalButton.addEventListener("click", closeAppointmentModal);
   if (elements.appointmentRegisterOwnerButton) {
     elements.appointmentRegisterOwnerButton.addEventListener("click", () => openOwnerModalFromAppointment());
+  }
+  if (elements.appointmentPatientSearchInput) {
+    elements.appointmentPatientSearchInput.addEventListener("input", () => {
+      renderAppointmentPatientSelect();
+    });
   }
   if (elements.appointmentStartInput) {
     elements.appointmentStartInput.addEventListener("change", () => {
