@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Lativet Web</title>
-    <link rel="stylesheet" href="/styles.css?v=20260325-6" />
+    <link rel="stylesheet" href="/styles.css?v=20260325-7" />
   </head>
   <body>
     <div class="page-shell">
@@ -235,27 +235,10 @@
               <p id="usersSummary" class="meta-copy"></p>
             </article>
 
-            <article id="administrationOwnersFormPanel" class="panel-card is-hidden">
-              <div class="panel-heading"><div><p class="eyebrow">Propietarios</p><h3>Nuevo propietario</h3></div></div>
-              <form id="ownerForm" class="form-grid">
-                <label><span>Nombre completo</span><input name="full_name" required /></label>
-                <label><span>Tipo ID</span><select name="identification_type" required><option value="">Selecciona</option><option>CC</option><option>CE</option><option>NIT</option><option>Pasaporte</option></select></label>
-                <label><span>Numero ID</span><input name="identification_number" required /></label>
-                <label><span>Telefono</span><input name="phone" required /></label>
-                <label><span>Correo</span><input name="email" type="email" /></label>
-                <label class="full"><span>Direccion</span><input name="address" /></label>
-                <div class="full form-actions"><button class="primary-button" type="submit">Guardar propietario</button></div>
-              </form>
-            </article>
           </div>
 
           <div class="two-column-grid">
-            <article id="administrationOwnersListPanel" class="panel-card is-hidden">
-              <div class="panel-heading"><div><p class="eyebrow">Directorio</p><h3>Propietarios registrados</h3></div></div>
-              <div id="ownersList" class="list-surface"></div>
-            </article>
-
-            <article id="administrationVariablesPanel" class="panel-card is-hidden">
+            <article id="administrationVariablesPanel" class="panel-card panel-card--wide is-hidden">
               <div class="panel-heading"><div><p class="eyebrow">Variables</p><h3>Base operativa</h3></div></div>
               <div id="complianceNotes" class="compliance-surface"></div>
               <div id="complianceSources" class="list-surface"></div>
@@ -308,6 +291,29 @@
               <div class="full form-actions">
                 <button class="primary-button" type="submit">Guardar usuario</button>
               </div>
+            </form>
+          </div>
+        </div>
+
+        <div id="ownerModal" class="modal-shell is-hidden" aria-hidden="true">
+          <div class="modal-backdrop" data-close-owner-modal="true"></div>
+          <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="ownerModalTitle">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Propietarios</p>
+                <h3 id="ownerModalTitle">Registro de propietario</h3>
+              </div>
+              <button id="closeOwnerModalButton" class="ghost-button" type="button">Cerrar</button>
+            </div>
+            <form id="ownerForm" class="form-grid">
+              <input type="hidden" name="id" />
+              <label><span>Nombre completo</span><input name="full_name" required /></label>
+              <label><span>Tipo ID</span><select name="identification_type" required><option value="">Selecciona</option><option>CC</option><option>CE</option><option>NIT</option><option>Pasaporte</option></select></label>
+              <label><span>Numero ID</span><input name="identification_number" required /></label>
+              <label><span>Telefono</span><input name="phone" required /></label>
+              <label><span>Correo</span><input name="email" type="email" /></label>
+              <label class="full"><span>Direccion</span><input name="address" /></label>
+              <div class="full form-actions"><button class="primary-button" type="submit">Guardar propietario</button></div>
             </form>
           </div>
         </div>
@@ -604,6 +610,10 @@
 
           <div class="menu-strip">
             <article class="menu-card">
+              <h3>Pacientes</h3>
+              <p>Registro de propietarios y mascotas.</p>
+            </article>
+            <article class="menu-card">
               <h3>Historias clinicas</h3>
               <p>Historia base por caso o episodio.</p>
             </article>
@@ -621,25 +631,64 @@
             </article>
           </div>
 
-          <div class="two-column-grid">
-            <article id="consultorioPatientFormPanel" class="panel-card">
-              <div class="panel-heading"><div><p class="eyebrow">Mascotas</p><h3>Nuevo paciente</h3></div></div>
-              <form id="patientForm" class="form-grid">
-                <label class="full"><span>Propietario</span><select id="patientOwnerSelect" name="owner_id" required></select></label>
-                <label><span>Nombre</span><input name="name" required /></label>
-                <label><span>Especie</span><input name="species" required /></label>
-                <label><span>Raza</span><input name="breed" /></label>
-                <label><span>Sexo</span><select name="sex" required><option value="">Selecciona</option><option>Macho</option><option>Hembra</option></select></label>
-                <label><span>Nacimiento</span><input name="birth_date" type="date" /></label>
-                <label><span>Peso (kg)</span><input name="weight_kg" type="number" step="0.01" /></label>
-                <label><span>Vacunacion</span><input name="vaccination_status" /></label>
-                <label><span>Desparasitacion</span><input name="deworming_status" /></label>
-                <label class="full"><span>Notas</span><textarea name="notes" rows="3"></textarea></label>
-                <div class="full form-actions"><button class="primary-button" type="submit">Guardar paciente</button></div>
-              </form>
+          <div class="panel-stack consultorio-owners-flow">
+            <article id="consultorioOwnersPanel" class="panel-card">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">Pacientes</p>
+                  <h3>Propietarios registrados</h3>
+                </div>
+                <div class="form-actions">
+                  <button id="openOwnerModalButton" class="secondary-button" type="button">Registrar propietario</button>
+                </div>
+              </div>
+              <div class="table-controls">
+                <label class="table-control table-control--search">Buscar
+                  <input id="ownersSearchInput" type="search" placeholder="Nombre, documento o telefono" />
+                </label>
+              </div>
+              <div id="ownersList" class="list-surface"></div>
             </article>
 
-            <article id="consultorioRecordFormPanel" class="panel-card">
+            <article id="consultorioOwnerDetailPanel" class="panel-card is-hidden">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">Propietario</p>
+                  <h3 id="consultorioOwnerName">Detalle del propietario</h3>
+                </div>
+                <div class="form-actions">
+                  <button id="consultorioOwnerBackButton" class="ghost-button" type="button">Volver</button>
+                </div>
+              </div>
+              <div id="consultorioOwnerSummary" class="summary-list"></div>
+              <div class="two-column-grid owner-detail-grid">
+                <article id="consultorioPatientFormPanel" class="panel-card panel-card--sub">
+                  <div class="panel-heading"><div><p class="eyebrow">Mascotas</p><h3>Registrar mascota</h3></div></div>
+                  <form id="patientForm" class="form-grid">
+                    <label class="full"><span>Propietario</span><select id="patientOwnerSelect" name="owner_id" required></select></label>
+                    <label><span>Nombre</span><input name="name" required /></label>
+                    <label><span>Especie</span><input name="species" required /></label>
+                    <label><span>Raza</span><input name="breed" /></label>
+                    <label><span>Sexo</span><select name="sex" required><option value="">Selecciona</option><option>Macho</option><option>Hembra</option></select></label>
+                    <label><span>Nacimiento</span><input name="birth_date" type="date" /></label>
+                    <label><span>Peso (kg)</span><input name="weight_kg" type="number" step="0.01" /></label>
+                    <label><span>Vacunacion</span><input name="vaccination_status" /></label>
+                    <label><span>Desparasitacion</span><input name="deworming_status" /></label>
+                    <label class="full"><span>Notas</span><textarea name="notes" rows="3"></textarea></label>
+                    <div class="full form-actions"><button class="primary-button" type="submit">Guardar mascota</button></div>
+                  </form>
+                </article>
+
+                <article id="consultorioPatientsPanel" class="panel-card panel-card--sub">
+                  <div class="panel-heading"><div><p class="eyebrow">Mascotas</p><h3>Mascotas registradas</h3></div></div>
+                  <div id="patientsList" class="list-surface"></div>
+                </article>
+              </div>
+            </article>
+          </div>
+
+          <div class="two-column-grid">
+            <article id="consultorioRecordFormPanel" class="panel-card panel-card--wide">
               <div class="panel-heading"><div><p class="eyebrow">Historia clinica</p><h3>Nueva historia</h3></div></div>
               <form id="recordForm" class="form-grid">
                 <label class="full"><span>Paciente</span><select id="recordPatientSelect" name="patient_id" required></select></label>
@@ -743,11 +792,7 @@
           </div>
 
           <div class="two-column-grid">
-            <article id="consultorioPatientsPanel" class="panel-card">
-              <div class="panel-heading"><div><p class="eyebrow">Mascotas</p><h3>Pacientes registrados</h3></div></div>
-              <div id="patientsList" class="list-surface"></div>
-            </article>
-            <article id="consultorioRecordsPanel" class="panel-card">
+            <article id="consultorioRecordsPanel" class="panel-card panel-card--wide">
               <div class="panel-heading"><div><p class="eyebrow">Historias</p><h3>Historias recientes</h3></div></div>
               <div id="recordsList" class="list-surface"></div>
             </article>
@@ -1028,6 +1073,6 @@
     </div>
   </div>
 
-  <script src="/app.js?v=20260325-3"></script>
+  <script src="/app.js?v=20260325-4"></script>
  </body>
 </html>

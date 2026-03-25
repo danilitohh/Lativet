@@ -178,7 +178,7 @@ def create_app(base_dir: Path | None = None, data_dir: Path | None = None) -> Fl
 
     @app.post("/api/owners")
     def save_owner():
-        return jsonify({"ok": False, "error": "Modulo propietarios deshabilitado."}), 410
+        return respond(service.save_owner(payload()))
 
     @app.post("/api/providers")
     def save_provider():

@@ -583,6 +583,54 @@ button:active {
   grid-column: 1 / -1;
 }
 
+.panel-stack {
+  display: grid;
+  gap: 18px;
+}
+
+.consultorio-owners-flow {
+  margin-top: 18px;
+}
+
+.owner-card {
+  display: grid;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.owner-card.is-selected {
+  border-color: rgba(42, 126, 138, 0.4);
+  box-shadow: 0 16px 28px rgba(12, 63, 82, 0.08);
+}
+
+.owner-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.owner-card__meta {
+  display: grid;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.owner-card .ghost-button {
+  padding: 6px 12px;
+  font-size: 0.85rem;
+}
+
+.owner-detail-grid {
+  margin-top: 18px;
+}
+
+.panel-card--sub {
+  box-shadow: none;
+  background: rgba(255, 255, 255, 0.86);
+}
+
 .table-controls {
   display: flex;
   flex-wrap: wrap;
