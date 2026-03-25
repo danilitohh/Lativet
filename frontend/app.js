@@ -69,7 +69,7 @@ const permissionLabelMap = permissionOptions.reduce((acc, option) => {
   return acc;
 }, {});
 const usersFilters = { query: "", pageSize: 10, showInactive: false };
-const ownersFilters = { query: "" };
+const ownersFilters = { query: "", petQuery: "" };
 const authState = { requiresLogin: false, authenticated: false, currentUser: null };
 const AUTH_SESSION_KEY = "lativet_auth_session";
 const BOOTSTRAP_CACHE_KEY = "lativet_bootstrap_v3";
@@ -950,6 +950,8 @@ function cacheElements() {
     "openOwnerModalButton",
     "ownersList",
     "ownersSearchInput",
+    "ownersPatientSearchInput",
+    "ownersSearchButton",
     "consultorioOwnersPanel",
     "consultorioOwnerDetailPanel",
     "consultorioOwnerSummary",
@@ -1756,9 +1758,7 @@ function applySettingsForm() {
 
 function filterOwners() {
   const query = String(ownersFilters.query || "").trim().toLowerCase();
-  if (!query) {
-    return state.owners || [];
-  }
+  const petQuery = String(ownersFilters.petQuery || "").trim().toLowerCase();
   return (state.owners || []).filter((owner) => {
     const haystack = [
       owner.full_name,
@@ -1771,8 +1771,80 @@ function filterOwners() {
       .filter(Boolean)
       .join(" ")
       .toLowerCase();
-    return haystack.includes(query);
+    const matchesOwner = !query || haystack.includes(query);
+    const ownerPatients = (state.patients || []).filter((patient) => patient.owner_id === owner.id);
+    const patientMatches = !petQuery
+      || ownerPatients.some((patient) =>
+        [patient.name, patient.species, patient.breed]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase()
+          .includes(petQuery)
+      );
+    return matchesOwner && patientMatches;
   });
+}
+
+function getOwnerPatients(ownerId) {
+  return (state.patients || []).filter((patient) => patient.owner_id === ownerId);
+}
+
+function getOwnerInitials(owner) {
+  const name = String(owner?.full_name || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() || "")
+    .join("");
+  return name || "PR";
+}
+
+function getOwnerLatestActivity(ownerId) {
+  const patientIds = new Set(getOwnerPatients(ownerId).map((patient) => patient.id));
+  const activities = [];
+  (state.records || []).forEach((record) => {
+    if (!patientIds.has(record.patient_id)) {
+      return;
+    }
+    activities.push({
+      at: record.opened_at,
+      patientName: record.patient_name,
+      label: "Historia clinica",
+    });
+  });
+  (state.consultations || []).forEach((consultation) => {
+    if (!patientIds.has(consultation.patient_id)) {
+      return;
+    }
+    activities.push({
+      at: consultation.consultation_at,
+      patientName: consultation.patient_name,
+      label: consultation.title || consultation.consultation_type || "Consulta",
+    });
+  });
+  (state.consents || []).forEach((consent) => {
+    if (!patientIds.has(consent.patient_id)) {
+      return;
+    }
+    activities.push({
+      at: consent.signed_at,
+      patientName: consent.patient_name,
+      label: consent.procedure_name || "Consentimiento",
+    });
+  });
+  (state.grooming_documents || []).forEach((document) => {
+    if (!patientIds.has(document.patient_id)) {
+      return;
+    }
+    activities.push({
+      at: document.service_at,
+      patientName: document.patient_name,
+      label: document.service_name || "Peluqueria",
+    });
+  });
+  activities.sort((left, right) => String(right.at || "").localeCompare(String(left.at || "")));
+  return activities[0] || null;
 }
 
 function getConsultorioOwner() {
@@ -1884,36 +1956,105 @@ function setConsultorioProfileView(value) {
 
 function renderOwners() {
   const owners = filterOwners();
-  renderList(
-    elements.ownersList,
-    owners,
-    (owner) => `
-      <article class="list-card owner-card${owner.id === consultorioOwnerId ? " is-selected" : ""}" data-owner-select="${escapeHtml(owner.id)}">
-        <div class="owner-card__header">
-          <div>
-            <h4>${escapeHtml(owner.full_name)}</h4>
-            <p>${escapeHtml(owner.identification_type)} ${escapeHtml(owner.identification_number)}</p>
-          </div>
-          <div class="item-actions owner-card__actions">
-            <button class="ghost-button" type="button" data-owner-select="${escapeHtml(owner.id)}">Ver</button>
-            <button class="secondary-button" type="button" data-owner-edit="${escapeHtml(owner.id)}">Editar</button>
-            <button class="ghost-button ghost-button--danger" type="button" data-owner-delete="${escapeHtml(owner.id)}">Eliminar</button>
-          </div>
-        </div>
-        <div class="owner-card__meta">
-          <span>Telefono: ${escapeHtml(owner.phone || "Sin dato")}</span>
-          ${
-            owner.alternate_phone
-              ? `<span>Tel. alternativo: ${escapeHtml(owner.alternate_phone)}</span>`
-              : ""
-          }
-          <span>Correo: ${escapeHtml(owner.email || "Sin dato")}</span>
-          <span>Mascotas: ${owner.patients_count || 0}</span>
-        </div>
-      </article>
-    `,
-    "Aun no hay propietarios registrados."
-  );
+  if (!elements.ownersList) {
+    return;
+  }
+  if (!owners.length) {
+    elements.ownersList.innerHTML = emptyState("Aun no hay propietarios registrados.");
+    return;
+  }
+  elements.ownersList.innerHTML = `
+    <div class="table-wrapper owners-table-wrapper">
+      <table class="data-table owners-table">
+        <thead>
+          <tr>
+            <th>Nombre</th>
+            <th>Identificador</th>
+            <th>Telefono</th>
+            <th>Mascotas</th>
+            <th>Ultima gestion</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${owners
+            .map((owner) => {
+              const patients = getOwnerPatients(owner.id);
+              const latestActivity = getOwnerLatestActivity(owner.id);
+              return `
+                <tr class="owner-table-row${owner.id === consultorioOwnerId ? " is-selected" : ""}" data-owner-select="${escapeHtml(
+                  owner.id
+                )}">
+                  <td>
+                    <div class="owner-table-name">
+                      <span class="owner-table-avatar">${escapeHtml(getOwnerInitials(owner))}</span>
+                      <div>
+                        <strong>${escapeHtml(owner.full_name)}</strong>
+                        <span>${escapeHtml(owner.email || "Sin correo")}</span>
+                        <span>Creado: ${owner.created_at ? escapeHtml(formatDateTime(owner.created_at)) : "Sin fecha"}</span>
+                      </div>
+                    </div>
+                  </td>
+                  <td>${escapeHtml(owner.identification_number || "Sin dato")}</td>
+                  <td>
+                    <div class="owner-table-phone">
+                      <span>${escapeHtml(owner.phone || "Sin dato")}</span>
+                      ${
+                        owner.alternate_phone
+                          ? `<span>${escapeHtml(owner.alternate_phone)}</span>`
+                          : ""
+                      }
+                    </div>
+                  </td>
+                  <td>
+                    <div class="owner-pets-list">
+                      ${
+                        patients.length
+                          ? patients
+                              .map(
+                                (patient) => `
+                                  <button class="owner-pet-chip" type="button" data-patient-select="${escapeHtml(
+                                    patient.id
+                                  )}">
+                                    <strong>${escapeHtml(patient.name)}</strong>
+                                    <span>${escapeHtml(patient.sex || patient.species || "Mascota")}</span>
+                                  </button>
+                                `
+                              )
+                              .join("")
+                          : `<span class="owner-pets-empty">Sin mascotas registradas</span>`
+                      }
+                    </div>
+                  </td>
+                  <td>
+                    ${
+                      latestActivity
+                        ? `
+                            <div class="owner-last-activity">
+                              <strong>${escapeHtml(formatDateTime(latestActivity.at))}</strong>
+                              <span>${escapeHtml(latestActivity.patientName || "Paciente")} · ${escapeHtml(
+                            latestActivity.label
+                          )}</span>
+                            </div>
+                          `
+                        : `<span class="owner-pets-empty">Sin actividad</span>`
+                    }
+                  </td>
+                  <td>
+                    <div class="table-actions owner-table-actions">
+                      <button class="ghost-button" type="button" data-owner-select="${escapeHtml(owner.id)}">Ver</button>
+                      <button class="secondary-button" type="button" data-owner-edit="${escapeHtml(owner.id)}">Editar</button>
+                      <button class="ghost-button ghost-button--danger" type="button" data-owner-delete="${escapeHtml(owner.id)}">Eliminar</button>
+                    </div>
+                  </td>
+                </tr>
+              `;
+            })
+            .join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
 }
 
 function renderPatients() {
@@ -4378,6 +4519,19 @@ async function handlePatientDelete(patientId) {
 }
 
 async function handleOwnersListClick(event) {
+  const patientButton = event.target.closest("[data-patient-select]");
+  if (patientButton) {
+    const patient = getPatientById(patientButton.dataset.patientSelect || "");
+    if (!patient) {
+      throw new Error("No se encontro la mascota seleccionada.");
+    }
+    consultorioPatientId = patient.id;
+    consultorioOwnerId = patient.owner_id || consultorioOwnerId;
+    consultorioProfileView = "records";
+    setSectionSubsection("consultorio", "patients");
+    renderConsultorioPatientProfile();
+    return;
+  }
   const editButton = event.target.closest("[data-owner-edit]");
   if (editButton) {
     const owner = getOwnerById(editButton.dataset.ownerEdit || "");
@@ -5224,6 +5378,17 @@ function bindForms() {
   if (elements.ownersSearchInput) {
     elements.ownersSearchInput.addEventListener("input", (event) => {
       ownersFilters.query = event.target.value || "";
+      renderOwners();
+    });
+  }
+  if (elements.ownersPatientSearchInput) {
+    elements.ownersPatientSearchInput.addEventListener("input", (event) => {
+      ownersFilters.petQuery = event.target.value || "";
+      renderOwners();
+    });
+  }
+  if (elements.ownersSearchButton) {
+    elements.ownersSearchButton.addEventListener("click", () => {
       renderOwners();
     });
   }

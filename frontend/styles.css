@@ -598,6 +598,96 @@ button:active {
   margin-top: 18px;
 }
 
+.owners-table-wrapper {
+  border-radius: 24px;
+}
+
+.owners-table td {
+  vertical-align: top;
+}
+
+.owner-table-row {
+  cursor: pointer;
+}
+
+.owner-table-row.is-selected {
+  background: rgba(42, 126, 138, 0.08);
+}
+
+.owner-table-name {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.owner-table-name > div,
+.owner-table-phone,
+.owner-last-activity {
+  display: grid;
+  gap: 4px;
+}
+
+.owner-table-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  background: linear-gradient(145deg, rgba(62, 99, 255, 0.88), rgba(17, 182, 199, 0.78));
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 700;
+  flex: 0 0 auto;
+}
+
+.owner-table-name strong,
+.owner-last-activity strong {
+  color: var(--ink);
+}
+
+.owner-table-name span,
+.owner-table-phone span,
+.owner-last-activity span {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.owner-pets-list {
+  display: grid;
+  gap: 8px;
+}
+
+.owner-pet-chip {
+  display: inline-flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid rgba(11, 39, 49, 0.08);
+  border-radius: 14px;
+  background: rgba(247, 250, 255, 0.92);
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.owner-pet-chip strong {
+  font-size: 0.88rem;
+}
+
+.owner-pet-chip span,
+.owner-pets-empty {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.owner-table-actions {
+  flex-wrap: wrap;
+}
+
 .patient-card {
   cursor: pointer;
 }
@@ -834,6 +924,10 @@ button:active {
     border-bottom: 1px solid rgba(11, 39, 49, 0.08);
     padding-right: 0;
     padding-bottom: 16px;
+  }
+
+  .owners-table {
+    min-width: 980px;
   }
 }
 .menu-card {
