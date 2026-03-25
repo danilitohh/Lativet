@@ -47,8 +47,12 @@ const permissionOptions = [
   { key: "requests", label: "Solicitudes" },
   { key: "reports", label: "Informes" },
 ];
+const permissionLabelMap = permissionOptions.reduce((acc, option) => {
+  acc[option.key] = option.label;
+  return acc;
+}, {});
 const usersFilters = { query: "", pageSize: 10, showInactive: false };
-const authState = { requiresLogin: false, authenticated: false };
+const authState = { requiresLogin: false, authenticated: false, currentUser: null };
 const AUTH_SESSION_KEY = "lativet_auth_session";
 const consultationTypes = [
   "Vacunacion",
@@ -1573,7 +1577,71 @@ function buildUserPermissionsSummary(permissions) {
   if (permissions.length >= permissionOptions.length) {
     return "Acceso total";
   }
-  return `${permissions.length} permisos`;
+  return permissions.map((key) => permissionLabelMap[key] || key).join(", ");
+}
+
+function isAdminUser() {
+  return Boolean(authState.currentUser?.is_admin);
+}
+
+function getAllowedSections() {
+  const all = permissionOptions.map((option) => option.key);
+  if (!authState.requiresLogin) {
+    return new Set(all);
+  }
+  if (!authState.authenticated) {
+    return new Set();
+  }
+  if (isAdminUser()) {
+    return new Set(all);
+  }
+  const permissions = Array.isArray(authState.currentUser?.permissions)
+    ? authState.currentUser.permissions
+    : [];
+  return new Set(permissions);
+}
+
+function applyPermissionsVisibility() {
+  const allowed = getAllowedSections();
+  queryAll("[data-section-target]").forEach((button) => {
+    const sectionId = button.dataset.sectionTarget;
+    const wrapper = button.closest(".switcher-item") || button;
+    wrapper.classList.toggle("is-hidden", !allowed.has(sectionId));
+  });
+  queryAll(".workspace-section").forEach((section) => {
+    section.classList.toggle("is-hidden", !allowed.has(section.id));
+  });
+  if (!allowed.size) {
+    return;
+  }
+  const active = document.querySelector(".switcher-tab.is-active")?.dataset.sectionTarget;
+  if (!active || !allowed.has(active)) {
+    const firstAllowed = permissionOptions.find((option) => allowed.has(option.key))?.key;
+    if (firstAllowed) {
+      setActiveSection(firstAllowed);
+    }
+  }
+}
+
+function syncAdminControls() {
+  const isAdmin = isAdminUser();
+  if (elements.openUserModalButton) {
+    elements.openUserModalButton.classList.toggle("is-hidden", !isAdmin);
+  }
+  if (elements.toggleInactiveUsersButton) {
+    elements.toggleInactiveUsersButton.classList.toggle("is-hidden", !isAdmin);
+  }
+  if (elements.exportUsersButton) {
+    elements.exportUsersButton.classList.toggle("is-hidden", !isAdmin);
+  }
+  if (elements.userForm) {
+    elements.userForm.querySelectorAll("input, select, textarea").forEach((field) => {
+      if (field.name === "id") {
+        return;
+      }
+      field.disabled = !isAdmin;
+    });
+  }
 }
 
 function renderUsers() {
@@ -1599,26 +1667,33 @@ function renderUsers() {
   if (!visible.length) {
     elements.usersTableBody.innerHTML = `<tr><td colspan="5">${emptyState("Aun no hay usuarios registrados.")}</td></tr>`;
   } else {
+    const isAdmin = isAdminUser();
     elements.usersTableBody.innerHTML = visible
       .map((user) => {
         const statusLabel = user.is_active ? "Activo" : "Inactivo";
         const statusClass = user.is_active ? "pill--confirmed" : "pill--draft";
         const createdLabel = user.created_at ? formatDateTime(user.created_at) : "N/D";
+        const permissionsLabel = buildUserPermissionsSummary(user.permissions);
         return `
           <tr class="${user.is_active ? "" : "is-muted"}">
             <td>
               <div class="table-actions">
+                ${
+                  isAdmin
+                    ? `
                 <button type="button" data-user-edit="${escapeHtml(user.id)}">Editar</button>
                 <button type="button" data-user-toggle="${escapeHtml(user.id)}" data-user-active="${user.is_active ? "1" : "0"}">
                   ${user.is_active ? "Desactivar" : "Activar"}
-                </button>
+                </button>`
+                    : "<span class=\"meta-copy\">Solo administrador</span>"
+                }
               </div>
             </td>
             <td>${escapeHtml(user.full_name || "Sin nombre")}</td>
             <td>${escapeHtml(user.email || "Sin correo")}</td>
             <td>
               ${escapeHtml(user.role || "Sin rol")}
-              <div class="meta-copy">Permisos: ${escapeHtml(buildUserPermissionsSummary(user.permissions))}</div>
+              <div class="meta-copy">Permisos: ${escapeHtml(permissionsLabel)}</div>
               <span class="pill ${statusClass}">${statusLabel}</span>
             </td>
             <td>${escapeHtml(createdLabel)}</td>
@@ -2123,6 +2198,9 @@ function openUserModal(user = null) {
   elements.userForm.elements.email.value = user?.email || "";
   elements.userForm.elements.role.value = user?.role || "Veterinario";
   elements.userForm.elements.is_active.checked = user?.is_active ?? true;
+  if (elements.userForm.elements.password) {
+    elements.userForm.elements.password.value = "";
+  }
   const permissions = Array.isArray(user?.permissions) ? user.permissions : [];
   const hasAll = permissions.length >= permissionOptions.length;
   elements.userForm.elements.permissions_all.checked = hasAll;
@@ -2187,6 +2265,8 @@ function setAuthUI(authenticated) {
   if (elements.logoutButton) {
     elements.logoutButton.classList.toggle("is-hidden", !authenticated);
   }
+  syncAdminControls();
+  applyPermissionsVisibility();
 }
 
 
@@ -2339,6 +2419,13 @@ function buildUserPayload() {
     role: form.elements.role.value,
     is_active: form.elements.is_active.checked,
   };
+  const password = form.elements.password?.value?.trim();
+  if (!payload.id && !password) {
+    throw new Error("La contrasena es obligatoria para nuevos usuarios.");
+  }
+  if (password) {
+    payload.password = password;
+  }
   const permissions = [];
   const allChecked = form.elements.permissions_all.checked;
   if (allChecked) {
@@ -2365,6 +2452,9 @@ async function handleUserSubmit(event) {
 }
 
 async function handleUsersTableClick(event) {
+  if (!isAdminUser()) {
+    return;
+  }
   const editButton = event.target.closest("button[data-user-edit]");
   if (editButton) {
     const user = state.users.find((item) => item.id === editButton.dataset.userEdit);
@@ -2387,8 +2477,9 @@ async function handleLoginSubmit(event) {
   const email = elements.loginForm.elements.email.value;
   const password = elements.loginForm.elements.password.value;
   try {
-    await api.authLogin({ email, password });
+    const result = await api.authLogin({ email, password });
     sessionStorage.setItem(AUTH_SESSION_KEY, "1");
+    authState.currentUser = result?.user || null;
     authState.authenticated = true;
     setAuthUI(true);
     closeLoginModal();
@@ -2408,6 +2499,7 @@ async function handleLogout() {
     // ignore
   }
   sessionStorage.removeItem(AUTH_SESSION_KEY);
+  authState.currentUser = null;
   authState.authenticated = false;
   setAuthUI(false);
   openLoginModal(true);
@@ -2899,9 +2991,11 @@ async function initApp() {
     const status = await api.authStatus();
     authState.requiresLogin = Boolean(status.requires_login);
     authState.authenticated = Boolean(status.authenticated);
+    authState.currentUser = status.user || null;
   } catch (error) {
     authState.requiresLogin = true;
     authState.authenticated = false;
+    authState.currentUser = null;
   }
   const sessionUnlocked = sessionStorage.getItem(AUTH_SESSION_KEY) === "1";
   if (authState.requiresLogin) {
@@ -2909,9 +3003,11 @@ async function initApp() {
       sessionStorage.removeItem(AUTH_SESSION_KEY);
     } else if (!sessionUnlocked) {
       authState.authenticated = false;
+      authState.currentUser = null;
     }
   } else {
     sessionStorage.removeItem(AUTH_SESSION_KEY);
+    authState.currentUser = null;
   }
   setAuthUI(authState.authenticated);
   if (authState.requiresLogin && !authState.authenticated) {

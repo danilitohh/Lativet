@@ -35,7 +35,36 @@ def create_app(base_dir: Path | None = None, data_dir: Path | None = None) -> Fl
         return bool(admin_email and admin_password)
 
     def is_authenticated() -> bool:
+        return bool(session.get("admin_authenticated") or session.get("user_authenticated"))
+
+    def is_admin() -> bool:
         return bool(session.get("admin_authenticated"))
+
+    def current_user() -> dict | None:
+        if session.get("admin_authenticated"):
+            return {
+                "id": "admin",
+                "full_name": "Administrador",
+                "email": admin_email or "admin",
+                "role": "Administrador",
+                "permissions": ["*"],
+                "is_admin": True,
+            }
+        user_id = session.get("user_id")
+        if not user_id:
+            return None
+        try:
+            user = service.get_user(user_id)
+        except Exception:
+            session.pop("user_authenticated", None)
+            session.pop("user_id", None)
+            return None
+        if not user.get("is_active"):
+            session.pop("user_authenticated", None)
+            session.pop("user_id", None)
+            return None
+        user["is_admin"] = False
+        return user
 
     def payload() -> dict:
         return request.get_json(silent=True) or {}
@@ -85,12 +114,14 @@ def create_app(base_dir: Path | None = None, data_dir: Path | None = None) -> Fl
 
     @app.get("/api/auth/status")
     def auth_status():
+        user = current_user()
         return respond(
             {
                 "ok": True,
                 "data": {
                     "requires_login": admin_configured(),
                     "authenticated": is_authenticated(),
+                    "user": user,
                 },
             }
         )
@@ -105,7 +136,29 @@ def create_app(base_dir: Path | None = None, data_dir: Path | None = None) -> Fl
         password = (body.get("password") or "").strip()
         if email == admin_email and password == admin_password:
             session["admin_authenticated"] = True
-            return respond({"ok": True, "data": {"authenticated": True}})
+            session.pop("user_authenticated", None)
+            session.pop("user_id", None)
+            return respond(
+                {
+                    "ok": True,
+                    "data": {"authenticated": True, "user": current_user()},
+                }
+            )
+        try:
+            user = service.authenticate_user(email, password)
+        except Exception:
+            user = None
+        if user:
+            session.pop("admin_authenticated", None)
+            session["user_authenticated"] = True
+            session["user_id"] = user["id"]
+            user["is_admin"] = False
+            return respond(
+                {
+                    "ok": True,
+                    "data": {"authenticated": True, "user": user},
+                }
+            )
         return jsonify({"ok": False, "error": "Credenciales invalidas."}), 401
 
     @app.post("/api/auth/logout")
@@ -127,10 +180,14 @@ def create_app(base_dir: Path | None = None, data_dir: Path | None = None) -> Fl
 
     @app.post("/api/users")
     def save_user():
+        if not is_admin():
+            return jsonify({"ok": False, "error": "Solo administradores."}), 403
         return respond(service.save_user(payload()))
 
     @app.patch("/api/users/<user_id>/status")
     def update_user_status(user_id: str):
+        if not is_admin():
+            return jsonify({"ok": False, "error": "Solo administradores."}), 403
         is_active = bool(payload().get("is_active"))
         return respond(service.update_user_status(user_id, is_active))
 

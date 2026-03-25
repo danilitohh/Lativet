@@ -134,10 +134,11 @@ def validate_user(payload: dict) -> dict:
     return {
         "id": optional_text(payload, "id"),
         "full_name": required_text(payload, "full_name", "Nombre completo"),
-        "email": required_text(payload, "email", "Correo"),
+        "email": required_text(payload, "email", "Correo").lower(),
         "role": optional_text(payload, "role") or "Auxiliar",
         "permissions": [str(item) for item in permissions],
         "is_active": to_bool(payload.get("is_active", True)),
+        "password": optional_text(payload, "password"),
     }
 
 

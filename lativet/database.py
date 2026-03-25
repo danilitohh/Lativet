@@ -9,6 +9,7 @@ from contextlib import contextmanager
 from datetime import date, datetime, time, timedelta
 from pathlib import Path
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
+from werkzeug.security import check_password_hash, generate_password_hash
 
 from .validators import (
     ValidationError,
@@ -592,6 +593,7 @@ class Database:
         self._ensure_column("appointments", "google_sync_error", "TEXT")
         self._ensure_column("consents", "record_id", "TEXT")
         self._ensure_column("consents", "consultation_id", "TEXT")
+        self._ensure_column("staff_users", "password_hash", "TEXT")
 
     def _ensure_column(self, table: str, column: str, definition: str) -> None:
         columns = {
@@ -778,6 +780,7 @@ class Database:
             except json.JSONDecodeError:
                 user["permissions"] = []
             user["is_active"] = bool(int(user.get("is_active") or 0))
+            user.pop("password_hash", None)
         return users
 
     def save_user(self, payload: dict) -> dict:
@@ -785,18 +788,28 @@ class Database:
         user_id = data["id"] or uuid.uuid4().hex
         timestamp = now_iso()
         permissions_json = json.dumps(data["permissions"] or [], ensure_ascii=False)
+        password = data.get("password") or ""
+        password_hash = ""
+        audit_payload = {key: value for key, value in data.items() if key != "password"}
         with self._tx():
             existing = None
+            existing_password_hash = ""
             if data["id"]:
                 existing = self.connection.execute(
-                    "SELECT id FROM staff_users WHERE id = ?",
+                    "SELECT id, password_hash FROM staff_users WHERE id = ?",
                     (user_id,),
                 ).fetchone()
+                if existing:
+                    existing_password_hash = existing["password_hash"] or ""
             if existing:
+                if password:
+                    password_hash = generate_password_hash(password)
+                else:
+                    password_hash = existing_password_hash
                 self.connection.execute(
                     """
                     UPDATE staff_users
-                    SET full_name = ?, email = ?, role = ?, permissions_json = ?, is_active = ?, updated_at = ?
+                    SET full_name = ?, email = ?, role = ?, permissions_json = ?, is_active = ?, password_hash = ?, updated_at = ?
                     WHERE id = ?
                     """,
                     (
@@ -805,17 +818,21 @@ class Database:
                         data["role"],
                         permissions_json,
                         1 if data["is_active"] else 0,
+                        password_hash,
                         timestamp,
                         user_id,
                     ),
                 )
                 action = "update"
             else:
+                if not password:
+                    raise ValidationError("La contrasena es obligatoria para nuevos usuarios.")
+                password_hash = generate_password_hash(password)
                 self.connection.execute(
                     """
                     INSERT INTO staff_users (
                         id, full_name, email, role, permissions_json,
-                        is_active, created_at, updated_at
+                        is_active, password_hash, created_at, updated_at
                     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
@@ -825,12 +842,13 @@ class Database:
                         data["role"],
                         permissions_json,
                         1 if data["is_active"] else 0,
+                        password_hash,
                         timestamp,
                         timestamp,
                     ),
                 )
                 action = "create"
-            self._record_audit("staff_user", user_id, action, "admin", data)
+            self._record_audit("staff_user", user_id, action, "admin", audit_payload)
         return self.get_user(user_id)
 
     def update_user_status(self, user_id: str, is_active: bool) -> dict:
@@ -858,6 +876,28 @@ class Database:
         except json.JSONDecodeError:
             user["permissions"] = []
         user["is_active"] = bool(int(user.get("is_active") or 0))
+        user.pop("password_hash", None)
+        return user
+
+    def authenticate_user(self, email: str, password: str) -> dict:
+        row = self.connection.execute(
+            "SELECT * FROM staff_users WHERE lower(email) = ?",
+            (email.lower(),),
+        ).fetchone()
+        if row is None:
+            raise ValidationError("Credenciales invalidas.")
+        user = self._row_to_dict(row)
+        if not bool(int(user.get("is_active") or 0)):
+            raise ValidationError("Usuario inactivo.")
+        stored_hash = user.get("password_hash") or ""
+        if not stored_hash or not check_password_hash(stored_hash, password):
+            raise ValidationError("Credenciales invalidas.")
+        try:
+            user["permissions"] = json.loads(user.get("permissions_json") or "[]")
+        except json.JSONDecodeError:
+            user["permissions"] = []
+        user["is_active"] = bool(int(user.get("is_active") or 0))
+        user.pop("password_hash", None)
         return user
 
     def save_settings(self, payload: dict) -> dict:
