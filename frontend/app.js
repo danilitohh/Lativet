@@ -49,6 +49,7 @@ try {
 let consultorioOwnerId = "";
 let consultorioPatientId = "";
 let consultorioProfileView = "records";
+let consultorioPatientEditorVisible = false;
 let pendingAppointmentDraft = null;
 let returnToAppointmentModal = false;
 const notifications = [];
@@ -70,6 +71,7 @@ const permissionLabelMap = permissionOptions.reduce((acc, option) => {
 }, {});
 const usersFilters = { query: "", pageSize: 10, showInactive: false };
 const ownersFilters = { query: "", petQuery: "" };
+const consultorioPatientsFilters = { query: "" };
 const authState = { requiresLogin: false, authenticated: false, currentUser: null };
 const AUTH_SESSION_KEY = "lativet_auth_session";
 const BOOTSTRAP_CACHE_KEY = "lativet_bootstrap_v3";
@@ -959,6 +961,9 @@ function cacheElements() {
     "consultorioOwnerBackButton",
     "consultorioOwnerEditButton",
     "consultorioOwnerDeleteButton",
+    "consultorioPatientFormPanel",
+    "ownerPatientsSearchInput",
+    "openPatientFormButton",
     "consultorioPatientProfilePanel",
     "consultorioPatientProfileTitle",
     "consultorioPatientProfileSubtitle",
@@ -1789,6 +1794,25 @@ function getOwnerPatients(ownerId) {
   return (state.patients || []).filter((patient) => patient.owner_id === ownerId);
 }
 
+function getFilteredConsultorioPatients() {
+  const owner = getConsultorioOwner();
+  if (!owner) {
+    return [];
+  }
+  const query = String(consultorioPatientsFilters.query || "").trim().toLowerCase();
+  const patients = getOwnerPatients(owner.id);
+  if (!query) {
+    return patients;
+  }
+  return patients.filter((patient) =>
+    [patient.name, patient.species, patient.breed, patient.sex, patient.reproductive_status]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase()
+      .includes(query)
+  );
+}
+
 function getOwnerInitials(owner) {
   const name = String(owner?.full_name || "")
     .trim()
@@ -2058,37 +2082,76 @@ function renderOwners() {
 }
 
 function renderPatients() {
+  if (!elements.patientsList) {
+    return;
+  }
   const owner = getConsultorioOwner();
-  const patients = owner
-    ? (state.patients || []).filter((patient) => patient.owner_id === owner.id)
-    : [];
+  const patients = getFilteredConsultorioPatients();
   const emptyMessage = owner
     ? "Este propietario aun no tiene mascotas registradas."
     : "Selecciona un propietario para ver sus mascotas.";
-  renderList(
-    elements.patientsList,
-    patients,
-    (patient) => `
-      <article class="list-card patient-card${patient.id === consultorioPatientId ? " is-selected" : ""}" data-patient-select="${escapeHtml(
-        patient.id
-      )}">
-        <div class="owner-card__header">
-          <div>
-            <h4>${escapeHtml(patient.name)}</h4>
-            <p>${escapeHtml(patient.species)}${patient.breed ? ` / ${escapeHtml(patient.breed)}` : ""}</p>
-          </div>
-          <div class="item-actions owner-card__actions">
-            <button class="ghost-button" type="button" data-patient-select="${escapeHtml(patient.id)}">Perfil</button>
-            <button class="secondary-button" type="button" data-patient-edit="${escapeHtml(patient.id)}">Editar</button>
-            <button class="ghost-button ghost-button--danger" type="button" data-patient-delete="${escapeHtml(patient.id)}">Eliminar</button>
-          </div>
-        </div>
-        <p>Responsable: ${escapeHtml(patient.owner_name)}</p>
-        <p>Historias: ${patient.records_count || 0}</p>
-      </article>
-    `,
-    emptyMessage
-  );
+  if (!patients.length) {
+    elements.patientsList.innerHTML = emptyState(
+      owner && consultorioPatientsFilters.query
+        ? "No hay mascotas que coincidan con el filtro."
+        : emptyMessage
+    );
+    return;
+  }
+  elements.patientsList.innerHTML = `
+    <div class="table-wrapper owner-patients-table-wrapper">
+      <table class="data-table owner-patients-table">
+        <thead>
+          <tr>
+            <th>Perfil</th>
+            <th>Nombre</th>
+            <th>Especie</th>
+            <th>Raza</th>
+            <th>Genero</th>
+            <th>E. reproductivo</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${patients
+            .map(
+              (patient) => `
+                <tr class="${patient.id === consultorioPatientId ? "is-selected" : ""}">
+                  <td>
+                    <button class="ghost-button owner-patients-table__profile" type="button" data-patient-select="${escapeHtml(
+                      patient.id
+                    )}">
+                      Perfil clinico
+                    </button>
+                  </td>
+                  <td>
+                    <div class="owner-patients-table__name">
+                      <strong>${escapeHtml(patient.name || "Sin nombre")}</strong>
+                      <span>${escapeHtml(patient.notes || "Sin notas")}</span>
+                    </div>
+                  </td>
+                  <td>${escapeHtml(patient.species || "Sin dato")}</td>
+                  <td>${escapeHtml(patient.breed || "Sin dato")}</td>
+                  <td>${escapeHtml(patient.sex || "Sin dato")}</td>
+                  <td>${escapeHtml(patient.reproductive_status || "Sin dato")}</td>
+                  <td>
+                    <div class="table-actions owner-patients-table__actions">
+                      <button class="secondary-button" type="button" data-patient-edit="${escapeHtml(
+                        patient.id
+                      )}">Editar</button>
+                      <button class="ghost-button ghost-button--danger" type="button" data-patient-delete="${escapeHtml(
+                        patient.id
+                      )}">Eliminar</button>
+                    </div>
+                  </td>
+                </tr>
+              `
+            )
+            .join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
 }
 
 function renderConsultorioPatientProfile() {
@@ -2238,6 +2301,15 @@ function renderConsultorioOwnerDetail() {
     if (elements.consultorioOwnerDeleteButton) {
       elements.consultorioOwnerDeleteButton.disabled = true;
     }
+    if (elements.consultorioOwnerSummary) {
+      elements.consultorioOwnerSummary.innerHTML = emptyState(
+        "Selecciona un propietario para ver su ficha."
+      );
+    }
+    if (elements.ownerPatientsSearchInput) {
+      elements.ownerPatientsSearchInput.value = "";
+    }
+    consultorioPatientsFilters.query = "";
     if (elements.patientOwnerSelect) {
       elements.patientOwnerSelect.value = "";
       elements.patientOwnerSelect.disabled = false;
@@ -2256,25 +2328,59 @@ function renderConsultorioOwnerDetail() {
   if (elements.consultorioOwnerDeleteButton) {
     elements.consultorioOwnerDeleteButton.disabled = false;
   }
-  renderSummary(
-    elements.consultorioOwnerSummary,
+  const ownerSummaryRows = [
+    ["Nombre", owner.full_name || "Sin dato"],
     [
-      ["Identificacion", `${owner.identification_type} ${owner.identification_number}`],
-      ["Telefono", owner.phone || "Sin dato"],
-      ["Telefono alternativo", owner.alternate_phone || "Sin dato"],
-      ["Correo", owner.email || "Sin dato"],
-      ["Direccion", owner.address || "Sin dato"],
-      ["Mascotas", String(owner.patients_count || 0)],
+      "Identificacion",
+      [owner.identification_type, owner.identification_number].filter(Boolean).join(" ") || "Sin dato",
     ],
-    "Sin informacion disponible."
-  );
+    [
+      "Telefonos",
+      [owner.phone, owner.alternate_phone].filter(Boolean).join(" / ") || "Sin dato",
+    ],
+    ["Direccion", owner.address || "Sin dato"],
+    ["Correo", owner.email || "Sin dato"],
+    ["Contacto", owner.full_name || "Sin dato"],
+  ];
+  if (elements.consultorioOwnerSummary) {
+    elements.consultorioOwnerSummary.innerHTML = `
+      <dl class="owner-detail-summary__rows">
+        ${ownerSummaryRows
+          .map(
+            ([label, value]) => `
+              <div>
+                <dt>${escapeHtml(label)}</dt>
+                <dd>${escapeHtml(value)}</dd>
+              </div>
+            `
+          )
+          .join("")}
+      </dl>
+      <div class="owner-detail-summary__meta">
+        <span class="owner-detail-summary__badge">Mascotas registradas: ${escapeHtml(
+          String(getOwnerPatients(owner.id).length)
+        )}</span>
+      </div>
+    `;
+  }
   if (elements.patientOwnerSelect) {
     elements.patientOwnerSelect.value = owner.id;
     elements.patientOwnerSelect.disabled = true;
   }
+  if (elements.ownerPatientsSearchInput) {
+    elements.ownerPatientsSearchInput.value = consultorioPatientsFilters.query || "";
+  }
 }
 
-function resetPatientEditor() {
+function setConsultorioPatientEditorVisible(visible) {
+  consultorioPatientEditorVisible = Boolean(visible);
+  if (elements.consultorioPatientFormPanel) {
+    elements.consultorioPatientFormPanel.classList.toggle("is-hidden", !consultorioPatientEditorVisible);
+  }
+}
+
+function resetPatientEditor(options = {}) {
+  const { keepVisible = false } = options;
   if (!elements.patientForm) {
     return;
   }
@@ -2296,6 +2402,14 @@ function resetPatientEditor() {
     elements.patientOwnerSelect.value = owner?.id || "";
     elements.patientOwnerSelect.disabled = Boolean(owner);
   }
+  setConsultorioPatientEditorVisible(keepVisible && Boolean(owner));
+}
+
+function openNewPatientEditor() {
+  consultorioPatientId = "";
+  resetPatientEditor({ keepVisible: true });
+  setConsultorioPatientEditorVisible(true);
+  elements.patientForm?.elements?.name?.focus();
 }
 
 function openPatientEditor(patient) {
@@ -2335,6 +2449,8 @@ function openPatientEditor(patient) {
   if (elements.patientOwnerSelect) {
     elements.patientOwnerSelect.disabled = Boolean(getConsultorioOwner());
   }
+  setConsultorioPatientEditorVisible(true);
+  elements.patientForm?.elements?.name?.focus();
 }
 
 function renderAppointments() {
@@ -4553,6 +4669,10 @@ async function handleOwnersListClick(event) {
   consultorioOwnerId = selectButton.dataset.ownerSelect || "";
   consultorioPatientId = "";
   consultorioProfileView = "records";
+  consultorioPatientsFilters.query = "";
+  if (elements.ownerPatientsSearchInput) {
+    elements.ownerPatientsSearchInput.value = "";
+  }
   resetPatientEditor();
   setSectionSubsection("consultorio", "patients");
   renderConsultorioOwnerDetail();
@@ -5392,6 +5512,12 @@ function bindForms() {
       renderOwners();
     });
   }
+  if (elements.ownerPatientsSearchInput) {
+    elements.ownerPatientsSearchInput.addEventListener("input", (event) => {
+      consultorioPatientsFilters.query = event.target.value || "";
+      renderPatients();
+    });
+  }
   if (elements.usersPageSizeSelect) {
     elements.usersPageSizeSelect.addEventListener("change", (event) => {
       usersFilters.pageSize = Number(event.target.value || 10);
@@ -5415,6 +5541,10 @@ function bindForms() {
       consultorioOwnerId = "";
       consultorioPatientId = "";
       consultorioProfileView = "records";
+      consultorioPatientsFilters.query = "";
+      if (elements.ownerPatientsSearchInput) {
+        elements.ownerPatientsSearchInput.value = "";
+      }
       resetPatientEditor();
       setSectionSubsection("consultorio", "patients");
     });
@@ -5436,6 +5566,11 @@ function bindForms() {
         }
       })
     );
+  }
+  if (elements.openPatientFormButton) {
+    elements.openPatientFormButton.addEventListener("click", () => {
+      openNewPatientEditor();
+    });
   }
   if (elements.cancelPatientEditButton) {
     elements.cancelPatientEditButton.addEventListener("click", resetPatientEditor);

@@ -690,42 +690,58 @@
                   <button id="consultorioOwnerBackButton" class="ghost-button" type="button">Volver</button>
                 </div>
               </div>
-              <div id="consultorioOwnerSummary" class="summary-list"></div>
-              <div class="two-column-grid owner-detail-grid">
-                <article id="consultorioPatientFormPanel" class="panel-card panel-card--sub">
+              <div class="owner-detail-layout">
+                <article class="panel-card panel-card--sub owner-detail-sheet">
                   <div class="panel-heading">
-                    <div><p class="eyebrow">Mascotas</p><h3 id="patientFormTitle">Registrar mascota</h3></div>
-                    <div class="form-actions">
-                      <button id="cancelPatientEditButton" class="ghost-button is-hidden" type="button">Cancelar edicion</button>
-                    </div>
+                    <div><p class="eyebrow">Propietario</p><h3>Ficha del propietario</h3></div>
                   </div>
-                  <form id="patientForm" class="form-grid">
-                    <input type="hidden" name="id" />
-                    <input type="hidden" name="birth_date" />
-                    <input type="hidden" name="color" />
-                    <input type="hidden" name="microchip" />
-                    <input type="hidden" name="allergies" />
-                    <input type="hidden" name="chronic_conditions" />
-                    <input type="hidden" name="vaccination_status" />
-                    <input type="hidden" name="deworming_status" />
-                    <label class="full"><span>Propietario</span><select id="patientOwnerSelect" name="owner_id" required></select></label>
-                    <label><span>Nombre</span><input name="name" required /></label>
-                    <label><span>Especie</span><select name="species" required><option value="">Selecciona</option><option>Felino</option><option>Canino</option><option>Otros</option></select></label>
-                    <label><span>Raza</span><input name="breed" required /></label>
-                    <label><span>Sexo</span><select name="sex" required><option value="">Selecciona</option><option>Macho</option><option>Hembra</option></select></label>
-                    <label><span>Edad</span><input name="age_years" type="number" min="0" step="0.1" required /></label>
-                    <label><span>Peso (kg)</span><input name="weight_kg" type="number" min="0" step="0.01" required /></label>
-                    <label><span>Estado reproductivo</span><select name="reproductive_status" required><option value="">Selecciona</option><option>Esterilizado</option><option>No esterilizado</option><option>En celo</option><option>Gestante</option><option>Desconocido</option></select></label>
-                    <label class="full"><span>Notas</span><textarea name="notes" rows="3" required></textarea></label>
-                    <div class="full form-actions"><button id="patientFormSubmitButton" class="primary-button" type="submit">Guardar mascota</button></div>
-                  </form>
+                  <div id="consultorioOwnerSummary" class="owner-detail-summary"></div>
                 </article>
 
-                <article id="consultorioPatientsPanel" class="panel-card panel-card--sub">
-                  <div class="panel-heading"><div><p class="eyebrow">Mascotas</p><h3>Mascotas registradas</h3></div></div>
+                <article id="consultorioPatientsPanel" class="panel-card panel-card--sub owner-patients-panel">
+                  <div class="panel-heading">
+                    <div><p class="eyebrow">Mascotas</p><h3>Mascotas registradas</h3></div>
+                    <div class="form-actions">
+                      <button id="openPatientFormButton" class="secondary-button" type="button">Registrar mascota</button>
+                    </div>
+                  </div>
+                  <div class="table-controls owner-detail-patients-controls">
+                    <label class="table-control table-control--search">Filtrar mascota
+                      <input id="ownerPatientsSearchInput" type="search" placeholder="Nombre, especie o raza" />
+                    </label>
+                  </div>
                   <div id="patientsList" class="list-surface"></div>
                 </article>
               </div>
+
+              <article id="consultorioPatientFormPanel" class="panel-card panel-card--sub is-hidden">
+                <div class="panel-heading">
+                  <div><p class="eyebrow">Mascotas</p><h3 id="patientFormTitle">Registrar mascota</h3></div>
+                  <div class="form-actions">
+                    <button id="cancelPatientEditButton" class="ghost-button is-hidden" type="button">Cancelar edicion</button>
+                  </div>
+                </div>
+                <form id="patientForm" class="form-grid">
+                  <input type="hidden" name="id" />
+                  <input type="hidden" name="birth_date" />
+                  <input type="hidden" name="color" />
+                  <input type="hidden" name="microchip" />
+                  <input type="hidden" name="allergies" />
+                  <input type="hidden" name="chronic_conditions" />
+                  <input type="hidden" name="vaccination_status" />
+                  <input type="hidden" name="deworming_status" />
+                  <label class="full"><span>Propietario</span><select id="patientOwnerSelect" name="owner_id" required></select></label>
+                  <label><span>Nombre</span><input name="name" required /></label>
+                  <label><span>Especie</span><select name="species" required><option value="">Selecciona</option><option>Felino</option><option>Canino</option><option>Otros</option></select></label>
+                  <label><span>Raza</span><input name="breed" required /></label>
+                  <label><span>Sexo</span><select name="sex" required><option value="">Selecciona</option><option>Macho</option><option>Hembra</option></select></label>
+                  <label><span>Edad</span><input name="age_years" type="number" min="0" step="0.1" required /></label>
+                  <label><span>Peso (kg)</span><input name="weight_kg" type="number" min="0" step="0.01" required /></label>
+                  <label><span>Estado reproductivo</span><select name="reproductive_status" required><option value="">Selecciona</option><option>Esterilizado</option><option>No esterilizado</option><option>En celo</option><option>Gestante</option><option>Desconocido</option></select></label>
+                  <label class="full"><span>Notas</span><textarea name="notes" rows="3" required></textarea></label>
+                  <div class="full form-actions"><button id="patientFormSubmitButton" class="primary-button" type="submit">Guardar mascota</button></div>
+                </form>
+              </article>
             </article>
           </div>
 
