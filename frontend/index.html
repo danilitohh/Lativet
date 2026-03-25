@@ -360,23 +360,24 @@
             <article id="agendaDayPanel" class="panel-card agenda-detail-panel">
               <div class="panel-heading">
                 <div>
-                  <p class="eyebrow">Programacion del mes</p>
+                  <p class="eyebrow">Agenda semanal</p>
                   <h3 id="agendaSelectedDateLabel"></h3>
                 </div>
                 <div class="form-actions">
                   <button id="openAppointmentModalButton" class="primary-button" type="button">Nueva cita</button>
                 </div>
               </div>
-              <div class="agenda-weekdays agenda-weekdays--large">
-                <span>Lu</span>
-                <span>Ma</span>
-                <span>Mi</span>
-                <span>Ju</span>
-                <span>Vi</span>
-                <span>Sa</span>
-                <span>Do</span>
+              <div class="agenda-week-toolbar">
+                <button id="agendaWeekPrevButton" class="ghost-button" type="button">&lsaquo;</button>
+                <div class="agenda-week-meta">
+                  <span id="agendaWeekLabel"></span>
+                </div>
+                <div class="agenda-week-meta agenda-week-meta--timezone">
+                  <span id="agendaTimezoneLabel"></span>
+                </div>
+                <button id="agendaWeekNextButton" class="ghost-button" type="button">&rsaquo;</button>
               </div>
-              <div id="agendaMonthGridLarge" class="agenda-month-grid agenda-month-grid--large"></div>
+              <div id="agendaWeekSlots" class="agenda-week-grid"></div>
             </article>
           </div>
 

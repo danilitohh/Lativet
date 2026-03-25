@@ -481,6 +481,7 @@ function buildAgendaSlots(dateValue) {
           hour: "numeric",
           minute: "2-digit",
         }),
+        duration_minutes: slotMinutes,
         professional_name: rule.professional_name || "Agenda general",
         location: rule.location || "",
         occupied: Boolean(conflicting),
@@ -751,7 +752,6 @@ function cacheElements() {
     "appointmentsList",
     "agendaMonthLabel",
     "agendaMonthGrid",
-    "agendaMonthGridLarge",
     "agendaSelectedDateLabel",
     "agendaConnectionBadge",
     "agendaAvailabilityFormPanel",
@@ -759,6 +759,11 @@ function cacheElements() {
     "agendaPrevMonthButton",
     "agendaTodayButton",
     "agendaNextMonthButton",
+    "agendaWeekPrevButton",
+    "agendaWeekNextButton",
+    "agendaWeekLabel",
+    "agendaWeekSlots",
+    "agendaTimezoneLabel",
     "openAppointmentModalButton",
     "appointmentModal",
     "appointmentModalSelectedDate",
@@ -1657,7 +1662,7 @@ function renderAvailability() {
     );
   }
   renderAgendaMonth();
-  renderAgendaLargeMonth();
+  renderAgendaWeekSlots();
   renderGoogleCalendarStatus();
 }
 
@@ -1686,6 +1691,95 @@ function renderAgendaMonth() {
     `);
   }
   elements.agendaMonthGrid.innerHTML = cards.join("");
+}
+
+function formatWeekdayShort(value) {
+  const label = value.toLocaleDateString("es-CO", { weekday: "short" });
+  return label.replace(".", "").toUpperCase();
+}
+
+function formatAgendaWeekRange(start, end) {
+  const startLabel = start.toLocaleDateString("es-CO", { day: "numeric", month: "short" });
+  const endLabel = end.toLocaleDateString("es-CO", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+  return `${startLabel} - ${endLabel}`;
+}
+
+function formatAgendaTimezoneLabel() {
+  const timezone = state.settings.agenda_timezone || "America/Bogota";
+  let tzName = "";
+  try {
+    tzName = new Intl.DateTimeFormat("es-CO", {
+      timeZone: timezone,
+      timeZoneName: "short",
+    })
+      .formatToParts(new Date())
+      .find((part) => part.type === "timeZoneName")?.value;
+  } catch (error) {
+    tzName = "";
+  }
+  return tzName ? `${tzName} ${timezone}` : timezone;
+}
+
+function renderAgendaWeekSlots() {
+  if (!elements.agendaWeekSlots) {
+    return;
+  }
+  const selected = parseIsoDate(agendaSelectedDate);
+  const weekStart = addDays(selected, -getWeekdayIndex(selected));
+  const weekEnd = addDays(weekStart, 6);
+  const rangeLabel = formatAgendaWeekRange(weekStart, weekEnd);
+  if (elements.agendaSelectedDateLabel) {
+    elements.agendaSelectedDateLabel.textContent = rangeLabel;
+  }
+  if (elements.agendaWeekLabel) {
+    elements.agendaWeekLabel.textContent = rangeLabel;
+  }
+  if (elements.agendaTimezoneLabel) {
+    elements.agendaTimezoneLabel.textContent = formatAgendaTimezoneLabel();
+  }
+  const columns = [];
+  for (let index = 0; index < 7; index += 1) {
+    const current = addDays(weekStart, index);
+    const currentIso = toIsoDate(current);
+    const slots = buildAgendaSlots(currentIso).filter((slot) => !slot.occupied);
+    const slotMarkup = slots.length
+      ? slots
+          .map(
+            (slot) => `
+              <button
+                type="button"
+                class="agenda-slot"
+                data-slot-at="${escapeHtml(slot.slot_at)}"
+                data-slot-minutes="${escapeHtml(String(slot.duration_minutes || 30))}"
+              >
+                <span class="agenda-slot-time">${escapeHtml(slot.label)}</span>
+                <span class="agenda-slot-duration">${escapeHtml(
+                  String(slot.duration_minutes || 30)
+                )} min</span>
+              </button>
+            `
+          )
+          .join("")
+      : `<div class="agenda-slot agenda-slot--empty">—</div>`;
+    columns.push(`
+      <div class="agenda-week-day${currentIso === agendaSelectedDate ? " is-selected" : ""}" data-agenda-date="${escapeHtml(
+      currentIso
+    )}">
+        <div class="agenda-week-day__header">
+          <span class="agenda-week-day__dow">${escapeHtml(formatWeekdayShort(current))}</span>
+          <span class="agenda-week-day__date">${escapeHtml(String(current.getDate()))}</span>
+        </div>
+        <div class="agenda-week-day__slots">
+          ${slotMarkup}
+        </div>
+      </div>
+    `);
+  }
+  elements.agendaWeekSlots.innerHTML = columns.join("");
 }
 
 function renderAgendaLargeMonth() {
@@ -2557,6 +2651,12 @@ function setAgendaSelectedDate(value) {
   renderAvailability();
 }
 
+function shiftAgendaWeek(direction) {
+  const current = parseIsoDate(agendaSelectedDate);
+  const next = addDays(current, direction * 7);
+  setAgendaSelectedDate(toIsoDate(next));
+}
+
 function parseAppointmentDateTime(value) {
   if (!value) {
     return null;
@@ -2589,6 +2689,7 @@ function syncAppointmentEndTime({ force = false } = {}) {
   if (!elements.appointmentStartInput || !elements.appointmentEndInput) {
     return;
   }
+  const durationValue = Number(elements.appointmentDurationInput?.value || 30);
   const startValue = elements.appointmentStartInput.value;
   if (!startValue) {
     return;
@@ -2600,7 +2701,7 @@ function syncAppointmentEndTime({ force = false } = {}) {
   const endValue = elements.appointmentEndInput.value;
   const end = parseAppointmentDateTime(endValue);
   if (force || !end || end <= start) {
-    elements.appointmentEndInput.value = buildAppointmentEndValue(startValue, 30);
+    elements.appointmentEndInput.value = buildAppointmentEndValue(startValue, durationValue || 30);
   }
 }
 
@@ -2697,7 +2798,7 @@ function openOwnerModalFromAppointment() {
   openOwnerModal();
 }
 
-function openAppointmentModal(initialDateTime = "") {
+function openAppointmentModal(initialDateTime = "", durationMinutes = 30) {
   const dateTimeValue =
     initialDateTime || `${agendaSelectedDate}T08:00`;
   elements.appointmentModal.classList.remove("is-hidden");
@@ -2706,7 +2807,10 @@ function openAppointmentModal(initialDateTime = "") {
     elements.appointmentStartInput.value = toInputDateTime(dateTimeValue);
   }
   if (elements.appointmentEndInput) {
-    elements.appointmentEndInput.value = buildAppointmentEndValue(dateTimeValue, 30);
+    elements.appointmentEndInput.value = buildAppointmentEndValue(dateTimeValue, durationMinutes);
+  }
+  if (elements.appointmentDurationInput) {
+    elements.appointmentDurationInput.value = String(durationMinutes || 30);
   }
   if (elements.appointmentPatientSearchInput) {
     elements.appointmentPatientSearchInput.value = "";
@@ -3341,7 +3445,21 @@ function handleAgendaMonthClick(event) {
   }
   const slotButton = event.target.closest("[data-slot-at]");
   if (slotButton && !slotButton.disabled) {
-    openAppointmentModal(slotButton.dataset.slotAt);
+    const minutes = Number(slotButton.dataset.slotMinutes || 30);
+    openAppointmentModal(slotButton.dataset.slotAt, minutes);
+  }
+}
+
+function handleAgendaWeekClick(event) {
+  const slotButton = event.target.closest("[data-slot-at]");
+  if (slotButton && !slotButton.disabled) {
+    const minutes = Number(slotButton.dataset.slotMinutes || 30);
+    openAppointmentModal(slotButton.dataset.slotAt, minutes);
+    return;
+  }
+  const dayButton = event.target.closest("[data-agenda-date]");
+  if (dayButton) {
+    setAgendaSelectedDate(dayButton.dataset.agendaDate);
   }
 }
 
@@ -3620,8 +3738,8 @@ function bindForms() {
   if (elements.agendaMonthGrid) {
     elements.agendaMonthGrid.addEventListener("click", handleAgendaMonthClick);
   }
-  if (elements.agendaMonthGridLarge) {
-    elements.agendaMonthGridLarge.addEventListener("click", handleAgendaMonthClick);
+  if (elements.agendaWeekSlots) {
+    elements.agendaWeekSlots.addEventListener("click", handleAgendaWeekClick);
   }
   elements.recordsList.addEventListener("click", handleRecordsClick);
   elements.openAppointmentModalButton.addEventListener("click", () => openAppointmentModal());
@@ -3683,11 +3801,17 @@ function bindForms() {
     agendaViewDate = new Date(agendaViewDate.getFullYear(), agendaViewDate.getMonth() - 1, 1);
     renderAvailability();
   });
+  if (elements.agendaWeekPrevButton) {
+    elements.agendaWeekPrevButton.addEventListener("click", () => shiftAgendaWeek(-1));
+  }
   elements.agendaTodayButton.addEventListener("click", () => {
     agendaSelectedDate = toIsoDate(new Date());
     agendaViewDate = new Date();
     renderAvailability();
   });
+  if (elements.agendaWeekNextButton) {
+    elements.agendaWeekNextButton.addEventListener("click", () => shiftAgendaWeek(1));
+  }
   elements.agendaNextMonthButton.addEventListener("click", () => {
     agendaViewDate = new Date(agendaViewDate.getFullYear(), agendaViewDate.getMonth() + 1, 1);
     renderAvailability();

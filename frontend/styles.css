@@ -1141,6 +1141,100 @@ textarea:focus {
   padding-left: 6px;
 }
 
+.agenda-week-toolbar {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 0 16px;
+}
+
+.agenda-week-meta {
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.agenda-week-meta--timezone {
+  text-align: right;
+  font-size: 0.8rem;
+}
+
+.agenda-week-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.agenda-week-day {
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid rgba(11, 39, 49, 0.1);
+  border-radius: 18px;
+  background: #fff;
+}
+
+.agenda-week-day.is-selected {
+  border-color: rgba(79, 91, 213, 0.25);
+  box-shadow: 0 10px 30px rgba(79, 91, 213, 0.08);
+}
+
+.agenda-week-day__header {
+  display: grid;
+  gap: 4px;
+  justify-items: center;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+
+.agenda-week-day__date {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.agenda-week-day__slots {
+  display: grid;
+  gap: 10px;
+}
+
+.agenda-slot {
+  width: 100%;
+  border-radius: 999px;
+  border: 1px solid rgba(79, 91, 213, 0.35);
+  background: #fff;
+  color: #2f3a8f;
+  padding: 10px 8px;
+  display: grid;
+  gap: 4px;
+  justify-items: center;
+  font-weight: 600;
+}
+
+.agenda-slot:hover {
+  background: rgba(79, 91, 213, 0.08);
+}
+
+.agenda-slot--empty {
+  border-style: dashed;
+  color: var(--muted);
+  background: rgba(11, 39, 49, 0.02);
+}
+
+.agenda-slot-time {
+  font-size: 0.9rem;
+}
+
+.agenda-slot-duration {
+  font-size: 0.72rem;
+  color: var(--muted);
+  font-weight: 500;
+}
+
 .agenda-month-header {
   display: flex;
   align-items: center;
@@ -1545,6 +1639,14 @@ body.auth-locked .page-shell > :not(#loginModal) {
 
   .agenda-month-grid {
     gap: 8px;
+  }
+
+  .agenda-week-grid {
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(180px, 1fr);
+    grid-template-columns: none;
+    overflow-x: auto;
+    padding-bottom: 6px;
   }
 
   .appointment-modal__row--split {
