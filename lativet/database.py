@@ -262,6 +262,7 @@ class Database:
                 breed TEXT,
                 sex TEXT NOT NULL,
                 birth_date TEXT,
+                age_years REAL,
                 color TEXT,
                 reproductive_status TEXT,
                 microchip TEXT,
@@ -594,6 +595,7 @@ class Database:
         self._ensure_column("appointments", "google_sync_error", "TEXT")
         self._ensure_column("consents", "record_id", "TEXT")
         self._ensure_column("consents", "consultation_id", "TEXT")
+        self._ensure_column("patients", "age_years", "REAL")
         self._ensure_column("owners", "alternate_phone", "TEXT")
         self._ensure_column("staff_users", "password_hash", "TEXT")
 
@@ -1021,7 +1023,7 @@ class Database:
                 self.connection.execute(
                     """
                     UPDATE patients
-                    SET owner_id = ?, name = ?, species = ?, breed = ?, sex = ?, birth_date = ?,
+                    SET owner_id = ?, name = ?, species = ?, breed = ?, sex = ?, birth_date = ?, age_years = ?,
                         color = ?, reproductive_status = ?, microchip = ?, weight_kg = ?,
                         allergies = ?, chronic_conditions = ?, vaccination_status = ?,
                         deworming_status = ?, notes = ?, updated_at = ?
@@ -1034,6 +1036,7 @@ class Database:
                         data["breed"],
                         data["sex"],
                         data["birth_date"],
+                        data["age_years"],
                         data["color"],
                         data["reproductive_status"],
                         data["microchip"],
@@ -1052,11 +1055,11 @@ class Database:
                 self.connection.execute(
                     """
                     INSERT INTO patients (
-                        id, owner_id, name, species, breed, sex, birth_date, color,
+                        id, owner_id, name, species, breed, sex, birth_date, age_years, color,
                         reproductive_status, microchip, weight_kg, allergies,
                         chronic_conditions, vaccination_status, deworming_status, notes,
                         created_at, updated_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         patient_id,
@@ -1066,6 +1069,7 @@ class Database:
                         data["breed"],
                         data["sex"],
                         data["birth_date"],
+                        data["age_years"],
                         data["color"],
                         data["reproductive_status"],
                         data["microchip"],

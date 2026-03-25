@@ -33,6 +33,16 @@ def optional_float(data: dict, key: str) -> float | None:
         raise ValidationError(f"El campo '{key}' debe ser numerico.") from exc
 
 
+def required_float(data: dict, key: str, label: str) -> float:
+    value = _strip(data.get(key))
+    if not value:
+        raise ValidationError(f"El campo '{label}' es obligatorio.")
+    try:
+        return round(float(value), 2)
+    except ValueError as exc:
+        raise ValidationError(f"El campo '{label}' debe ser numerico.") from exc
+
+
 def optional_int(data: dict, key: str) -> int | None:
     value = _strip(data.get(key))
     if not value:
@@ -152,8 +162,8 @@ def validate_owner(payload: dict) -> dict:
         ),
         "phone": required_text(payload, "phone", "Telefono"),
         "alternate_phone": optional_text(payload, "alternate_phone"),
-        "email": optional_text(payload, "email"),
-        "address": optional_text(payload, "address"),
+        "email": required_text(payload, "email", "Correo"),
+        "address": required_text(payload, "address", "Direccion"),
     }
 
 
@@ -164,18 +174,19 @@ def validate_patient(payload: dict) -> dict:
         "owner_id": required_text(payload, "owner_id", "Propietario"),
         "name": required_text(payload, "name", "Nombre del paciente"),
         "species": required_text(payload, "species", "Especie"),
-        "breed": optional_text(payload, "breed"),
+        "breed": required_text(payload, "breed", "Raza"),
         "sex": required_text(payload, "sex", "Sexo"),
         "birth_date": birth_date,
+        "age_years": required_float(payload, "age_years", "Edad"),
         "color": optional_text(payload, "color"),
-        "reproductive_status": optional_text(payload, "reproductive_status"),
+        "reproductive_status": required_text(payload, "reproductive_status", "Estado reproductivo"),
         "microchip": optional_text(payload, "microchip"),
-        "weight_kg": optional_float(payload, "weight_kg"),
+        "weight_kg": required_float(payload, "weight_kg", "Peso (kg)"),
         "allergies": optional_text(payload, "allergies"),
         "chronic_conditions": optional_text(payload, "chronic_conditions"),
         "vaccination_status": optional_text(payload, "vaccination_status"),
         "deworming_status": optional_text(payload, "deworming_status"),
-        "notes": optional_text(payload, "notes"),
+        "notes": required_text(payload, "notes", "Notas"),
     }
 
 
