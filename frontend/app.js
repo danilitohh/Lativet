@@ -35,6 +35,8 @@ let openNavDropdownSection = "";
 let agendaViewDate = new Date();
 let agendaSelectedDate = new Date().toISOString().slice(0, 10);
 let consultorioOwnerId = "";
+let pendingAppointmentDraft = null;
+let returnToAppointmentModal = false;
 const notifications = [];
 let unreadNotifications = 0;
 const MAX_NOTIFICATIONS = 60;
@@ -2484,6 +2486,82 @@ function toggleAppointmentNoTime(checked) {
   }
 }
 
+function captureAppointmentDraft() {
+  if (!elements.appointmentForm) {
+    return null;
+  }
+  const payload = serializeForm(elements.appointmentForm);
+  if (elements.appointmentStartInput) {
+    payload.appointment_at = elements.appointmentStartInput.value || "";
+  }
+  if (elements.appointmentEndInput) {
+    payload.appointment_end_at = elements.appointmentEndInput.value || "";
+  }
+  return payload;
+}
+
+function restoreAppointmentDraft(draft) {
+  if (!draft || !elements.appointmentForm) {
+    return;
+  }
+  if (elements.appointmentPatientSelect) {
+    elements.appointmentPatientSelect.value = draft.patient_id || "";
+  }
+  if (elements.appointmentTypeSelect) {
+    elements.appointmentTypeSelect.value = draft.appointment_type || "";
+  }
+  if (elements.appointmentProfessionalSelect) {
+    elements.appointmentProfessionalSelect.value = draft.professional_name || "";
+  }
+  if (elements.appointmentStartInput) {
+    elements.appointmentStartInput.value = draft.appointment_at || "";
+  }
+  if (elements.appointmentEndInput) {
+    elements.appointmentEndInput.value = draft.appointment_end_at || "";
+  }
+  if (elements.appointmentReserveCheckbox) {
+    elements.appointmentReserveCheckbox.checked = Boolean(draft.reserve_only);
+  }
+  if (elements.appointmentNoTimeCheckbox) {
+    elements.appointmentNoTimeCheckbox.checked = Boolean(draft.appointment_no_time);
+    toggleAppointmentNoTime(elements.appointmentNoTimeCheckbox.checked);
+  }
+  if (elements.appointmentNoLocationCheckbox) {
+    elements.appointmentNoLocationCheckbox.checked =
+      typeof draft.appointment_no_location === "boolean"
+        ? draft.appointment_no_location
+        : true;
+  }
+  if (elements.appointmentForm.elements.reason) {
+    elements.appointmentForm.elements.reason.value = draft.reason || "";
+  }
+  if (elements.appointmentForm.elements.notes) {
+    elements.appointmentForm.elements.notes.value = draft.notes || "";
+  }
+  syncAppointmentSelectedDate();
+  if (elements.appointmentEndInput && !draft.appointment_end_at) {
+    syncAppointmentEndTime({ force: true });
+  }
+}
+
+function maybeReturnToAppointmentModal() {
+  if (!returnToAppointmentModal) {
+    return;
+  }
+  const draft = pendingAppointmentDraft;
+  returnToAppointmentModal = false;
+  pendingAppointmentDraft = null;
+  openAppointmentModal(draft?.appointment_at || "");
+  restoreAppointmentDraft(draft);
+}
+
+function openOwnerModalFromAppointment() {
+  pendingAppointmentDraft = captureAppointmentDraft();
+  returnToAppointmentModal = true;
+  closeAppointmentModal();
+  openOwnerModal();
+}
+
 function openAppointmentModal(initialDateTime = "") {
   const dateTimeValue =
     initialDateTime || `${agendaSelectedDate}T08:00`;
@@ -2557,12 +2635,16 @@ function openOwnerModal(owner = null) {
   elements.ownerModal.setAttribute("aria-hidden", "false");
 }
 
-function closeOwnerModal() {
+function closeOwnerModal(options = {}) {
   if (!elements.ownerModal) {
     return;
   }
+  const { suppressReturn = false } = options || {};
   elements.ownerModal.classList.add("is-hidden");
   elements.ownerModal.setAttribute("aria-hidden", "true");
+  if (!suppressReturn) {
+    maybeReturnToAppointmentModal();
+  }
 }
 
 function openUserModal(user = null) {
@@ -2747,8 +2829,14 @@ async function handleOwnerSubmit(event) {
     consultorioOwnerId = owner.id;
   }
   resetForm(event.currentTarget);
-  closeOwnerModal();
+  const shouldReturn = returnToAppointmentModal;
+  closeOwnerModal({ suppressReturn: true });
   await refreshData("Propietario guardado.");
+  if (shouldReturn) {
+    setActiveSection("agenda");
+    maybeReturnToAppointmentModal();
+    return;
+  }
   setActiveSection("consultorio");
   setSectionSubsection("consultorio", "patients");
   renderConsultorioOwnerDetail();
@@ -3393,7 +3481,7 @@ function bindForms() {
   elements.openAppointmentModalButton.addEventListener("click", () => openAppointmentModal());
   elements.closeAppointmentModalButton.addEventListener("click", closeAppointmentModal);
   if (elements.appointmentRegisterOwnerButton) {
-    elements.appointmentRegisterOwnerButton.addEventListener("click", () => openOwnerModal());
+    elements.appointmentRegisterOwnerButton.addEventListener("click", () => openOwnerModalFromAppointment());
   }
   if (elements.appointmentStartInput) {
     elements.appointmentStartInput.addEventListener("change", () => {
