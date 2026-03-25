@@ -3895,9 +3895,6 @@ function bindForms() {
   if (elements.appointmentPatientInput) {
     elements.appointmentPatientInput.addEventListener("input", () => {
       renderAppointmentPatientDropdown();
-      if (elements.appointmentPatientDropdown) {
-        elements.appointmentPatientDropdown.classList.remove("is-hidden");
-      }
     });
     elements.appointmentPatientInput.addEventListener("focus", () => {
       renderAppointmentPatientDropdown();
