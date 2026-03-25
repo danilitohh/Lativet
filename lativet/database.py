@@ -246,6 +246,7 @@ class Database:
                 identification_type TEXT NOT NULL,
                 identification_number TEXT NOT NULL,
                 phone TEXT NOT NULL,
+                alternate_phone TEXT,
                 email TEXT,
                 address TEXT,
                 created_at TEXT NOT NULL,
@@ -593,6 +594,7 @@ class Database:
         self._ensure_column("appointments", "google_sync_error", "TEXT")
         self._ensure_column("consents", "record_id", "TEXT")
         self._ensure_column("consents", "consultation_id", "TEXT")
+        self._ensure_column("owners", "alternate_phone", "TEXT")
         self._ensure_column("staff_users", "password_hash", "TEXT")
 
     def _ensure_column(self, table: str, column: str, definition: str) -> None:
@@ -940,30 +942,31 @@ class Database:
                 if existing:
                     self.connection.execute(
                         """
-                        UPDATE owners
-                        SET full_name = ?, identification_type = ?, identification_number = ?,
-                            phone = ?, email = ?, address = ?, updated_at = ?
-                        WHERE id = ?
-                        """,
-                        (
-                            data["full_name"],
-                            data["identification_type"],
-                            data["identification_number"],
-                            data["phone"],
-                            data["email"],
-                            data["address"],
-                            timestamp,
-                            owner_id,
-                        ),
-                    )
+                    UPDATE owners
+                    SET full_name = ?, identification_type = ?, identification_number = ?,
+                        phone = ?, alternate_phone = ?, email = ?, address = ?, updated_at = ?
+                    WHERE id = ?
+                    """,
+                    (
+                        data["full_name"],
+                        data["identification_type"],
+                        data["identification_number"],
+                        data["phone"],
+                        data["alternate_phone"],
+                        data["email"],
+                        data["address"],
+                        timestamp,
+                        owner_id,
+                    ),
+                )
                     action = "update"
                 else:
                     self.connection.execute(
                         """
                         INSERT INTO owners (
                             id, full_name, identification_type, identification_number,
-                            phone, email, address, created_at, updated_at
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            phone, alternate_phone, email, address, created_at, updated_at
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         """,
                         (
                             owner_id,
@@ -971,6 +974,7 @@ class Database:
                             data["identification_type"],
                             data["identification_number"],
                             data["phone"],
+                            data["alternate_phone"],
                             data["email"],
                             data["address"],
                             timestamp,

@@ -151,6 +151,7 @@ def validate_owner(payload: dict) -> dict:
             payload, "identification_number", "Numero de identificacion"
         ),
         "phone": required_text(payload, "phone", "Telefono"),
+        "alternate_phone": optional_text(payload, "alternate_phone"),
         "email": optional_text(payload, "email"),
         "address": optional_text(payload, "address"),
     }

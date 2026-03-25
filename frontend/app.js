@@ -1457,6 +1457,7 @@ function filterOwners() {
       owner.identification_type,
       owner.identification_number,
       owner.phone,
+      owner.alternate_phone,
       owner.email,
     ]
       .filter(Boolean)
@@ -1486,6 +1487,11 @@ function renderOwners() {
         </div>
         <div class="owner-card__meta">
           <span>Telefono: ${escapeHtml(owner.phone || "Sin dato")}</span>
+          ${
+            owner.alternate_phone
+              ? `<span>Tel. alternativo: ${escapeHtml(owner.alternate_phone)}</span>`
+              : ""
+          }
           <span>Correo: ${escapeHtml(owner.email || "Sin dato")}</span>
           <span>Mascotas: ${owner.patients_count || 0}</span>
         </div>
@@ -1550,6 +1556,7 @@ function renderConsultorioOwnerDetail() {
     [
       ["Identificacion", `${owner.identification_type} ${owner.identification_number}`],
       ["Telefono", owner.phone || "Sin dato"],
+      ["Telefono alternativo", owner.alternate_phone || "Sin dato"],
       ["Correo", owner.email || "Sin dato"],
       ["Direccion", owner.address || "Sin dato"],
       ["Mascotas", String(owner.patients_count || 0)],
@@ -2412,6 +2419,9 @@ function openOwnerModal(owner = null) {
   elements.ownerForm.elements.identification_type.value = owner?.identification_type || "";
   elements.ownerForm.elements.identification_number.value = owner?.identification_number || "";
   elements.ownerForm.elements.phone.value = owner?.phone || "";
+  if (elements.ownerForm.elements.alternate_phone) {
+    elements.ownerForm.elements.alternate_phone.value = owner?.alternate_phone || "";
+  }
   elements.ownerForm.elements.email.value = owner?.email || "";
   elements.ownerForm.elements.address.value = owner?.address || "";
   const title = getElement("ownerModalTitle");
