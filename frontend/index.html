@@ -635,9 +635,9 @@
           <div class="section-hero">
             <div>
               <p class="eyebrow">Consultorio</p>
-              <h2>Pacientes, historias, consultas, consentimientos y peluqueria</h2>
+              <h2>Pacientes y peluqueria</h2>
               <p class="section-copy">
-                La historia clinica contiene sus consultas internas, seguimientos, documentos y remisiones.
+                Desde el perfil del paciente podras desplegar historia clinica, vacunas, formulas, seguimiento, remisiones y consentimientos.
               </p>
             </div>
           </div>
@@ -645,19 +645,7 @@
           <div class="menu-strip">
             <article class="menu-card">
               <h3>Pacientes</h3>
-              <p>Registro de propietarios y mascotas.</p>
-            </article>
-            <article class="menu-card">
-              <h3>Historias clinicas</h3>
-              <p>Historia base por caso o episodio.</p>
-            </article>
-            <article class="menu-card">
-              <h3>Consultas</h3>
-              <p>Vacunacion, formulas, ambulatorio, cirugia, laboratorio, imagenes y mas.</p>
-            </article>
-            <article class="menu-card">
-              <h3>Consentimientos</h3>
-              <p>Adjuntos a historia o consulta.</p>
+              <p>Registro de propietarios, mascotas y ficha clinica completa.</p>
             </article>
             <article class="menu-card">
               <h3>Peluqueria</h3>
@@ -734,6 +722,28 @@
               </div>
             </article>
           </div>
+
+          <article id="consultorioPatientProfilePanel" class="panel-card is-hidden consultorio-profile-panel">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Perfil del paciente</p>
+                <h3 id="consultorioPatientProfileTitle">Perfil del paciente</h3>
+                <p id="consultorioPatientProfileSubtitle" class="section-copy consultorio-profile-copy">
+                  Selecciona una mascota para abrir su ficha clinica y desplegar sus secciones.
+                </p>
+              </div>
+              <div class="form-actions">
+                <button id="consultorioPatientEditButton" class="secondary-button" type="button">Editar mascota</button>
+                <button id="consultorioPatientBackButton" class="ghost-button" type="button">Volver a mascotas</button>
+              </div>
+            </div>
+            <div class="consultorio-profile-layout">
+              <aside class="consultorio-profile-sidebar">
+                <div id="consultorioPatientProfileNav" class="consultorio-profile-nav"></div>
+              </aside>
+              <div id="consultorioPatientProfileSummary" class="consultorio-profile-summary"></div>
+            </div>
+          </article>
 
           <div class="two-column-grid">
             <article id="consultorioRecordFormPanel" class="panel-card panel-card--wide">

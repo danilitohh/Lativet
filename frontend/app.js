@@ -47,6 +47,8 @@ try {
   // ignore storage access errors
 }
 let consultorioOwnerId = "";
+let consultorioPatientId = "";
+let consultorioProfileView = "records";
 let pendingAppointmentDraft = null;
 let returnToAppointmentModal = false;
 const notifications = [];
@@ -82,6 +84,136 @@ const BOOTSTRAP_BACKGROUND_GROUPS = [
 ];
 const OWNER_PATIENT_REFRESH_SECTIONS = ["owners", "patients"];
 const AGENDA_REFRESH_SECTIONS = ["appointments", "owners", "patients", "availability_rules"];
+const CONSULTORIO_PROFILE_VIEWS = [
+  {
+    value: "records",
+    label: "Historia clinica",
+    panels: ["consultorioRecordFormPanel", "consultorioRecordsPanel"],
+    dataRequirements: ["owners", "patients", "records"],
+  },
+  {
+    value: "vacunacion",
+    label: "Vacunas",
+    panels: ["consultorioConsultationFormPanel", "consultorioConsultationsPanel"],
+    dataRequirements: ["owners", "patients", "records", "consultations"],
+    consultationTypes: ["Vacunacion"],
+    formConsultationType: "Vacunacion",
+  },
+  {
+    value: "formula",
+    label: "Formulas medicas",
+    panels: ["consultorioConsultationFormPanel", "consultorioConsultationsPanel"],
+    dataRequirements: ["owners", "patients", "records", "consultations"],
+    consultationTypes: ["Formula"],
+    formConsultationType: "Formula",
+  },
+  {
+    value: "desparasitacion",
+    label: "Desparasitaciones",
+    panels: ["consultorioConsultationFormPanel", "consultorioConsultationsPanel"],
+    dataRequirements: ["owners", "patients", "records", "consultations"],
+    consultationTypes: ["Desparasitacion"],
+    formConsultationType: "Desparasitacion",
+  },
+  {
+    value: "hospamb",
+    label: "Hospitalizaciones / ambulatorios",
+    panels: ["consultorioConsultationFormPanel", "consultorioConsultationsPanel"],
+    dataRequirements: ["owners", "patients", "records", "consultations"],
+    consultationTypes: ["Hospitalizacion", "Ambulatorio"],
+    formConsultationType: "Hospitalizacion",
+  },
+  {
+    value: "cirugia",
+    label: "Cirugias / procedimientos",
+    panels: ["consultorioConsultationFormPanel", "consultorioConsultationsPanel"],
+    dataRequirements: ["owners", "patients", "records", "consultations"],
+    consultationTypes: ["Cirugia / procedimiento"],
+    formConsultationType: "Cirugia / procedimiento",
+  },
+  {
+    value: "orders",
+    label: "Ordenes",
+    panels: ["consultorioConsultationFormPanel", "consultorioConsultationsPanel"],
+    dataRequirements: ["owners", "patients", "records", "consultations"],
+    consultationTypes: ["Documento"],
+    formConsultationType: "Documento",
+  },
+  {
+    value: "laboratorio",
+    label: "Examenes de laboratorio",
+    panels: ["consultorioConsultationFormPanel", "consultorioConsultationsPanel"],
+    dataRequirements: ["owners", "patients", "records", "consultations"],
+    consultationTypes: ["Examen de laboratorio"],
+    formConsultationType: "Examen de laboratorio",
+  },
+  {
+    value: "imagenes",
+    label: "Imagenes diagnosticas",
+    panels: ["consultorioConsultationFormPanel", "consultorioConsultationsPanel"],
+    dataRequirements: ["owners", "patients", "records", "consultations"],
+    consultationTypes: ["Imagen diagnostica"],
+    formConsultationType: "Imagen diagnostica",
+  },
+  {
+    value: "seguimiento",
+    label: "Seguimiento",
+    panels: [
+      "consultorioConsultationFormPanel",
+      "consultorioEvolutionFormPanel",
+      "consultorioConsultationsPanel",
+    ],
+    dataRequirements: ["owners", "patients", "records", "consultations"],
+    consultationTypes: ["Seguimiento"],
+    formConsultationType: "Seguimiento",
+  },
+  {
+    value: "documents",
+    label: "Documentos",
+    panels: ["consultorioConsultationFormPanel", "consultorioConsultationsPanel"],
+    dataRequirements: ["owners", "patients", "records", "consultations"],
+    consultationTypes: ["Documento"],
+    formConsultationType: "Documento",
+  },
+  {
+    value: "remisiones",
+    label: "Remisiones",
+    panels: ["consultorioConsultationFormPanel", "consultorioConsultationsPanel"],
+    dataRequirements: ["owners", "patients", "records", "consultations"],
+    consultationTypes: ["Remision"],
+    formConsultationType: "Remision",
+  },
+  {
+    value: "consents",
+    label: "Consentimientos",
+    panels: ["consultorioConsentFormPanel", "consultorioConsentsPanel"],
+    dataRequirements: ["owners", "patients", "records", "consultations", "consents"],
+  },
+  {
+    value: "grooming",
+    label: "Peluqueria",
+    panels: ["consultorioGroomingFormPanel", "consultorioGroomingPanel"],
+    dataRequirements: ["owners", "patients", "grooming_documents"],
+  },
+];
+const CONSULTORIO_PROFILE_VIEW_MAP = CONSULTORIO_PROFILE_VIEWS.reduce((acc, option) => {
+  acc[option.value] = option;
+  return acc;
+}, {});
+const CONSULTORIO_PANEL_IDS = [
+  "consultorioOwnersPanel",
+  "consultorioOwnerDetailPanel",
+  "consultorioPatientProfilePanel",
+  "consultorioRecordFormPanel",
+  "consultorioConsultationFormPanel",
+  "consultorioEvolutionFormPanel",
+  "consultorioConsentFormPanel",
+  "consultorioGroomingFormPanel",
+  "consultorioRecordsPanel",
+  "consultorioConsultationsPanel",
+  "consultorioConsentsPanel",
+  "consultorioGroomingPanel",
+];
 const SECTION_DATA_REQUIREMENTS = {
   dashboard: ["dashboard"],
   administration: ["users"],
@@ -103,18 +235,6 @@ const SECTION_DATA_REQUIREMENTS = {
 const SUBSECTION_DATA_REQUIREMENTS = {
   consultorio: {
     patients: ["owners", "patients"],
-    records: ["owners", "patients", "records"],
-    vacunacion: ["owners", "patients", "records", "consultations"],
-    formula: ["owners", "patients", "records", "consultations"],
-    desparasitacion: ["owners", "patients", "records", "consultations"],
-    ambulatorio: ["owners", "patients", "records", "consultations"],
-    cirugia: ["owners", "patients", "records", "consultations"],
-    laboratorio: ["owners", "patients", "records", "consultations"],
-    imagenes: ["owners", "patients", "records", "consultations"],
-    seguimiento: ["owners", "patients", "records", "consultations"],
-    documentos: ["owners", "patients", "records", "consultations"],
-    remision: ["owners", "patients", "records", "consultations"],
-    consents: ["owners", "patients", "records", "consultations", "consents"],
     grooming: ["owners", "patients", "grooming_documents"],
   },
 };
@@ -264,75 +384,13 @@ const sectionSubsections = {
       {
         value: "patients",
         label: "Pacientes",
-        panels: ["consultorioOwnersPanel", "consultorioOwnerDetailPanel"],
+        panels: ["consultorioOwnersPanel", "consultorioOwnerDetailPanel", "consultorioPatientProfilePanel"],
       },
       {
-        value: "records",
-        label: "Historias clinicas",
-        panels: ["consultorioRecordFormPanel", "consultorioRecordsPanel"],
+        value: "grooming",
+        label: "Peluqueria",
+        panels: ["consultorioGroomingFormPanel", "consultorioGroomingPanel"],
       },
-      {
-        value: "vacunacion",
-        label: "Vacunaciones",
-        panels: ["consultorioConsultationFormPanel", "consultorioConsultationsPanel"],
-        consultationType: "Vacunacion",
-      },
-      {
-        value: "formula",
-        label: "Formulas",
-        panels: ["consultorioConsultationFormPanel", "consultorioConsultationsPanel"],
-        consultationType: "Formula",
-      },
-      {
-        value: "desparasitacion",
-        label: "Desparacitaciones",
-        panels: ["consultorioConsultationFormPanel", "consultorioConsultationsPanel"],
-        consultationType: "Desparasitacion",
-      },
-      {
-        value: "ambulatorio",
-        label: "Ambulatorios",
-        panels: ["consultorioConsultationFormPanel", "consultorioConsultationsPanel"],
-        consultationType: "Ambulatorio",
-      },
-      {
-        value: "cirugia",
-        label: "Cirugias / procedimientos",
-        panels: ["consultorioConsultationFormPanel", "consultorioConsultationsPanel"],
-        consultationType: "Cirugia / procedimiento",
-      },
-      {
-        value: "laboratorio",
-        label: "Examenes de laboratorio",
-        panels: ["consultorioConsultationFormPanel", "consultorioConsultationsPanel"],
-        consultationType: "Examen de laboratorio",
-      },
-      {
-        value: "imagenes",
-        label: "Imagenes diagnosticas",
-        panels: ["consultorioConsultationFormPanel", "consultorioConsultationsPanel"],
-        consultationType: "Imagen diagnostica",
-      },
-      {
-        value: "seguimiento",
-        label: "Seguimiento",
-        panels: ["consultorioConsultationFormPanel", "consultorioEvolutionFormPanel", "consultorioConsultationsPanel"],
-        consultationType: "Seguimiento",
-      },
-      {
-        value: "documentos",
-        label: "Documentos",
-        panels: ["consultorioConsultationFormPanel", "consultorioConsultationsPanel"],
-        consultationType: "Documento",
-      },
-      {
-        value: "remision",
-        label: "Remiciones",
-        panels: ["consultorioConsultationFormPanel", "consultorioConsultationsPanel"],
-        consultationType: "Remision",
-      },
-      { value: "consents", label: "Consentimientos", panels: ["consultorioConsentFormPanel", "consultorioConsentsPanel"] },
-      { value: "grooming", label: "Peluqueria", panels: ["consultorioGroomingFormPanel", "consultorioGroomingPanel"] },
     ],
   },
   hospamb: {
@@ -899,6 +957,13 @@ function cacheElements() {
     "consultorioOwnerBackButton",
     "consultorioOwnerEditButton",
     "consultorioOwnerDeleteButton",
+    "consultorioPatientProfilePanel",
+    "consultorioPatientProfileTitle",
+    "consultorioPatientProfileSubtitle",
+    "consultorioPatientProfileNav",
+    "consultorioPatientProfileSummary",
+    "consultorioPatientBackButton",
+    "consultorioPatientEditButton",
     "complianceNotes",
     "complianceSources",
     "appointmentForm",
@@ -1144,8 +1209,10 @@ function syncConsultorioSubsection(option) {
   if (!option) {
     return;
   }
-  if (option.consultationType && elements.consultationTypeSelect) {
-    elements.consultationTypeSelect.value = option.consultationType;
+  const profileConfig =
+    option.value === "patients" && consultorioPatientId ? getConsultorioProfileViewConfig() : null;
+  if (profileConfig?.formConsultationType && elements.consultationTypeSelect) {
+    elements.consultationTypeSelect.value = profileConfig.formConsultationType;
   }
 }
 
@@ -1156,6 +1223,21 @@ function applySectionSubsection(sectionId) {
   }
   const option = getSubsectionOption(sectionId);
   if (!option) {
+    return;
+  }
+  if (sectionId === "consultorio") {
+    const visiblePanels = getConsultorioVisiblePanels();
+    CONSULTORIO_PANEL_IDS.forEach((panelId) => {
+      const panel = getElement(panelId);
+      if (panel) {
+        panel.classList.toggle("is-hidden", !visiblePanels.has(panelId));
+      }
+    });
+    syncConsultorioSubsection(option);
+    renderConsultorioOwnerDetail();
+    renderPatients();
+    renderConsultorioPatientProfile();
+    syncSectionContainers(sectionId);
     return;
   }
   const visiblePanels = new Set(option.panels || []);
@@ -1697,6 +1779,109 @@ function getConsultorioOwner() {
   return (state.owners || []).find((owner) => owner.id === consultorioOwnerId) || null;
 }
 
+function getConsultorioPatient() {
+  return (state.patients || []).find((patient) => patient.id === consultorioPatientId) || null;
+}
+
+function getConsultorioProfileViewConfig() {
+  return CONSULTORIO_PROFILE_VIEW_MAP[consultorioProfileView] || CONSULTORIO_PROFILE_VIEWS[0];
+}
+
+function isConsultorioPatientsViewActive() {
+  return getActiveSectionId() === "consultorio" && getSubsectionOption("consultorio")?.value === "patients";
+}
+
+function isConsultorioPatientProfileActive() {
+  return isConsultorioPatientsViewActive() && Boolean(getConsultorioPatient());
+}
+
+function syncConsultorioSelectionState() {
+  if (consultorioOwnerId && !getConsultorioOwner()) {
+    consultorioOwnerId = "";
+  }
+  if (consultorioPatientId && !getConsultorioPatient()) {
+    consultorioPatientId = "";
+  }
+  const patient = getConsultorioPatient();
+  if (patient?.owner_id && consultorioOwnerId !== patient.owner_id) {
+    consultorioOwnerId = patient.owner_id;
+  }
+}
+
+function getConsultorioScopedRecords() {
+  if (!isConsultorioPatientProfileActive()) {
+    return state.records;
+  }
+  return state.records.filter((record) => record.patient_id === consultorioPatientId);
+}
+
+function getConsultorioScopedConsultations(consultationTypes = null) {
+  let consultations = state.consultations || [];
+  if (isConsultorioPatientProfileActive()) {
+    consultations = consultations.filter((item) => item.patient_id === consultorioPatientId);
+  }
+  if (Array.isArray(consultationTypes) && consultationTypes.length) {
+    consultations = consultations.filter((item) => consultationTypes.includes(item.consultation_type));
+  }
+  return consultations;
+}
+
+function getConsultorioScopedConsents() {
+  if (!isConsultorioPatientProfileActive()) {
+    return state.consents;
+  }
+  return state.consents.filter((item) => item.patient_id === consultorioPatientId);
+}
+
+function getConsultorioScopedGrooming() {
+  if (!isConsultorioPatientProfileActive()) {
+    return state.grooming_documents;
+  }
+  return state.grooming_documents.filter((item) => item.patient_id === consultorioPatientId);
+}
+
+function getConsultorioProfileCount(option) {
+  if (!option || !consultorioPatientId) {
+    return 0;
+  }
+  if (option.value === "records") {
+    return getConsultorioScopedRecords().length;
+  }
+  if (option.value === "consents") {
+    return getConsultorioScopedConsents().length;
+  }
+  if (option.value === "grooming") {
+    return getConsultorioScopedGrooming().length;
+  }
+  return getConsultorioScopedConsultations(option.consultationTypes).length;
+}
+
+function getConsultorioVisiblePanels() {
+  const subsection = getSubsectionOption("consultorio")?.value || "patients";
+  if (subsection === "grooming") {
+    return new Set(["consultorioGroomingFormPanel", "consultorioGroomingPanel"]);
+  }
+  const visiblePanels = new Set(["consultorioOwnersPanel", "consultorioOwnerDetailPanel"]);
+  if (!consultorioPatientId) {
+    return visiblePanels;
+  }
+  visiblePanels.add("consultorioPatientProfilePanel");
+  (getConsultorioProfileViewConfig()?.panels || []).forEach((panelId) => visiblePanels.add(panelId));
+  return visiblePanels;
+}
+
+function setConsultorioProfileView(value) {
+  if (!CONSULTORIO_PROFILE_VIEW_MAP[value]) {
+    return;
+  }
+  consultorioProfileView = value;
+  applySectionSubsection("consultorio");
+  renderSection("consultorio");
+  if (bootstrapReadyForSectionLoads) {
+    ensureSectionData("consultorio");
+  }
+}
+
 function renderOwners() {
   const owners = filterOwners();
   renderList(
@@ -1743,13 +1928,16 @@ function renderPatients() {
     elements.patientsList,
     patients,
     (patient) => `
-      <article class="list-card">
+      <article class="list-card patient-card${patient.id === consultorioPatientId ? " is-selected" : ""}" data-patient-select="${escapeHtml(
+        patient.id
+      )}">
         <div class="owner-card__header">
           <div>
             <h4>${escapeHtml(patient.name)}</h4>
             <p>${escapeHtml(patient.species)}${patient.breed ? ` / ${escapeHtml(patient.breed)}` : ""}</p>
           </div>
           <div class="item-actions owner-card__actions">
+            <button class="ghost-button" type="button" data-patient-select="${escapeHtml(patient.id)}">Perfil</button>
             <button class="secondary-button" type="button" data-patient-edit="${escapeHtml(patient.id)}">Editar</button>
             <button class="ghost-button ghost-button--danger" type="button" data-patient-delete="${escapeHtml(patient.id)}">Eliminar</button>
           </div>
@@ -1760,6 +1948,131 @@ function renderPatients() {
     `,
     emptyMessage
   );
+}
+
+function renderConsultorioPatientProfile() {
+  if (!elements.consultorioPatientProfilePanel) {
+    return;
+  }
+  if (!isConsultorioPatientProfileActive()) {
+    elements.consultorioPatientProfilePanel.classList.add("is-hidden");
+    if (elements.consultorioPatientEditButton) {
+      elements.consultorioPatientEditButton.disabled = true;
+    }
+    if (elements.consultorioPatientBackButton) {
+      elements.consultorioPatientBackButton.disabled = true;
+    }
+    if (elements.consultorioPatientProfileTitle) {
+      elements.consultorioPatientProfileTitle.textContent = "Perfil del paciente";
+    }
+    if (elements.consultorioPatientProfileSubtitle) {
+      elements.consultorioPatientProfileSubtitle.textContent =
+        "Selecciona una mascota para desplegar historia, vacunas, formulas y demas secciones.";
+    }
+    if (elements.consultorioPatientProfileNav) {
+      elements.consultorioPatientProfileNav.innerHTML = "";
+    }
+    if (elements.consultorioPatientProfileSummary) {
+      elements.consultorioPatientProfileSummary.innerHTML = emptyState(
+        "Selecciona una mascota para abrir su perfil clinico."
+      );
+    }
+    return;
+  }
+  const patient = getConsultorioPatient();
+  const owner = getConsultorioOwner();
+  const profileConfig = getConsultorioProfileViewConfig();
+  elements.consultorioPatientProfilePanel.classList.remove("is-hidden");
+  if (elements.consultorioPatientEditButton) {
+    elements.consultorioPatientEditButton.disabled = false;
+  }
+  if (elements.consultorioPatientBackButton) {
+    elements.consultorioPatientBackButton.disabled = false;
+  }
+  if (elements.consultorioPatientProfileTitle) {
+    elements.consultorioPatientProfileTitle.textContent = patient?.name || "Perfil del paciente";
+  }
+  if (elements.consultorioPatientProfileSubtitle) {
+    const ownerLabel = owner?.full_name || patient?.owner_name || "Sin propietario";
+    elements.consultorioPatientProfileSubtitle.textContent = `${patient?.species || "Paciente"}${
+      patient?.breed ? ` / ${patient.breed}` : ""
+    } · Tutor: ${ownerLabel} · Vista activa: ${profileConfig?.label || "Historia clinica"}`;
+  }
+  if (elements.consultorioPatientProfileNav) {
+    elements.consultorioPatientProfileNav.innerHTML = CONSULTORIO_PROFILE_VIEWS.map(
+      (option) => `
+        <button
+          class="consultorio-profile-nav__item${option.value === consultorioProfileView ? " is-active" : ""}"
+          type="button"
+          data-consultorio-profile-view="${escapeHtml(option.value)}"
+        >
+          <span>${escapeHtml(option.label)}</span>
+          <strong>${getConsultorioProfileCount(option)}</strong>
+        </button>
+      `
+    ).join("");
+  }
+  if (elements.consultorioPatientProfileSummary) {
+    const summaryCards = [
+      {
+        title: "Datos del paciente",
+        entries: [
+          ["Especie", patient?.species || "Sin dato"],
+          ["Raza", patient?.breed || "Sin dato"],
+          ["Sexo", patient?.sex || "Sin dato"],
+          ["Edad", patient?.age_years ? `${patient.age_years} anos` : "Sin dato"],
+          ["Peso", patient?.weight_kg ? `${patient.weight_kg} kg` : "Sin dato"],
+          ["Estado reproductivo", patient?.reproductive_status || "Sin dato"],
+        ],
+      },
+      {
+        title: "Tutor responsable",
+        entries: [
+          ["Propietario", owner?.full_name || patient?.owner_name || "Sin dato"],
+          [
+            "Identificacion",
+            owner ? `${owner.identification_type} ${owner.identification_number}` : "Sin dato",
+          ],
+          ["Telefono", owner?.phone || "Sin dato"],
+          ["Correo", owner?.email || "Sin dato"],
+          ["Direccion", owner?.address || "Sin dato"],
+          ["Notas", patient?.notes || "Sin observaciones"],
+        ],
+      },
+      {
+        title: "Contexto clinico",
+        entries: [
+          ["Vacunas", patient?.vaccination_status || "Sin dato"],
+          ["Desparasitaciones", patient?.deworming_status || "Sin dato"],
+          ["Alergias", patient?.allergies || "Sin dato"],
+          ["Condiciones cronicas", patient?.chronic_conditions || "Sin dato"],
+          ["Microchip", patient?.microchip || "Sin dato"],
+          ["Vista abierta", profileConfig?.label || "Historia clinica"],
+        ],
+      },
+    ];
+    elements.consultorioPatientProfileSummary.innerHTML = summaryCards
+      .map(
+        (card) => `
+          <article class="consultorio-profile-card">
+            <h4>${escapeHtml(card.title)}</h4>
+            <dl>
+              ${card.entries
+                .map(
+                  ([label, value]) => `
+                    <div>
+                      <dt>${escapeHtml(label)}</dt>
+                      <dd>${escapeHtml(value)}</dd>
+                    </div>
+                  `
+                )
+                .join("")}
+            </dl>
+          </article>
+        `
+      )
+      .join("");
+  }
 }
 
 function renderConsultorioOwnerDetail() {
@@ -1848,6 +2161,8 @@ function openPatientEditor(patient) {
   if (!patient || !elements.patientForm) {
     return;
   }
+  consultorioPatientId = patient.id || consultorioPatientId;
+  consultorioOwnerId = patient.owner_id || consultorioOwnerId;
   elements.patientForm.reset();
   const fields = elements.patientForm.elements;
   fields.id.value = patient.id || "";
@@ -2572,9 +2887,10 @@ function renderUsers() {
 }
 
 function renderRecords() {
+  const records = getConsultorioScopedRecords();
   renderList(
     elements.recordsList,
-    state.records,
+    records,
     (record) => `
       <article class="list-card">
         <header>
@@ -2593,17 +2909,15 @@ function renderRecords() {
         </div>
       </article>
     `,
-    "Aun no hay historias clinicas registradas."
+    isConsultorioPatientProfileActive()
+      ? "Este paciente aun no tiene historias clinicas registradas."
+      : "Aun no hay historias clinicas registradas."
   );
 }
 
 function renderConsultations() {
-  const activeConsultorioOption = getSubsectionOption("consultorio");
-  const visibleConsultations = activeConsultorioOption?.consultationType
-    ? state.consultations.filter(
-        (consultation) => consultation.consultation_type === activeConsultorioOption.consultationType
-      )
-    : state.consultations;
+  const profileConfig = isConsultorioPatientProfileActive() ? getConsultorioProfileViewConfig() : null;
+  const visibleConsultations = getConsultorioScopedConsultations(profileConfig?.consultationTypes || null);
   renderList(
     elements.consultationsList,
     visibleConsultations,
@@ -2625,19 +2939,31 @@ function renderConsultations() {
         <p>${escapeHtml(consultation.document_reference || consultation.referred_to || "")}</p>
       </article>
     `,
-    "Aun no hay consultas internas registradas."
+    isConsultorioPatientProfileActive()
+      ? "Este paciente aun no tiene registros en esta seccion."
+      : "Aun no hay consultas internas registradas."
   );
 }
 
 function renderConsents() {
+  const consents = getConsultorioScopedConsents();
+  const consentSummary = Object.entries(
+    consents.reduce((acc, consent) => {
+      const key = consent.consent_type || "Sin tipo";
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    }, {})
+  );
   renderSummary(
     elements.consentTypeList,
-    Object.entries(state.dashboard.consents_by_type || {}),
-    "Aun no hay consentimientos registrados."
+    consentSummary,
+    isConsultorioPatientProfileActive()
+      ? "Este paciente aun no tiene consentimientos registrados."
+      : "Aun no hay consentimientos registrados."
   );
   renderList(
     elements.consentsList,
-    state.consents,
+    consents,
     (consent) => `
       <article class="list-card">
         <header>
@@ -2652,14 +2978,17 @@ function renderConsents() {
         <p>Consulta: ${escapeHtml(consent.consultation_label || "Sin adjuntar")}</p>
       </article>
     `,
-    "Aun no hay consentimientos registrados."
+    isConsultorioPatientProfileActive()
+      ? "Este paciente aun no tiene consentimientos registrados."
+      : "Aun no hay consentimientos registrados."
   );
 }
 
 function renderGrooming() {
+  const groomingDocuments = getConsultorioScopedGrooming();
   renderList(
     elements.groomingList,
-    state.grooming_documents,
+    groomingDocuments,
     (item) => `
       <article class="list-card">
         <header>
@@ -2674,7 +3003,9 @@ function renderGrooming() {
         <p>${escapeHtml(truncate(item.recommendations || item.notes || "Sin observaciones"))}</p>
       </article>
     `,
-    "Aun no hay documentos de peluqueria."
+    isConsultorioPatientProfileActive()
+      ? "Este paciente aun no tiene documentos de peluqueria."
+      : "Aun no hay documentos de peluqueria."
   );
 }
 
@@ -3094,6 +3425,16 @@ function renderAppointmentPatientDropdown() {
 }
 
 function renderSelects() {
+  const scopedPatient = isConsultorioPatientProfileActive() ? getConsultorioPatient() : null;
+  const scopedRecords = scopedPatient
+    ? state.records.filter((record) => record.patient_id === scopedPatient.id)
+    : state.records;
+  const scopedConsents = scopedPatient
+    ? state.consents.filter((consent) => consent.patient_id === scopedPatient.id)
+    : state.consents;
+  const scopedConsultations = scopedPatient
+    ? state.consultations.filter((consultation) => consultation.patient_id === scopedPatient.id)
+    : state.consultations;
   populateSelect(
     elements.patientOwnerSelect,
     state.owners,
@@ -3122,17 +3463,17 @@ function renderSelects() {
   );
   const recordLabel = (record) => `${record.patient_name} / ${formatDateTime(record.opened_at)}`;
   [elements.consultationRecordSelect, elements.evolutionRecordSelect, elements.consentRecordSelect].forEach(
-    (select) => populateSelect(select, state.records, recordLabel, "Selecciona historia")
+    (select) => populateSelect(select, scopedRecords, recordLabel, "Selecciona historia")
   );
   populateSelect(
     elements.consultationConsentSelect,
-    state.consents,
+    scopedConsents,
     (consent) => `${consent.patient_name} / ${consent.procedure_name}`,
     "Consentimiento opcional"
   );
   populateSelect(
     elements.consentConsultationSelect,
-    state.consultations,
+    scopedConsultations,
     (consultation) => `${consultation.patient_name} / ${consultation.title}`,
     "Consulta opcional"
   );
@@ -3159,6 +3500,15 @@ function renderSelects() {
       )}`,
     "Selecciona factura pendiente"
   );
+  if (scopedPatient) {
+    [elements.recordPatientSelect, elements.consentPatientSelect, elements.groomingPatientSelect].forEach(
+      (select) => {
+        if (select) {
+          select.value = scopedPatient.id;
+        }
+      }
+    );
+  }
 }
 
 function resetForm(form) {
@@ -3224,14 +3574,16 @@ function renderSection(sectionId) {
       syncBillingDocumentFormState();
       return;
     case "consultorio":
+      syncConsultorioSelectionState();
       renderOwners();
+      renderPatients();
+      renderConsultorioOwnerDetail();
+      renderConsultorioPatientProfile();
       renderRecords();
       renderConsultations();
       renderConsents();
       renderGrooming();
       renderSelects();
-      renderConsultorioOwnerDetail();
-      renderPatients();
       return;
     case "hospamb":
       renderHospAmb();
@@ -3275,6 +3627,17 @@ function getMissingBootstrapSections(sections) {
 }
 
 function getSectionDataRequirements(sectionId) {
+  if (sectionId === "consultorio") {
+    const subsectionValue = activeSubsections[sectionId] || "patients";
+    if (subsectionValue === "grooming") {
+      return ["owners", "patients", "grooming_documents"];
+    }
+    const baseRequirements = ["owners", "patients"];
+    const profileRequirements = consultorioPatientId
+      ? getConsultorioProfileViewConfig()?.dataRequirements || []
+      : [];
+    return Array.from(new Set([...baseRequirements, ...profileRequirements]));
+  }
   const subsectionValue = activeSubsections[sectionId];
   const subsectionRequirements =
     SUBSECTION_DATA_REQUIREMENTS[sectionId]?.[subsectionValue] || null;
@@ -3971,6 +4334,10 @@ async function handleOwnerDelete(ownerId) {
     return;
   }
   await api.deleteOwner(ownerId);
+  if (getConsultorioPatient()?.owner_id === ownerId) {
+    consultorioPatientId = "";
+    consultorioProfileView = "records";
+  }
   if (consultorioOwnerId === ownerId) {
     consultorioOwnerId = "";
   }
@@ -3995,6 +4362,10 @@ async function handlePatientDelete(patientId) {
     return;
   }
   await api.deletePatient(patientId);
+  if (consultorioPatientId === patientId) {
+    consultorioPatientId = "";
+    consultorioProfileView = "records";
+  }
   if (elements.patientForm?.elements?.id?.value === patientId) {
     resetPatientEditor();
   }
@@ -4026,6 +4397,8 @@ async function handleOwnersListClick(event) {
     return;
   }
   consultorioOwnerId = selectButton.dataset.ownerSelect || "";
+  consultorioPatientId = "";
+  consultorioProfileView = "records";
   resetPatientEditor();
   setSectionSubsection("consultorio", "patients");
   renderConsultorioOwnerDetail();
@@ -4033,12 +4406,27 @@ async function handleOwnersListClick(event) {
 }
 
 async function handlePatientsListClick(event) {
+  const selectButton = event.target.closest("[data-patient-select]");
+  if (selectButton) {
+    const patient = getPatientById(selectButton.dataset.patientSelect || "");
+    if (!patient) {
+      throw new Error("No se encontro la mascota seleccionada.");
+    }
+    consultorioPatientId = patient.id;
+    consultorioOwnerId = patient.owner_id || consultorioOwnerId;
+    consultorioProfileView = "records";
+    setSectionSubsection("consultorio", "patients");
+    renderConsultorioPatientProfile();
+    return;
+  }
   const editButton = event.target.closest("[data-patient-edit]");
   if (editButton) {
     const patient = getPatientById(editButton.dataset.patientEdit || "");
     if (!patient) {
       throw new Error("No se encontro la mascota seleccionada.");
     }
+    consultorioPatientId = patient.id;
+    consultorioOwnerId = patient.owner_id || consultorioOwnerId;
     openPatientEditor(patient);
     return;
   }
@@ -4181,6 +4569,9 @@ async function handlePatientSubmit(event) {
   const patient = await api.savePatient(payload);
   if (patient?.owner_id) {
     consultorioOwnerId = patient.owner_id;
+  }
+  if (patient?.id) {
+    consultorioPatientId = patient.id;
   }
   resetPatientEditor();
   await refreshData({
@@ -4352,6 +4743,8 @@ async function handleLogout() {
   }
   clearBootstrapCache(authState.currentUser?.id);
   consultorioOwnerId = "";
+  consultorioPatientId = "";
+  consultorioProfileView = "records";
   sessionStorage.removeItem(AUTH_SESSION_KEY);
   authState.currentUser = null;
   authState.authenticated = false;
@@ -4855,9 +5248,10 @@ function bindForms() {
   if (elements.consultorioOwnerBackButton) {
     elements.consultorioOwnerBackButton.addEventListener("click", () => {
       consultorioOwnerId = "";
+      consultorioPatientId = "";
+      consultorioProfileView = "records";
       resetPatientEditor();
-      renderConsultorioOwnerDetail();
-      renderPatients();
+      setSectionSubsection("consultorio", "patients");
     });
   }
   if (elements.consultorioOwnerEditButton) {
@@ -4883,6 +5277,30 @@ function bindForms() {
   }
   if (elements.patientsList) {
     elements.patientsList.addEventListener("click", wrapAsync(handlePatientsListClick));
+  }
+  if (elements.consultorioPatientProfileNav) {
+    elements.consultorioPatientProfileNav.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-consultorio-profile-view]");
+      if (!button) {
+        return;
+      }
+      setConsultorioProfileView(button.dataset.consultorioProfileView || "records");
+    });
+  }
+  if (elements.consultorioPatientBackButton) {
+    elements.consultorioPatientBackButton.addEventListener("click", () => {
+      consultorioPatientId = "";
+      consultorioProfileView = "records";
+      setSectionSubsection("consultorio", "patients");
+    });
+  }
+  if (elements.consultorioPatientEditButton) {
+    elements.consultorioPatientEditButton.addEventListener("click", () => {
+      const patient = getConsultorioPatient();
+      if (patient) {
+        openPatientEditor(patient);
+      }
+    });
   }
   if (elements.exportUsersButton) {
     elements.exportUsersButton.addEventListener("click", () => {
