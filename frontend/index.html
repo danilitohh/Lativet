@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Lativet Web</title>
-    <link rel="stylesheet" href="/styles.css?v=20260325-3" />
+    <link rel="stylesheet" href="/styles.css?v=20260325-4" />
   </head>
   <body>
     <div class="page-shell">
@@ -353,15 +353,23 @@
             <article id="agendaDayPanel" class="panel-card agenda-detail-panel">
               <div class="panel-heading">
                 <div>
-                  <p class="eyebrow">Programacion del dia</p>
-                  <h3 id="agendaSelectedDateLabel">Selecciona un dia</h3>
+                  <p class="eyebrow">Programacion del mes</p>
+                  <h3 id="agendaSelectedDateLabel"></h3>
                 </div>
                 <div class="form-actions">
                   <button id="openAppointmentModalButton" class="primary-button" type="button">Nueva cita</button>
                 </div>
               </div>
-              <div id="agendaDaySlots" class="agenda-day-slots"></div>
-              <div id="agendaSelectedDayAppointments" class="list-surface"></div>
+              <div class="agenda-weekdays agenda-weekdays--large">
+                <span>Lu</span>
+                <span>Ma</span>
+                <span>Mi</span>
+                <span>Ju</span>
+                <span>Vi</span>
+                <span>Sa</span>
+                <span>Do</span>
+              </div>
+              <div id="agendaMonthGridLarge" class="agenda-month-grid agenda-month-grid--large"></div>
             </article>
           </div>
 

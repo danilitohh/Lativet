@@ -400,6 +400,32 @@ function formatAgendaDateLabel(value) {
   });
 }
 
+function formatAgendaTimeShort(value) {
+  if (!value) {
+    return "";
+  }
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return "";
+  }
+  return parsed.toLocaleTimeString("es-CO", { hour: "numeric", minute: "2-digit" });
+}
+
+function agendaEventTone(status) {
+  return (
+    {
+      Pendiente: "scheduled",
+      Pagado: "confirmed",
+      Cotizacion: "draft",
+      ingreso: "confirmed",
+      entrada: "confirmed",
+      gasto: "cancelled",
+      salida: "cancelled",
+      invoice: "finalized",
+    }[status] || status || "draft"
+  );
+}
+
 function buildAgendaMonthStart(viewDate) {
   const monthStart = new Date(viewDate.getFullYear(), viewDate.getMonth(), 1);
   return addDays(monthStart, -getWeekdayIndex(monthStart));
@@ -640,9 +666,8 @@ function cacheElements() {
     "appointmentsList",
     "agendaMonthLabel",
     "agendaMonthGrid",
+    "agendaMonthGridLarge",
     "agendaSelectedDateLabel",
-    "agendaDaySlots",
-    "agendaSelectedDayAppointments",
     "agendaConnectionBadge",
     "agendaAvailabilityFormPanel",
     "agendaGeneralListPanel",
@@ -1455,7 +1480,7 @@ function renderAvailability() {
     );
   }
   renderAgendaMonth();
-  renderAgendaSelectedDay();
+  renderAgendaLargeMonth();
   renderGoogleCalendarStatus();
 }
 
@@ -1486,48 +1511,74 @@ function renderAgendaMonth() {
   elements.agendaMonthGrid.innerHTML = cards.join("");
 }
 
-function renderAgendaSelectedDay() {
-  elements.appointmentModalSelectedDate.textContent = formatAgendaDateLabel(agendaSelectedDate);
-  elements.agendaSelectedDateLabel.textContent = formatAgendaDateLabel(agendaSelectedDate);
-
-  const slots = buildAgendaSlots(agendaSelectedDate);
-  elements.agendaDaySlots.innerHTML = slots.length
-    ? slots
-        .map(
-          (slot) => `
-            <button
-              type="button"
-              class="slot-pill${slot.occupied ? " is-occupied" : ""}"
-              data-slot-at="${escapeHtml(slot.slot_at)}"
-              ${slot.occupied ? "disabled" : ""}
-            >
-              ${escapeHtml(slot.label)} - ${escapeHtml(slot.end_label)}
-              <small>${escapeHtml(slot.professional_name)}${slot.location ? ` / ${escapeHtml(slot.location)}` : ""}</small>
-              ${slot.occupied ? `<strong>${escapeHtml(slot.patient_name)}</strong>` : "<strong>Disponible</strong>"}
-            </button>
-          `
-        )
-        .join("")
-    : emptyState("No hay bloques configurados para este dia.");
-
-  renderList(
-    elements.agendaSelectedDayAppointments,
-    listAppointmentsForDate(agendaSelectedDate),
-    (appointment) => `
-      <article class="list-card">
-        <header>
-          <div>
-            <h4>${escapeHtml(appointment.patient_name)}</h4>
-            <p>${formatDateTime(appointment.appointment_at)}</p>
+function renderAgendaLargeMonth() {
+  if (elements.appointmentModalSelectedDate) {
+    elements.appointmentModalSelectedDate.textContent = formatAgendaDateLabel(agendaSelectedDate);
+  }
+  if (elements.agendaSelectedDateLabel) {
+    elements.agendaSelectedDateLabel.textContent = formatMonthLabel(agendaViewDate);
+  }
+  if (!elements.agendaMonthGridLarge) {
+    return;
+  }
+  const gridStart = buildAgendaMonthStart(agendaViewDate);
+  const today = toIsoDate(new Date());
+  const cards = [];
+  for (let index = 0; index < 42; index += 1) {
+    const current = addDays(gridStart, index);
+    const currentIso = toIsoDate(current);
+    const appointments = listAppointmentsForDate(currentIso);
+    const visible = appointments.slice(0, 3);
+    const moreCount = appointments.length - visible.length;
+    const events = visible
+      .map((appointment) => {
+        const timeLabel = formatAgendaTimeShort(appointment.appointment_at);
+        const label = truncate(
+          appointment.reason || appointment.patient_name || "Cita",
+          26
+        );
+        const toneRaw = String(agendaEventTone(appointment.status))
+          .replace(/[^a-z0-9_-]/gi, "")
+          .toLowerCase();
+        const tone = [
+          "scheduled",
+          "draft",
+          "confirmed",
+          "in_progress",
+          "completed",
+          "finalized",
+          "cancelled",
+          "no_show",
+        ].includes(toneRaw)
+          ? toneRaw
+          : "default";
+        return `
+          <div class="agenda-event-chip agenda-event-chip--${tone}">
+            <span class="agenda-event-dot"></span>
+            <span class="agenda-event-time">${escapeHtml(timeLabel)}</span>
+            <span class="agenda-event-text">${escapeHtml(label)}</span>
           </div>
-          <span class="${statusClass(appointment.status)}">${escapeHtml(humanStatus(appointment.status))}</span>
-        </header>
-        <p>${escapeHtml(appointment.reason)}</p>
-        <p>${escapeHtml(appointment.professional_name || "Agenda general")}</p>
-      </article>
-    `,
-    "No hay citas registradas para este dia."
-  );
+        `;
+      })
+      .join("");
+    const moreLine = moreCount > 0 ? `<div class="agenda-event-more">+${moreCount} mas</div>` : "";
+    cards.push(`
+      <button
+        type="button"
+        class="agenda-large-day${sameMonth(current, agendaViewDate) ? "" : " is-muted"}${
+          currentIso === agendaSelectedDate ? " is-selected" : ""
+        }${currentIso === today ? " is-today" : ""}"
+        data-agenda-date="${escapeHtml(currentIso)}"
+      >
+        <div class="agenda-large-day__date">${escapeHtml(String(current.getDate()))}</div>
+        <div class="agenda-large-day__events">
+          ${events || ""}
+          ${moreLine}
+        </div>
+      </button>
+    `);
+  }
+  elements.agendaMonthGridLarge.innerHTML = cards.join("");
 }
 
 function renderGoogleCalendarStatus() {
@@ -2912,8 +2963,12 @@ function bindForms() {
   if (elements.appointmentsList) {
     elements.appointmentsList.addEventListener("click", wrapAsync(handleAppointmentsClick));
   }
-  elements.agendaMonthGrid.addEventListener("click", handleAgendaMonthClick);
-  elements.agendaDaySlots.addEventListener("click", handleAgendaMonthClick);
+  if (elements.agendaMonthGrid) {
+    elements.agendaMonthGrid.addEventListener("click", handleAgendaMonthClick);
+  }
+  if (elements.agendaMonthGridLarge) {
+    elements.agendaMonthGridLarge.addEventListener("click", handleAgendaMonthClick);
+  }
   elements.recordsList.addEventListener("click", handleRecordsClick);
   elements.openAppointmentModalButton.addEventListener("click", () => openAppointmentModal());
   elements.closeAppointmentModalButton.addEventListener("click", closeAppointmentModal);
