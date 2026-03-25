@@ -58,9 +58,32 @@ const usersFilters = { query: "", pageSize: 10, showInactive: false };
 const ownersFilters = { query: "" };
 const authState = { requiresLogin: false, authenticated: false, currentUser: null };
 const AUTH_SESSION_KEY = "lativet_auth_session";
-const BOOTSTRAP_CACHE_KEY = "lativet_bootstrap_v1";
+const BOOTSTRAP_CACHE_KEY = "lativet_bootstrap_v2";
 const BOOTSTRAP_CACHE_TTL_MS = 5 * 60 * 1000;
 let bootstrapFullRequested = false;
+const BOOTSTRAP_CORE_SECTIONS = [
+  "settings",
+  "owners",
+  "patients",
+  "appointments",
+  "availability_rules",
+  "agenda_calendar",
+  "dashboard",
+  "users",
+];
+const BOOTSTRAP_HEAVY_GROUPS = [
+  ["records", "consultations", "consents", "grooming_documents"],
+  [
+    "providers",
+    "catalog_items",
+    "billing_clients",
+    "billing_documents",
+    "cash_movements",
+    "stock_movements",
+    "billing_summary",
+  ],
+  ["requests", "reports"],
+];
 const consultationTypes = [
   "Vacunacion",
   "Formula",
@@ -567,7 +590,20 @@ async function apiRequest(path, options = {}) {
 }
 
 const api = {
-  bootstrap: (lite = false) => apiRequest(`/api/bootstrap${lite ? "?lite=1" : ""}`),
+  bootstrap: (options = {}) => {
+    if (typeof options === "boolean") {
+      return apiRequest(`/api/bootstrap${options ? "?lite=1" : ""}`);
+    }
+    const params = new URLSearchParams();
+    if (options.lite) {
+      params.set("lite", "1");
+    }
+    if (Array.isArray(options.sections) && options.sections.length) {
+      params.set("sections", options.sections.join(","));
+    }
+    const query = params.toString();
+    return apiRequest(`/api/bootstrap${query ? `?${query}` : ""}`);
+  },
   saveSettings: (payload) =>
     apiRequest("/api/settings", { method: "POST", body: JSON.stringify(payload) }),
   saveOwner: (payload) =>
@@ -2669,14 +2705,21 @@ function renderAll() {
 async function refreshData(options = {}) {
   let message = "";
   let lite = false;
+  let sections = null;
   if (typeof options === "string") {
     message = options;
   } else {
-    ({ message = "", lite = false } = options || {});
+    ({ message = "", lite = false, sections = null } = options || {});
   }
-  const payload = await api.bootstrap(lite);
+  const payload = await api.bootstrap({ lite, sections });
   Object.assign(state, payload);
-  if (!lite) {
+  const shouldCache =
+    !lite &&
+    (!sections ||
+      (Array.isArray(sections) &&
+        sections.length === BOOTSTRAP_CORE_SECTIONS.length &&
+        sections.every((item) => BOOTSTRAP_CORE_SECTIONS.includes(item))));
+  if (shouldCache) {
     saveBootstrapCache(payload);
   }
   if (!toIsoDate(agendaSelectedDate)) {
@@ -3923,7 +3966,10 @@ function scheduleFullBootstrapLoad() {
   bootstrapFullRequested = true;
   const run = async () => {
     try {
-      await refreshData("Datos completos cargados.");
+      for (const group of BOOTSTRAP_HEAVY_GROUPS) {
+        await refreshData({ sections: group });
+      }
+      showStatus("Datos completos cargados.", "success");
     } catch (error) {
       showStatus(error.message || "No fue posible cargar datos completos.", "error");
     } finally {
@@ -3951,7 +3997,7 @@ async function startDataLoad() {
     scheduleFullBootstrapLoad();
     return;
   }
-  refreshData({ lite: true })
+  refreshData({ sections: BOOTSTRAP_CORE_SECTIONS })
     .catch((error) => {
       showStatus(error.message || "No fue posible cargar la configuracion.", "error");
     })

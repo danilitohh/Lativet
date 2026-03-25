@@ -144,7 +144,11 @@ def create_app(base_dir: Path | None = None, data_dir: Path | None = None) -> Fl
     @app.get("/api/bootstrap")
     def bootstrap():
         lite = request.args.get("lite", "").lower() in {"1", "true", "yes", "si"}
-        return respond(service.bootstrap(lite=lite))
+        sections_raw = (request.args.get("sections") or "").strip()
+        sections = {item for item in sections_raw.split(",") if item.strip()} if sections_raw else None
+        if init_service() is None:
+            return service_unavailable()
+        return respond(init_service().bootstrap(lite=lite, sections=sections))
 
     @app.get("/api/auth/status")
     def auth_status():

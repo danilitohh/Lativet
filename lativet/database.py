@@ -3025,7 +3025,7 @@ class Database:
                 destination.close()
         return {"path": str(backup_path)}
 
-    def bootstrap(self, lite: bool = False) -> dict:
+    def bootstrap(self, lite: bool = False, sections: set[str] | None = None) -> dict:
         payload = {
             "generated_at": now_iso(),
             "settings": self.get_settings(),
@@ -3036,30 +3036,74 @@ class Database:
             payload["dashboard"] = {}
             payload["users"] = []
             return payload
-        payload["dashboard"] = self.get_dashboard_summary()
-        payload.update(
-            {
-                "users": self.list_users(),
-                "owners": self.list_owners(),
-                "patients": self.list_patients(),
-                "appointments": self.list_appointments(),
-                "availability_rules": self.list_availability_rules(),
-                "agenda_calendar": self.get_agenda_calendar(),
-                "consents": self.list_consents(),
-                "records": self.list_clinical_records(),
-                "consultations": self.list_consultations(),
-                "grooming_documents": self.list_grooming_documents(),
-                "providers": self.list_providers(),
-                "catalog_items": self.list_catalog_items(),
-                "billing_clients": self.list_billing_clients(),
-                "billing_documents": self.list_billing_documents(),
-                "cash_movements": self.list_cash_movements(),
-                "stock_movements": self.list_stock_movements(),
-                "billing_summary": self.get_billing_summary(),
-                "requests": self.get_requests_summary(),
-                "reports": self.get_reports_summary(),
-            }
-        )
+        if not sections:
+            payload["dashboard"] = self.get_dashboard_summary()
+            payload.update(
+                {
+                    "users": self.list_users(),
+                    "owners": self.list_owners(),
+                    "patients": self.list_patients(),
+                    "appointments": self.list_appointments(),
+                    "availability_rules": self.list_availability_rules(),
+                    "agenda_calendar": self.get_agenda_calendar(),
+                    "consents": self.list_consents(),
+                    "records": self.list_clinical_records(),
+                    "consultations": self.list_consultations(),
+                    "grooming_documents": self.list_grooming_documents(),
+                    "providers": self.list_providers(),
+                    "catalog_items": self.list_catalog_items(),
+                    "billing_clients": self.list_billing_clients(),
+                    "billing_documents": self.list_billing_documents(),
+                    "cash_movements": self.list_cash_movements(),
+                    "stock_movements": self.list_stock_movements(),
+                    "billing_summary": self.get_billing_summary(),
+                    "requests": self.get_requests_summary(),
+                    "reports": self.get_reports_summary(),
+                }
+            )
+            return payload
+
+        include = sections.__contains__
+        if include("dashboard"):
+            payload["dashboard"] = self.get_dashboard_summary()
+        if include("users"):
+            payload["users"] = self.list_users()
+        if include("owners"):
+            payload["owners"] = self.list_owners()
+        if include("patients"):
+            payload["patients"] = self.list_patients()
+        if include("appointments"):
+            payload["appointments"] = self.list_appointments()
+        if include("availability_rules"):
+            payload["availability_rules"] = self.list_availability_rules()
+        if include("agenda_calendar"):
+            payload["agenda_calendar"] = self.get_agenda_calendar()
+        if include("consents"):
+            payload["consents"] = self.list_consents()
+        if include("records"):
+            payload["records"] = self.list_clinical_records()
+        if include("consultations"):
+            payload["consultations"] = self.list_consultations()
+        if include("grooming_documents"):
+            payload["grooming_documents"] = self.list_grooming_documents()
+        if include("providers"):
+            payload["providers"] = self.list_providers()
+        if include("catalog_items"):
+            payload["catalog_items"] = self.list_catalog_items()
+        if include("billing_clients"):
+            payload["billing_clients"] = self.list_billing_clients()
+        if include("billing_documents"):
+            payload["billing_documents"] = self.list_billing_documents()
+        if include("cash_movements"):
+            payload["cash_movements"] = self.list_cash_movements()
+        if include("stock_movements"):
+            payload["stock_movements"] = self.list_stock_movements()
+        if include("billing_summary"):
+            payload["billing_summary"] = self.get_billing_summary()
+        if include("requests"):
+            payload["requests"] = self.get_requests_summary()
+        if include("reports"):
+            payload["reports"] = self.get_reports_summary()
         return payload
 
 
