@@ -801,6 +801,12 @@ class Database:
                 ).fetchone()
                 if existing:
                     existing_password_hash = existing["password_hash"] or ""
+            email_row = self.connection.execute(
+                "SELECT id FROM staff_users WHERE lower(email) = ?",
+                (data["email"].lower(),),
+            ).fetchone()
+            if email_row and (not existing or email_row["id"] != user_id):
+                raise ValidationError("Ya existe un usuario con ese correo.")
             if existing:
                 if password:
                     password_hash = generate_password_hash(password)

@@ -699,6 +699,7 @@ function cacheElements() {
     "userModal",
     "closeUserModalButton",
     "userForm",
+    "userFormError",
     "cashMovementsList",
     "stockMovementsList",
     "requestRecordsList",
@@ -2193,6 +2194,10 @@ function openUserModal(user = null) {
     return;
   }
   elements.userForm.reset();
+  if (elements.userFormError) {
+    elements.userFormError.textContent = "";
+    elements.userFormError.classList.add("is-hidden");
+  }
   elements.userForm.elements.id.value = user?.id || "";
   elements.userForm.elements.full_name.value = user?.full_name || "";
   elements.userForm.elements.email.value = user?.email || "";
@@ -2212,6 +2217,14 @@ function openUserModal(user = null) {
   });
   elements.userModal.classList.remove("is-hidden");
   elements.userModal.setAttribute("aria-hidden", "false");
+}
+
+function setUserFormError(message) {
+  if (!elements.userFormError) {
+    return;
+  }
+  elements.userFormError.textContent = message || "";
+  elements.userFormError.classList.toggle("is-hidden", !message);
 }
 
 function closeUserModal() {
@@ -2444,11 +2457,16 @@ function buildUserPayload() {
 
 async function handleUserSubmit(event) {
   event.preventDefault();
-  const payload = buildUserPayload();
-  await api.saveUser(payload);
-  closeUserModal();
-  await refreshData("Usuario guardado.");
-  setActiveSection("administration");
+  try {
+    const payload = buildUserPayload();
+    await api.saveUser(payload);
+    closeUserModal();
+    await refreshData("Usuario guardado.");
+    setActiveSection("administration");
+  } catch (error) {
+    setUserFormError(error.message || "No fue posible guardar el usuario.");
+    throw error;
+  }
 }
 
 async function handleUsersTableClick(event) {
