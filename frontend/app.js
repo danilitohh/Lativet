@@ -79,10 +79,13 @@ const BOOTSTRAP_CORE_SECTIONS = [
   "appointments",
   "availability_rules",
 ];
-const BOOTSTRAP_HEAVY_GROUPS = [
+const BOOTSTRAP_BACKGROUND_GROUPS = [
   ["users", "owners", "patients"],
-  ["records", "consultations", "consents", "grooming_documents"],
-  [
+];
+const SECTION_DATA_REQUIREMENTS = {
+  administration: ["users"],
+  agenda: ["owners", "patients"],
+  sales: [
     "providers",
     "catalog_items",
     "billing_clients",
@@ -91,8 +94,20 @@ const BOOTSTRAP_HEAVY_GROUPS = [
     "stock_movements",
     "billing_summary",
   ],
-  ["requests", "reports"],
-];
+  consultorio: ["owners", "patients", "records", "consultations", "consents", "grooming_documents"],
+  hospamb: ["consultations"],
+  requests: ["requests"],
+  reports: ["reports"],
+};
+const ALL_BOOTSTRAP_SECTIONS = Array.from(
+  new Set([
+    ...BOOTSTRAP_CORE_SECTIONS,
+    ...BOOTSTRAP_BACKGROUND_GROUPS.flat(),
+    ...Object.values(SECTION_DATA_REQUIREMENTS).flat(),
+  ])
+);
+const loadedBootstrapSections = new Set();
+const pendingBootstrapSections = new Set();
 const AGENDA_TIMELINE_START_HOUR = 6;
 const AGENDA_TIMELINE_END_HOUR = 21;
 const AGENDA_TIMELINE_HOUR_HEIGHT = 44;
@@ -1051,6 +1066,7 @@ function setActiveSection(sectionId) {
   });
   applySectionSubsection(sectionId);
   renderAll();
+  ensureSectionData(sectionId);
   updateNavDropdownState();
 }
 
@@ -1062,6 +1078,7 @@ function setSectionSubsection(sectionId, subsectionValue) {
   applySectionSubsection(sectionId);
   if (getActiveSectionId() === sectionId) {
     renderAll();
+    ensureSectionData(sectionId);
   }
   updateNavDropdownState();
 }
@@ -3109,6 +3126,42 @@ function renderAll() {
   renderSection(getActiveSectionId());
 }
 
+function markBootstrapSectionsLoaded(sections) {
+  (sections || []).forEach((section) => {
+    loadedBootstrapSections.add(section);
+    pendingBootstrapSections.delete(section);
+  });
+}
+
+function markBootstrapSectionsPending(sections) {
+  (sections || []).forEach((section) => pendingBootstrapSections.add(section));
+}
+
+function clearBootstrapSectionsPending(sections) {
+  (sections || []).forEach((section) => pendingBootstrapSections.delete(section));
+}
+
+function getMissingBootstrapSections(sections) {
+  return (sections || []).filter(
+    (section) => !loadedBootstrapSections.has(section) && !pendingBootstrapSections.has(section)
+  );
+}
+
+async function ensureSectionData(sectionId) {
+  const requiredSections = SECTION_DATA_REQUIREMENTS[sectionId] || [];
+  const missingSections = getMissingBootstrapSections(requiredSections);
+  if (!missingSections.length) {
+    return;
+  }
+  markBootstrapSectionsPending(missingSections);
+  try {
+    await refreshData({ sections: missingSections });
+  } catch (error) {
+    clearBootstrapSectionsPending(missingSections);
+    showStatus(error.message || "No fue posible cargar los datos de esta seccion.", "error");
+  }
+}
+
 async function refreshData(options = {}) {
   let message = "";
   let lite = false;
@@ -3121,6 +3174,13 @@ async function refreshData(options = {}) {
   }
   const payload = await api.bootstrap({ lite, sections });
   Object.assign(state, payload);
+  if (!lite) {
+    if (Array.isArray(sections) && sections.length) {
+      markBootstrapSectionsLoaded(sections);
+    } else {
+      markBootstrapSectionsLoaded(ALL_BOOTSTRAP_SECTIONS);
+    }
+  }
   const shouldCache =
     !lite &&
     (!sections ||
@@ -4756,23 +4816,16 @@ function scheduleFullBootstrapLoad() {
   }
   bootstrapFullRequested = true;
   const run = async () => {
-    let partialLoad = false;
     let loadError = null;
     try {
-      for (const group of BOOTSTRAP_HEAVY_GROUPS) {
+      for (const group of BOOTSTRAP_BACKGROUND_GROUPS) {
         await refreshData({ sections: group, render: false });
-        partialLoad = true;
       }
     } catch (error) {
       loadError = error;
     } finally {
-      if (partialLoad) {
-        renderAll();
-      }
       if (loadError) {
-        showStatus(loadError.message || "No fue posible cargar datos completos.", "error");
-      } else {
-        showStatus("Datos completos cargados.", "success");
+        showStatus(loadError.message || "No fue posible cargar algunos datos secundarios.", "error");
       }
       bootstrapFullRequested = false;
     }
@@ -4789,21 +4842,23 @@ async function startDataLoad() {
   const cached = loadBootstrapCache();
   if (cached) {
     Object.assign(state, cached);
+    markBootstrapSectionsLoaded(BOOTSTRAP_CORE_SECTIONS);
     if (!toIsoDate(agendaSelectedDate)) {
       agendaSelectedDate = toIsoDate(new Date());
     }
     renderAll();
+    showStatus("Datos basicos cargados.", "success");
   }
   if (cached) {
     scheduleFullBootstrapLoad();
     return;
   }
-  refreshData({ sections: BOOTSTRAP_CORE_SECTIONS })
+  refreshData({ sections: BOOTSTRAP_CORE_SECTIONS, message: "Datos basicos cargados." })
+    .then(() => {
+      scheduleFullBootstrapLoad();
+    })
     .catch((error) => {
       showStatus(error.message || "No fue posible cargar la configuracion.", "error");
-    })
-    .finally(() => {
-      scheduleFullBootstrapLoad();
     });
 }
 
