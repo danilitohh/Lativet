@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sqlite3
 import threading
 import uuid
@@ -3310,6 +3311,14 @@ class PostgresDatabase(Database):
         self.db_path = Path("supabase")
         self._lock = threading.RLock()
         self.connection = PostgresConnection(dsn)
+        init_indexes = os.getenv("LATIVET_POSTGRES_INIT_INDEXES", "").strip().lower() in {
+            "1",
+            "true",
+            "on",
+            "yes",
+            "si",
+            "s",
+        }
         lock_id = 9245021
         lock_acquired = False
         with self._lock:
@@ -3329,7 +3338,7 @@ class PostgresDatabase(Database):
                     self.connection.execute("SET statement_timeout = '60s'")
                 except Exception:
                     pass
-                self._init_schema()
+                self._init_schema(skip_indexes=not init_indexes)
                 self.connection.commit()
                 if not self._has_settings():
                     self.save_settings(DEFAULT_SETTINGS)
