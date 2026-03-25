@@ -569,12 +569,15 @@ class Database:
             CREATE INDEX IF NOT EXISTS idx_patients_owner ON patients(owner_id);
             CREATE INDEX IF NOT EXISTS idx_appointments_at ON appointments(appointment_at);
             CREATE INDEX IF NOT EXISTS idx_appointments_status ON appointments(status);
+            CREATE INDEX IF NOT EXISTS idx_appointments_status_at ON appointments(status, appointment_at);
             CREATE INDEX IF NOT EXISTS idx_consents_signed_at ON consents(signed_at);
             CREATE INDEX IF NOT EXISTS idx_records_patient ON clinical_records(patient_id);
             CREATE INDEX IF NOT EXISTS idx_records_opened_at ON clinical_records(opened_at);
             CREATE INDEX IF NOT EXISTS idx_records_retention ON clinical_records(retention_until);
+            CREATE INDEX IF NOT EXISTS idx_records_status ON clinical_records(status);
             CREATE INDEX IF NOT EXISTS idx_evolutions_record ON clinical_evolutions(record_id);
             CREATE INDEX IF NOT EXISTS idx_consultations_record ON clinical_consultations(record_id);
+            CREATE INDEX IF NOT EXISTS idx_consultations_record_at ON clinical_consultations(record_id, consultation_at);
             CREATE INDEX IF NOT EXISTS idx_consultations_type ON clinical_consultations(consultation_type);
             CREATE INDEX IF NOT EXISTS idx_consultations_at ON clinical_consultations(consultation_at);
             CREATE INDEX IF NOT EXISTS idx_availability_day ON agenda_availability_rules(day_of_week);
@@ -631,6 +634,30 @@ class Database:
         if row is None:
             return None
         return {key: row[key] for key in row.keys()}
+
+    def _list_consultation_details(
+        self,
+        *,
+        where_sql: str = "",
+        params: tuple | list = (),
+        limit: int | None = None,
+    ) -> list[dict]:
+        query = """
+            SELECT c.*, r.opened_at AS record_opened_at, p.name AS patient_name,
+                   o.full_name AS owner_name, cons.procedure_name AS consent_procedure_name
+            FROM clinical_consultations c
+            JOIN clinical_records r ON r.id = c.record_id
+            JOIN patients p ON p.id = c.patient_id
+            JOIN owners o ON o.id = c.owner_id
+            LEFT JOIN consents cons ON cons.id = c.consent_id
+        """
+        if where_sql:
+            query += f"\nWHERE {where_sql}"
+        query += "\nORDER BY c.consultation_at DESC"
+        if limit is not None:
+            query += f"\nLIMIT {int(limit)}"
+        rows = self.connection.execute(query, params).fetchall()
+        return [self._row_to_dict(row) for row in rows]
 
     def _record_audit(
         self, entity_type: str, entity_id: str, action: str, actor: str, payload: dict | None
@@ -1572,41 +1599,22 @@ class Database:
         return self._fetch_consultation_detail(consultation_id)
 
     def _fetch_consultation_detail(self, consultation_id: str) -> dict:
-        row = self.connection.execute(
-            """
-            SELECT c.*, r.opened_at AS record_opened_at, p.name AS patient_name, o.full_name AS owner_name
-            FROM clinical_consultations c
-            JOIN clinical_records r ON r.id = c.record_id
-            JOIN patients p ON p.id = c.patient_id
-            JOIN owners o ON o.id = c.owner_id
-            WHERE c.id = ?
-            """,
-            (consultation_id,),
-        ).fetchone()
-        consultation = self._row_to_dict(row)
-        if consultation is None:
+        consultation = next(
+            iter(
+                self._list_consultation_details(
+                    where_sql="c.id = ?",
+                    params=(consultation_id,),
+                    limit=1,
+                )
+            ),
+            None,
+        )
+        if not consultation:
             raise ValidationError("La consulta seleccionada no existe.")
-        if consultation.get("consent_id"):
-            consent = self.connection.execute(
-                "SELECT procedure_name FROM consents WHERE id = ?",
-                (consultation["consent_id"],),
-            ).fetchone()
-            consultation["consent_procedure_name"] = consent["procedure_name"] if consent else ""
         return consultation
 
     def list_consultations(self) -> list[dict]:
-        rows = self.connection.execute(
-            """
-            SELECT c.*, r.opened_at AS record_opened_at, p.name AS patient_name, o.full_name AS owner_name
-            FROM clinical_consultations c
-            JOIN clinical_records r ON r.id = c.record_id
-            JOIN patients p ON p.id = c.patient_id
-            JOIN owners o ON o.id = c.owner_id
-            ORDER BY c.consultation_at DESC
-            LIMIT 300
-            """
-        ).fetchall()
-        return [self._fetch_consultation_detail(row["id"]) for row in rows]
+        return self._list_consultation_details(limit=300)
 
     def save_availability_rule(self, payload: dict) -> dict:
         data = validate_availability_rule(payload)
@@ -2894,18 +2902,10 @@ class Database:
             (record_id,),
         ).fetchall()
         record["evolutions"] = [self._row_to_dict(item) for item in evolutions]
-        consultations = self.connection.execute(
-            """
-            SELECT id
-            FROM clinical_consultations
-            WHERE record_id = ?
-            ORDER BY consultation_at DESC
-            """,
-            (record_id,),
-        ).fetchall()
-        record["consultations"] = [
-            self._fetch_consultation_detail(item["id"]) for item in consultations
-        ]
+        record["consultations"] = self._list_consultation_details(
+            where_sql="c.record_id = ?",
+            params=(record_id,),
+        )
         return record
 
     def list_clinical_records(self) -> list[dict]:
@@ -2938,20 +2938,13 @@ class Database:
         grouped: dict[str, list[dict]] = {}
         for row in evolution_rows:
             grouped.setdefault(row["record_id"], []).append(self._row_to_dict(row))
-        consultation_rows = self.connection.execute(
-            f"""
-            SELECT id, record_id
-            FROM clinical_consultations
-            WHERE record_id IN ({placeholders})
-            ORDER BY consultation_at DESC
-            """,
-            record_ids,
-        ).fetchall()
+        consultation_rows = self._list_consultation_details(
+            where_sql=f"c.record_id IN ({placeholders})",
+            params=record_ids,
+        )
         grouped_consultations: dict[str, list[dict]] = {}
         for row in consultation_rows:
-            grouped_consultations.setdefault(row["record_id"], []).append(
-                self._fetch_consultation_detail(row["id"])
-            )
+            grouped_consultations.setdefault(row["record_id"], []).append(row)
         for record in records:
             record["payload"] = json.loads(record["payload_json"])
             record["evolutions"] = grouped.get(record["id"], [])

@@ -75,15 +75,12 @@ const BOOTSTRAP_CACHE_TTL_MS = 5 * 60 * 1000;
 let bootstrapFullRequested = false;
 const BOOTSTRAP_CORE_SECTIONS = [
   "settings",
-  "owners",
-  "patients",
+  "dashboard",
   "appointments",
   "availability_rules",
-  "agenda_calendar",
-  "dashboard",
-  "users",
 ];
 const BOOTSTRAP_HEAVY_GROUPS = [
+  ["users", "owners", "patients"],
   ["records", "consultations", "consents", "grooming_documents"],
   [
     "providers",
@@ -1053,6 +1050,7 @@ function setActiveSection(sectionId) {
     button.classList.toggle("is-active", button.dataset.sectionTarget === sectionId);
   });
   applySectionSubsection(sectionId);
+  renderAll();
   updateNavDropdownState();
 }
 
@@ -1062,6 +1060,9 @@ function setSectionSubsection(sectionId, subsectionValue) {
   }
   activeSubsections[sectionId] = subsectionValue;
   applySectionSubsection(sectionId);
+  if (getActiveSectionId() === sectionId) {
+    renderAll();
+  }
   updateNavDropdownState();
 }
 
@@ -3055,38 +3056,68 @@ function setDateTimeDefaults() {
   });
 }
 
+function getActiveSectionId() {
+  return document.querySelector(".switcher-tab.is-active")?.dataset.sectionTarget || "dashboard";
+}
+
+function renderSection(sectionId) {
+  switch (sectionId) {
+    case "dashboard":
+      renderDashboard();
+      return;
+    case "administration":
+      renderUsers();
+      return;
+    case "agenda":
+      renderAppointments();
+      renderAvailability();
+      renderSelects();
+      return;
+    case "sales":
+      renderSales();
+      renderSelects();
+      renderBillingDraftLines();
+      syncBillingDocumentFormState();
+      return;
+    case "consultorio":
+      renderOwners();
+      renderRecords();
+      renderConsultations();
+      renderConsents();
+      renderGrooming();
+      renderSelects();
+      renderConsultorioOwnerDetail();
+      renderPatients();
+      return;
+    case "hospamb":
+      renderHospAmb();
+      return;
+    case "requests":
+      renderRequests();
+      return;
+    case "reports":
+      renderReports();
+      return;
+    default:
+      renderDashboard();
+  }
+}
+
 function renderAll() {
-  renderDashboard();
   applySettingsForm();
-  renderUsers();
-  renderOwners();
-  renderAppointments();
-  renderAvailability();
-  renderSales();
-  renderRecords();
-  renderConsultations();
-  renderConsents();
-  renderGrooming();
-  renderHospAmb();
-  renderRequests();
-  renderReports();
   renderCompliance();
-  renderSelects();
-  renderBillingDraftLines();
-  syncBillingDocumentFormState();
-  Object.keys(sectionSubsections).forEach(applySectionSubsection);
-  renderConsultorioOwnerDetail();
-  renderPatients();
+  renderSection(getActiveSectionId());
 }
 
 async function refreshData(options = {}) {
   let message = "";
   let lite = false;
   let sections = null;
+  let render = true;
   if (typeof options === "string") {
     message = options;
   } else {
-    ({ message = "", lite = false, sections = null } = options || {});
+    ({ message = "", lite = false, sections = null, render = true } = options || {});
   }
   const payload = await api.bootstrap({ lite, sections });
   Object.assign(state, payload);
@@ -3102,7 +3133,9 @@ async function refreshData(options = {}) {
   if (!toIsoDate(agendaSelectedDate)) {
     agendaSelectedDate = toIsoDate(new Date());
   }
-  renderAll();
+  if (render) {
+    renderAll();
+  }
   if (message) {
     showStatus(message, "success");
   }
@@ -4723,14 +4756,24 @@ function scheduleFullBootstrapLoad() {
   }
   bootstrapFullRequested = true;
   const run = async () => {
+    let partialLoad = false;
+    let loadError = null;
     try {
       for (const group of BOOTSTRAP_HEAVY_GROUPS) {
-        await refreshData({ sections: group });
+        await refreshData({ sections: group, render: false });
+        partialLoad = true;
       }
-      showStatus("Datos completos cargados.", "success");
     } catch (error) {
-      showStatus(error.message || "No fue posible cargar datos completos.", "error");
+      loadError = error;
     } finally {
+      if (partialLoad) {
+        renderAll();
+      }
+      if (loadError) {
+        showStatus(loadError.message || "No fue posible cargar datos completos.", "error");
+      } else {
+        showStatus("Datos completos cargados.", "success");
+      }
       bootstrapFullRequested = false;
     }
   };
