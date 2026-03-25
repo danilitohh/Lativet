@@ -93,6 +93,12 @@ def should_manage_postgres_runtime_schema() -> bool:
     )
 
 
+def should_run_postgres_startup_checks() -> bool:
+    return env_truthy(
+        "LATIVET_POSTGRES_STARTUP_CHECKS", default=not bool(os.getenv("VERCEL"))
+    )
+
+
 def add_years(iso_datetime: str, years: int) -> str:
     reference = datetime.fromisoformat(iso_datetime)
     try:
@@ -3414,11 +3420,14 @@ class PostgresDatabase(Database):
         self.connection = PostgresConnection(dsn)
         init_indexes = env_truthy("LATIVET_POSTGRES_INIT_INDEXES")
         manage_runtime_schema = should_manage_postgres_runtime_schema()
+        run_startup_checks = should_run_postgres_startup_checks()
         try:
             self.connection.execute("SET statement_timeout = '60s'")
             self.connection.commit()
         except Exception:
             pass
+        if not run_startup_checks:
+            return
         if self._has_core_schema():
             with self._lock:
                 if manage_runtime_schema:

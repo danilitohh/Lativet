@@ -7,7 +7,11 @@ from datetime import date
 from pathlib import Path
 from unittest.mock import patch
 
-from lativet.database import Database, should_manage_postgres_runtime_schema
+from lativet.database import (
+    Database,
+    should_manage_postgres_runtime_schema,
+    should_run_postgres_startup_checks,
+)
 from lativet.validators import ValidationError
 
 
@@ -315,6 +319,19 @@ class DatabaseSmokeTests(unittest.TestCase):
             clear=False,
         ):
             self.assertTrue(should_manage_postgres_runtime_schema())
+
+    def test_postgres_startup_checks_default_off_on_vercel(self) -> None:
+        with patch.dict(os.environ, {"VERCEL": "1"}, clear=False):
+            os.environ.pop("LATIVET_POSTGRES_STARTUP_CHECKS", None)
+            self.assertFalse(should_run_postgres_startup_checks())
+
+    def test_postgres_startup_checks_can_be_forced_on(self) -> None:
+        with patch.dict(
+            os.environ,
+            {"VERCEL": "1", "LATIVET_POSTGRES_STARTUP_CHECKS": "1"},
+            clear=False,
+        ):
+            self.assertTrue(should_run_postgres_startup_checks())
 
     def test_consultations_availability_and_grooming_are_reported(self) -> None:
         owner = self.db.save_owner(
