@@ -2510,40 +2510,15 @@ function renderAppointmentPatientDropdown() {
     .toLowerCase();
   const current = elements.appointmentPatientId?.value || "";
   const allPatients = state.patients || [];
-  const patients = allPatients.filter((patient) =>
-    matchesAppointmentPatient(patient, query)
-  );
   const owners = state.owners || [];
-  const ownerMatches = query ? owners.filter((owner) => matchesOwner(owner, query)) : owners;
+  const patients = query
+    ? allPatients.filter((patient) => matchesAppointmentPatient(patient, query))
+    : allPatients;
+  const ownerMatches = query ? owners.filter((owner) => matchesOwner(owner, query)) : [];
   const dropdown = elements.appointmentPatientDropdown;
   if (dropdown) {
     const items = [];
-    if (!query) {
-      ownerMatches.forEach((owner) => {
-        const ownerLabel = buildOwnerLabel(owner);
-        items.push(`<div class="appointment-dropdown__item is-muted">${escapeHtml(ownerLabel)}</div>`);
-        const ownerPatients = allPatients.filter((patient) => patient.owner_id === owner.id);
-        if (ownerPatients.length) {
-          ownerPatients.forEach((patient) => {
-            const label = buildAppointmentPatientLabel(patient);
-            items.push(`
-              <button
-                type="button"
-                class="appointment-dropdown__item"
-                data-patient-id="${escapeHtml(patient.id)}"
-                data-patient-label="${escapeHtml(label)}"
-              >
-                ${escapeHtml(label)}
-              </button>
-            `);
-          });
-        } else {
-          items.push(
-            `<div class="appointment-dropdown__item is-muted">Sin mascotas registradas</div>`
-          );
-        }
-      });
-    } else if (patients.length) {
+    if (patients.length) {
       patients.forEach((patient) => {
         const label = buildAppointmentPatientLabel(patient);
         items.push(`
@@ -2557,17 +2532,14 @@ function renderAppointmentPatientDropdown() {
           </button>
         `);
       });
-      if (ownerMatches.length === 0) {
-        items.push(`<div class="appointment-dropdown__item is-muted">Sin resultados</div>`);
-      }
-    } else if (ownerMatches.length) {
+    } else if (ownerMatches.length && query) {
       ownerMatches.forEach((owner) => {
         const label = buildOwnerLabel(owner);
-        items.push(`
-          <div class="appointment-dropdown__item is-muted">
-            ${escapeHtml(label)} (sin mascotas)
-          </div>
-        `);
+        items.push(
+          `<div class="appointment-dropdown__item is-muted">${escapeHtml(
+            label
+          )} (sin mascotas)</div>`
+        );
       });
     } else {
       items.push(`<div class="appointment-dropdown__item is-muted">Sin resultados</div>`);
