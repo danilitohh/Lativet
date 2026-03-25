@@ -1549,6 +1549,53 @@ body.auth-locked .page-shell > :not(#loginModal) {
   color: var(--muted);
 }
 
+.appointment-modal__field--autocomplete {
+  position: relative;
+}
+
+.appointment-dropdown {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 20;
+  max-height: 240px;
+  overflow-y: auto;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.12);
+  padding: 6px;
+  display: grid;
+  gap: 6px;
+}
+
+.appointment-dropdown.is-hidden {
+  display: none;
+}
+
+.appointment-dropdown__item {
+  width: 100%;
+  text-align: left;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-size: 0.9rem;
+  background: #fff;
+  color: var(--text);
+}
+
+.appointment-dropdown__item:hover {
+  border-color: rgba(79, 91, 213, 0.25);
+  background: rgba(79, 91, 213, 0.08);
+}
+
+.appointment-dropdown__item.is-muted {
+  cursor: not-allowed;
+  color: var(--muted);
+  background: rgba(11, 39, 49, 0.03);
+}
+
 .appointment-modal__footer {
   display: flex;
   justify-content: flex-end;

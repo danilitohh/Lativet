@@ -1004,7 +1004,7 @@
           </label>
 
           <div class="appointment-modal__row">
-            <div class="appointment-modal__field">
+            <div class="appointment-modal__field appointment-modal__field--autocomplete">
               <div class="appointment-modal__label-row">
                 <span>Propietario</span>
                 <button id="appointmentRegisterOwnerButton" class="appointment-modal__link" type="button">
@@ -1012,11 +1012,13 @@
                 </button>
               </div>
               <input
-                id="appointmentPatientSearchInput"
+                id="appointmentPatientInput"
                 type="search"
                 placeholder="Buscar propietario por identificacion, nombres o telefono"
+                autocomplete="off"
               />
-              <select id="appointmentPatientSelect" name="patient_id" required></select>
+              <input id="appointmentPatientId" type="hidden" name="patient_id" required />
+              <div id="appointmentPatientDropdown" class="appointment-dropdown is-hidden"></div>
               <p id="appointmentPatientHelper" class="appointment-modal__helper"></p>
             </div>
           </div>

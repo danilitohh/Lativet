@@ -735,8 +735,10 @@ function cacheElements() {
     "appointmentRegisterOwnerButton",
     "appointmentTypeSelect",
     "appointmentProfessionalSelect",
-    "appointmentPatientSearchInput",
     "appointmentPatientHelper",
+    "appointmentPatientInput",
+    "appointmentPatientId",
+    "appointmentPatientDropdown",
     "appointmentStartInput",
     "appointmentEndInput",
     "appointmentNoTimeCheckbox",
@@ -842,7 +844,6 @@ function cacheElements() {
     "reportsCashMovementsList",
     "patientOwnerSelect",
     "catalogProviderSelect",
-    "appointmentPatientSelect",
     "billingPatientSelect",
     "recordPatientSelect",
     "consultationRecordSelect",
@@ -2364,21 +2365,6 @@ function getOwnerById(ownerId) {
   return (state.owners || []).find((owner) => owner.id === ownerId) || null;
 }
 
-function buildAppointmentPatientLabel(patient) {
-  const owner = getOwnerById(patient.owner_id);
-  const ownerName = owner?.full_name || patient.owner_name || "Sin propietario";
-  const ownerId = owner?.identification_number || "";
-  const ownerPhone = owner?.phone || owner?.alternate_phone || "";
-  const parts = [`${patient.name}`, `${patient.species}`, ownerName];
-  if (ownerId) {
-    parts.push(ownerId);
-  }
-  if (ownerPhone) {
-    parts.push(ownerPhone);
-  }
-  return parts.join(" / ");
-}
-
 function buildOwnerLabel(owner) {
   const parts = [owner.full_name];
   if (owner.identification_number) {
@@ -2407,6 +2393,21 @@ function matchesOwner(owner, query) {
   return haystack.includes(query);
 }
 
+function buildAppointmentPatientLabel(patient) {
+  const owner = getOwnerById(patient.owner_id);
+  const ownerName = owner?.full_name || patient.owner_name || "Sin propietario";
+  const ownerId = owner?.identification_number || "";
+  const ownerPhone = owner?.phone || owner?.alternate_phone || "";
+  const parts = [ownerName, patient.name, patient.species];
+  if (ownerId) {
+    parts.push(ownerId);
+  }
+  if (ownerPhone) {
+    parts.push(ownerPhone);
+  }
+  return parts.join(" / ");
+}
+
 function matchesAppointmentPatient(patient, query) {
   if (!query) {
     return true;
@@ -2429,47 +2430,81 @@ function matchesAppointmentPatient(patient, query) {
   return haystack.includes(query);
 }
 
-function renderAppointmentPatientSelect() {
-  const query = String(elements.appointmentPatientSearchInput?.value || "")
+function renderAppointmentPatientDropdown() {
+  const query = String(elements.appointmentPatientInput?.value || "")
     .trim()
     .toLowerCase();
-  const current = elements.appointmentPatientSelect?.value || "";
-  const patients = (state.patients || []).filter((patient) =>
+  const current = elements.appointmentPatientId?.value || "";
+  const allPatients = state.patients || [];
+  const patients = allPatients.filter((patient) =>
     matchesAppointmentPatient(patient, query)
   );
-  const ownerMatches = query
-    ? (state.owners || []).filter((owner) => matchesOwner(owner, query))
-    : [];
-  if (elements.appointmentPatientSelect) {
-    const options = [`<option value="">Selecciona paciente</option>`];
-    if (patients.length) {
-      options.push(
-        ...patients.map(
-          (patient) =>
-            `<option value="${escapeHtml(patient.id)}">${escapeHtml(
-              buildAppointmentPatientLabel(patient)
-            )}</option>`
-        )
-      );
-    } else if (ownerMatches.length) {
-      options.push(
-        `<option value="" disabled>Propietarios encontrados (sin mascotas)</option>`
-      );
+  const owners = state.owners || [];
+  const ownerMatches = query ? owners.filter((owner) => matchesOwner(owner, query)) : owners;
+  const dropdown = elements.appointmentPatientDropdown;
+  if (dropdown) {
+    const items = [];
+    if (!query) {
       ownerMatches.forEach((owner) => {
-        options.push(
-          `<option value="" disabled>${escapeHtml(buildOwnerLabel(owner))}</option>`
-        );
+        const ownerLabel = buildOwnerLabel(owner);
+        items.push(`<div class="appointment-dropdown__item is-muted">${escapeHtml(ownerLabel)}</div>`);
+        const ownerPatients = allPatients.filter((patient) => patient.owner_id === owner.id);
+        if (ownerPatients.length) {
+          ownerPatients.forEach((patient) => {
+            const label = buildAppointmentPatientLabel(patient);
+            items.push(`
+              <button
+                type="button"
+                class="appointment-dropdown__item"
+                data-patient-id="${escapeHtml(patient.id)}"
+                data-patient-label="${escapeHtml(label)}"
+              >
+                ${escapeHtml(label)}
+              </button>
+            `);
+          });
+        } else {
+          items.push(
+            `<div class="appointment-dropdown__item is-muted">Sin mascotas registradas</div>`
+          );
+        }
       });
+    } else if (patients.length) {
+      patients.forEach((patient) => {
+        const label = buildAppointmentPatientLabel(patient);
+        items.push(`
+          <button
+            type="button"
+            class="appointment-dropdown__item"
+            data-patient-id="${escapeHtml(patient.id)}"
+            data-patient-label="${escapeHtml(label)}"
+          >
+            ${escapeHtml(label)}
+          </button>
+        `);
+      });
+      if (ownerMatches.length === 0) {
+        items.push(`<div class="appointment-dropdown__item is-muted">Sin resultados</div>`);
+      }
+    } else if (ownerMatches.length) {
+      ownerMatches.forEach((owner) => {
+        const label = buildOwnerLabel(owner);
+        items.push(`
+          <div class="appointment-dropdown__item is-muted">
+            ${escapeHtml(label)} (sin mascotas)
+          </div>
+        `);
+      });
+    } else {
+      items.push(`<div class="appointment-dropdown__item is-muted">Sin resultados</div>`);
     }
-    elements.appointmentPatientSelect.innerHTML = options.join("");
-    if (patients.some((item) => item.id === current)) {
-      elements.appointmentPatientSelect.value = current;
-    }
+    dropdown.innerHTML = items.join("");
+    dropdown.classList.toggle("is-hidden", !items.length);
   }
   if (elements.appointmentPatientHelper) {
     let message = "";
     if (!patients.length) {
-      const allPatientsEmpty = !(state.patients || []).length;
+      const allPatientsEmpty = !allPatients.length;
       if (allPatientsEmpty) {
         message = "Aun no hay mascotas registradas. Debes registrar una mascota para agendar.";
       } else if (query) {
@@ -2484,10 +2519,19 @@ function renderAppointmentPatientSelect() {
           message = "No encontramos mascotas con ese propietario o documento.";
         }
       } else {
-        message = "No encontramos mascotas con ese propietario o documento.";
+        message = "";
       }
     }
     elements.appointmentPatientHelper.textContent = message;
+  }
+  if (current && patients.every((item) => item.id !== current) && elements.appointmentPatientId) {
+    elements.appointmentPatientId.value = "";
+  }
+  if (current && elements.appointmentPatientInput && !elements.appointmentPatientInput.value) {
+    const selectedPatient = allPatients.find((patient) => patient.id === current);
+    if (selectedPatient) {
+      elements.appointmentPatientInput.value = buildAppointmentPatientLabel(selectedPatient);
+    }
   }
 }
 
@@ -2505,7 +2549,7 @@ function renderSelects() {
     "Proveedor opcional"
   );
   const patientLabel = (patient) => `${patient.name} / ${patient.species} / ${patient.owner_name}`;
-  renderAppointmentPatientSelect();
+  renderAppointmentPatientDropdown();
   [
     elements.billingPatientSelect,
     elements.recordPatientSelect,
@@ -2720,8 +2764,11 @@ function captureAppointmentDraft() {
     return null;
   }
   const payload = serializeForm(elements.appointmentForm);
-  if (elements.appointmentPatientSearchInput) {
-    payload.owner_search = elements.appointmentPatientSearchInput.value || "";
+  if (elements.appointmentPatientInput) {
+    payload.owner_search = elements.appointmentPatientInput.value || "";
+  }
+  if (elements.appointmentPatientId) {
+    payload.patient_id = elements.appointmentPatientId.value || "";
   }
   if (elements.appointmentStartInput) {
     payload.appointment_at = elements.appointmentStartInput.value || "";
@@ -2736,11 +2783,11 @@ function restoreAppointmentDraft(draft) {
   if (!draft || !elements.appointmentForm) {
     return;
   }
-  if (elements.appointmentPatientSearchInput) {
-    elements.appointmentPatientSearchInput.value = draft.owner_search || "";
+  if (elements.appointmentPatientInput) {
+    elements.appointmentPatientInput.value = draft.owner_search || "";
   }
-  if (elements.appointmentPatientSelect) {
-    elements.appointmentPatientSelect.value = draft.patient_id || "";
+  if (elements.appointmentPatientId) {
+    elements.appointmentPatientId.value = draft.patient_id || "";
   }
   if (elements.appointmentTypeSelect) {
     elements.appointmentTypeSelect.value = draft.appointment_type || "";
@@ -2773,7 +2820,7 @@ function restoreAppointmentDraft(draft) {
   if (elements.appointmentForm.elements.notes) {
     elements.appointmentForm.elements.notes.value = draft.notes || "";
   }
-  renderAppointmentPatientSelect();
+  renderAppointmentPatientDropdown();
   syncAppointmentSelectedDate();
   if (elements.appointmentEndInput && !draft.appointment_end_at) {
     syncAppointmentEndTime({ force: true });
@@ -2812,8 +2859,11 @@ function openAppointmentModal(initialDateTime = "", durationMinutes = 30) {
   if (elements.appointmentDurationInput) {
     elements.appointmentDurationInput.value = String(durationMinutes || 30);
   }
-  if (elements.appointmentPatientSearchInput) {
-    elements.appointmentPatientSearchInput.value = "";
+  if (elements.appointmentPatientInput) {
+    elements.appointmentPatientInput.value = "";
+  }
+  if (elements.appointmentPatientId) {
+    elements.appointmentPatientId.value = "";
   }
   if (elements.appointmentReserveCheckbox) {
     elements.appointmentReserveCheckbox.checked = false;
@@ -2836,7 +2886,7 @@ function openAppointmentModal(initialDateTime = "", durationMinutes = 30) {
       elements.appointmentProfessionalSelect.value = "Agenda general";
     }
   }
-  renderAppointmentPatientSelect();
+  renderAppointmentPatientDropdown();
   syncAppointmentSelectedDate();
 }
 
@@ -3747,9 +3797,40 @@ function bindForms() {
   if (elements.appointmentRegisterOwnerButton) {
     elements.appointmentRegisterOwnerButton.addEventListener("click", () => openOwnerModalFromAppointment());
   }
-  if (elements.appointmentPatientSearchInput) {
-    elements.appointmentPatientSearchInput.addEventListener("input", () => {
-      renderAppointmentPatientSelect();
+  if (elements.appointmentPatientInput) {
+    elements.appointmentPatientInput.addEventListener("input", () => {
+      renderAppointmentPatientDropdown();
+      if (elements.appointmentPatientDropdown) {
+        elements.appointmentPatientDropdown.classList.remove("is-hidden");
+      }
+    });
+    elements.appointmentPatientInput.addEventListener("focus", () => {
+      renderAppointmentPatientDropdown();
+      if (elements.appointmentPatientDropdown) {
+        elements.appointmentPatientDropdown.classList.remove("is-hidden");
+      }
+    });
+    elements.appointmentPatientInput.addEventListener("blur", () => {
+      setTimeout(() => {
+        elements.appointmentPatientDropdown?.classList.add("is-hidden");
+      }, 120);
+    });
+  }
+  if (elements.appointmentPatientDropdown) {
+    elements.appointmentPatientDropdown.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-patient-id]");
+      if (!button) {
+        return;
+      }
+      const patientId = button.dataset.patientId || "";
+      const label = button.dataset.patientLabel || "";
+      if (elements.appointmentPatientId) {
+        elements.appointmentPatientId.value = patientId;
+      }
+      if (elements.appointmentPatientInput) {
+        elements.appointmentPatientInput.value = label;
+      }
+      elements.appointmentPatientDropdown.classList.add("is-hidden");
     });
   }
   if (elements.appointmentStartInput) {
