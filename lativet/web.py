@@ -88,8 +88,10 @@ def create_app(base_dir: Path | None = None, data_dir: Path | None = None) -> Fl
         return respond(
             {
                 "ok": True,
-                "requires_login": admin_configured(),
-                "authenticated": is_authenticated(),
+                "data": {
+                    "requires_login": admin_configured(),
+                    "authenticated": is_authenticated(),
+                },
             }
         )
 
@@ -97,19 +99,19 @@ def create_app(base_dir: Path | None = None, data_dir: Path | None = None) -> Fl
     def auth_login():
         if not admin_configured():
             session["admin_authenticated"] = True
-            return respond({"ok": True, "authenticated": True})
+            return respond({"ok": True, "data": {"authenticated": True}})
         body = payload()
         email = (body.get("email") or "").strip().lower()
         password = (body.get("password") or "").strip()
         if email == admin_email and password == admin_password:
             session["admin_authenticated"] = True
-            return respond({"ok": True, "authenticated": True})
+            return respond({"ok": True, "data": {"authenticated": True}})
         return jsonify({"ok": False, "error": "Credenciales invalidas."}), 401
 
     @app.post("/api/auth/logout")
     def auth_logout():
         session.clear()
-        return respond({"ok": True, "authenticated": False})
+        return respond({"ok": True, "data": {"authenticated": False}})
 
     @app.post("/api/settings")
     def save_settings():

@@ -521,7 +521,7 @@ async function apiRequest(path, options = {}) {
   if (!response.ok || !payload?.ok) {
     throw new Error(payload?.error || "Operacion no completada.");
   }
-  return payload.data;
+  return payload?.data !== undefined ? payload.data : payload;
 }
 
 const api = {

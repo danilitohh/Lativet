@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Lativet Web</title>
-    <link rel="stylesheet" href="/styles.css" />
+    <link rel="stylesheet" href="/styles.css?v=20260324" />
   </head>
   <body>
     <div class="page-shell">
@@ -304,26 +304,6 @@
               </div>
               <div class="full form-actions">
                 <button class="primary-button" type="submit">Guardar usuario</button>
-              </div>
-            </form>
-          </div>
-        </div>
-
-        <div id="loginModal" class="modal-shell is-hidden" aria-hidden="true">
-          <div class="modal-backdrop"></div>
-          <div class="modal-card modal-card--compact" role="dialog" aria-modal="true" aria-labelledby="loginModalTitle">
-            <div class="panel-heading">
-              <div>
-                <p class="eyebrow">Acceso administrativo</p>
-                <h3 id="loginModalTitle">Iniciar sesion</h3>
-              </div>
-            </div>
-            <form id="loginForm" class="form-grid">
-              <label class="full"><span>Correo</span><input name="email" type="email" required /></label>
-              <label class="full"><span>Contrasena</span><input name="password" type="password" required /></label>
-              <p id="loginError" class="meta-copy is-hidden"></p>
-              <div class="full form-actions">
-                <button class="primary-button" type="submit">Entrar</button>
               </div>
             </form>
           </div>
@@ -1012,6 +992,29 @@
     </div>
 
 
-    <script src="/app.js"></script>
-  </body>
+    </main>
+
+    <div id="loginModal" class="modal-shell is-hidden" aria-hidden="true">
+      <div class="modal-backdrop"></div>
+      <div class="modal-card modal-card--compact" role="dialog" aria-modal="true" aria-labelledby="loginModalTitle">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Acceso administrativo</p>
+            <h3 id="loginModalTitle">Iniciar sesion</h3>
+          </div>
+        </div>
+        <form id="loginForm" class="form-grid">
+          <label class="full"><span>Correo</span><input name="email" type="email" required /></label>
+          <label class="full"><span>Contrasena</span><input name="password" type="password" required /></label>
+          <p id="loginError" class="meta-copy is-hidden"></p>
+          <div class="full form-actions">
+            <button class="primary-button" type="submit">Entrar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script src="/app.js?v=20260324"></script>
+ </body>
 </html>
