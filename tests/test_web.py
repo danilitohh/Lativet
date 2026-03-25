@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import os
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from lativet.web import create_app
 
@@ -17,7 +19,9 @@ class WebSmokeTests(unittest.TestCase):
         self.client = self.app.test_client()
 
     def tearDown(self) -> None:
-        self.app.extensions["lativet_service"].close()
+        service = self.app.extensions.get("lativet_service")
+        if service is not None:
+            service.close()
         self.tempdir.cleanup()
 
     def assert_ok(self, response):
@@ -35,6 +39,34 @@ class WebSmokeTests(unittest.TestCase):
         snapshot = self.assert_ok(self.client.get("/api/bootstrap"))
         self.assertIn("dashboard", snapshot)
         self.assertIn("compliance", snapshot)
+
+    def test_vercel_requires_persistent_database_config(self) -> None:
+        with patch.dict(
+            os.environ,
+            {
+                "VERCEL": "1",
+                "DATABASE_URL": "",
+                "POSTGRES_URL": "",
+                "POSTGRES_PRISMA_URL": "",
+                "POSTGRES_URL_NON_POOLING": "",
+            },
+            clear=False,
+        ):
+            tempdir = tempfile.TemporaryDirectory()
+            app = create_app(BASE_DIR, Path(tempdir.name))
+            client = app.test_client()
+            try:
+                response = client.get("/api/bootstrap")
+                self.assertEqual(response.status_code, 503, response.get_data(as_text=True))
+                payload = response.get_json()
+                self.assertFalse(payload["ok"])
+                self.assertIn("DATABASE_URL/POSTGRES_URL", payload["error"])
+                self.assertIn("Vercel", payload["error"])
+            finally:
+                service = app.extensions.get("lativet_service")
+                if service is not None:
+                    service.close()
+                tempdir.cleanup()
 
     def test_full_http_operational_flow(self) -> None:
         owner = self.assert_ok(

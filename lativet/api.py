@@ -44,6 +44,12 @@ class LativetService:
             or os.getenv("POSTGRES_PRISMA_URL", "").strip()
             or os.getenv("POSTGRES_URL_NON_POOLING", "").strip()
         )
+        if os.getenv("VERCEL") and not db_url:
+            raise RuntimeError(
+                "DATABASE_URL/POSTGRES_URL no esta configurado. "
+                "En Vercel no se puede usar SQLite local porque los datos se pierden "
+                "entre despliegues y cold starts. Configura Postgres persistente."
+            )
         if db_url:
             self._db = PostgresDatabase(normalize_postgres_dsn(db_url), self._data_dir)
         else:
