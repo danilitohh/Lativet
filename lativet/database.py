@@ -73,10 +73,24 @@ GROOMING_STATUSES = {"scheduled", "in_progress", "completed", "cancelled"}
 BILLING_DOCUMENT_TYPES = {"factura", "cotizacion"}
 BILLING_PAYMENT_METHODS = {"Pendiente", "Efectivo", "Transferencia", "Tarjeta", "Otro"}
 BILLING_CASH_ACCOUNTS = {"caja_menor", "caja_mayor", "transferencia"}
+TRUTHY_VALUES = {"1", "true", "on", "yes", "si", "s"}
 
 
 def now_iso() -> str:
     return datetime.now().replace(microsecond=0).isoformat(timespec="seconds")
+
+
+def env_truthy(name: str, default: bool = False) -> bool:
+    raw = os.getenv(name, "").strip().lower()
+    if not raw:
+        return default
+    return raw in TRUTHY_VALUES
+
+
+def should_manage_postgres_runtime_schema() -> bool:
+    return env_truthy(
+        "LATIVET_POSTGRES_MANAGE_RUNTIME_SCHEMA", default=not bool(os.getenv("VERCEL"))
+    )
 
 
 def add_years(iso_datetime: str, years: int) -> str:
@@ -3398,14 +3412,8 @@ class PostgresDatabase(Database):
         self.db_path = Path("supabase")
         self._lock = threading.RLock()
         self.connection = PostgresConnection(dsn)
-        init_indexes = os.getenv("LATIVET_POSTGRES_INIT_INDEXES", "").strip().lower() in {
-            "1",
-            "true",
-            "on",
-            "yes",
-            "si",
-            "s",
-        }
+        init_indexes = env_truthy("LATIVET_POSTGRES_INIT_INDEXES")
+        manage_runtime_schema = should_manage_postgres_runtime_schema()
         try:
             self.connection.execute("SET statement_timeout = '60s'")
             self.connection.commit()
@@ -3413,8 +3421,17 @@ class PostgresDatabase(Database):
             pass
         if self._has_core_schema():
             with self._lock:
-                self._ensure_runtime_schema_state()
-                self.connection.commit()
+                if manage_runtime_schema:
+                    try:
+                        self._ensure_runtime_schema_state()
+                        self.connection.commit()
+                    except Exception as exc:
+                        try:
+                            self.connection.rollback()
+                        except Exception:
+                            pass
+                        if "statement timeout" not in str(exc).lower():
+                            raise
                 if not self._has_settings():
                     self.save_settings(DEFAULT_SETTINGS)
             return
