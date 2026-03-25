@@ -839,7 +839,7 @@ class Database:
                     INSERT INTO staff_users (
                         id, full_name, email, role, permissions_json,
                         is_active, password_hash, created_at, updated_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         user_id,
