@@ -30,14 +30,6 @@ def create_app(base_dir: Path | None = None, data_dir: Path | None = None) -> Fl
 
     admin_email = os.getenv("ADMIN_EMAIL", "").strip().lower()
     admin_password = os.getenv("ADMIN_PASSWORD", "").strip()
-    force_login = os.getenv("ADMIN_FORCE_LOGIN", "").strip().lower() in {
-        "1",
-        "true",
-        "on",
-        "yes",
-        "si",
-        "s",
-    }
 
     def admin_configured() -> bool:
         return bool(admin_email and admin_password)
@@ -93,8 +85,6 @@ def create_app(base_dir: Path | None = None, data_dir: Path | None = None) -> Fl
 
     @app.get("/api/auth/status")
     def auth_status():
-        if force_login and admin_configured():
-            session.pop("admin_authenticated", None)
         return respond(
             {
                 "ok": True,

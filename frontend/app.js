@@ -49,6 +49,7 @@ const permissionOptions = [
 ];
 const usersFilters = { query: "", pageSize: 10, showInactive: false };
 const authState = { requiresLogin: false, authenticated: false };
+const AUTH_SESSION_KEY = "lativet_auth_session";
 const consultationTypes = [
   "Vacunacion",
   "Formula",
@@ -2387,6 +2388,7 @@ async function handleLoginSubmit(event) {
   const password = elements.loginForm.elements.password.value;
   try {
     await api.authLogin({ email, password });
+    sessionStorage.setItem(AUTH_SESSION_KEY, "1");
     authState.authenticated = true;
     setAuthUI(true);
     closeLoginModal();
@@ -2405,6 +2407,7 @@ async function handleLogout() {
   } catch (error) {
     // ignore
   }
+  sessionStorage.removeItem(AUTH_SESSION_KEY);
   authState.authenticated = false;
   setAuthUI(false);
   openLoginModal(true);
@@ -2899,6 +2902,16 @@ async function initApp() {
   } catch (error) {
     authState.requiresLogin = true;
     authState.authenticated = false;
+  }
+  const sessionUnlocked = sessionStorage.getItem(AUTH_SESSION_KEY) === "1";
+  if (authState.requiresLogin) {
+    if (!authState.authenticated) {
+      sessionStorage.removeItem(AUTH_SESSION_KEY);
+    } else if (!sessionUnlocked) {
+      authState.authenticated = false;
+    }
+  } else {
+    sessionStorage.removeItem(AUTH_SESSION_KEY);
   }
   setAuthUI(authState.authenticated);
   if (authState.requiresLogin && !authState.authenticated) {
