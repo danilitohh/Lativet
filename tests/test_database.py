@@ -149,6 +149,111 @@ class DatabaseSmokeTests(unittest.TestCase):
                 }
             )
 
+    def test_can_delete_owner_without_dependencies(self) -> None:
+        owner = self.db.save_owner(
+            {
+                "full_name": "Andrea Salas",
+                "identification_type": "CC",
+                "identification_number": "901122",
+                "phone": "3001112233",
+                "email": "andrea@example.com",
+                "address": "Calle 9",
+            }
+        )
+        deleted = self.db.delete_owner(owner["id"])
+        self.assertTrue(deleted["deleted"])
+        self.assertEqual(len(self.db.list_owners()), 0)
+
+    def test_owner_delete_is_blocked_when_it_has_patients(self) -> None:
+        owner = self.db.save_owner(
+            {
+                "full_name": "Patricia Leon",
+                "identification_type": "CC",
+                "identification_number": "778899",
+                "phone": "3005551111",
+                "email": "patricia@example.com",
+                "address": "Carrera 5",
+            }
+        )
+        self.db.save_patient(
+            {
+                "owner_id": owner["id"],
+                "name": "Toby",
+                "species": "Canino",
+                "breed": "Mestizo",
+                "sex": "Macho",
+                "age_years": "4",
+                "weight_kg": "12.4",
+                "reproductive_status": "Esterilizado",
+                "notes": "Sin antecedentes.",
+            }
+        )
+        with self.assertRaises(ValidationError):
+            self.db.delete_owner(owner["id"])
+
+    def test_patient_delete_is_blocked_when_it_has_related_records(self) -> None:
+        owner = self.db.save_owner(
+            {
+                "full_name": "Natalia Mena",
+                "identification_type": "CC",
+                "identification_number": "445577",
+                "phone": "3002223344",
+                "email": "natalia@example.com",
+                "address": "Avenida 10",
+            }
+        )
+        patient = self.db.save_patient(
+            {
+                "owner_id": owner["id"],
+                "name": "Moka",
+                "species": "Felino",
+                "breed": "Criollo",
+                "sex": "Hembra",
+                "age_years": "2",
+                "weight_kg": "3.6",
+                "reproductive_status": "No esterilizado",
+                "notes": "Paciente sana.",
+            }
+        )
+        self.db.save_appointment(
+            {
+                "patient_id": patient["id"],
+                "appointment_at": "2026-03-20T09:00",
+                "reason": "Control",
+                "status": "scheduled",
+            }
+        )
+        with self.assertRaises(ValidationError):
+            self.db.delete_patient(patient["id"])
+
+    def test_can_delete_patient_without_dependencies(self) -> None:
+        owner = self.db.save_owner(
+            {
+                "full_name": "Camilo Duarte",
+                "identification_type": "CC",
+                "identification_number": "334455",
+                "phone": "3006667788",
+                "email": "camilo@example.com",
+                "address": "Transversal 8",
+            }
+        )
+        patient = self.db.save_patient(
+            {
+                "owner_id": owner["id"],
+                "name": "Nala",
+                "species": "Canino",
+                "breed": "French Poodle",
+                "sex": "Hembra",
+                "age_years": "5",
+                "weight_kg": "6.2",
+                "reproductive_status": "Esterilizado",
+                "notes": "Paciente activa.",
+            }
+        )
+        deleted = self.db.delete_patient(patient["id"])
+        self.assertTrue(deleted["deleted"])
+        self.assertEqual(len(self.db.list_patients()), 0)
+
     def test_consultations_availability_and_grooming_are_reported(self) -> None:
         owner = self.db.save_owner(
             {

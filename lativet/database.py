@@ -635,6 +635,12 @@ class Database:
             return None
         return {key: row[key] for key in row.keys()}
 
+    def _scalar(self, query: str, params: tuple = ()) -> int:
+        row = self.connection.execute(query, params).fetchone()
+        if not row:
+            return 0
+        return int(row["total"] or 0)
+
     def _list_consultation_details(
         self,
         *,
@@ -1034,6 +1040,64 @@ class Database:
         row = self.connection.execute("SELECT * FROM owners WHERE id = ?", (owner_id,)).fetchone()
         return self._row_to_dict(row)
 
+    def delete_owner(self, owner_id: str) -> dict:
+        owner = self.get_owner(owner_id)
+        dependencies = [
+            (
+                "mascotas",
+                self._scalar("SELECT COUNT(*) AS total FROM patients WHERE owner_id = ?", (owner_id,)),
+            ),
+            (
+                "citas",
+                self._scalar("SELECT COUNT(*) AS total FROM appointments WHERE owner_id = ?", (owner_id,)),
+            ),
+            (
+                "historias clinicas",
+                self._scalar(
+                    "SELECT COUNT(*) AS total FROM clinical_records WHERE owner_id = ?",
+                    (owner_id,),
+                ),
+            ),
+            (
+                "consultas",
+                self._scalar(
+                    "SELECT COUNT(*) AS total FROM clinical_consultations WHERE owner_id = ?",
+                    (owner_id,),
+                ),
+            ),
+            (
+                "consentimientos",
+                self._scalar("SELECT COUNT(*) AS total FROM consents WHERE owner_id = ?", (owner_id,)),
+            ),
+            (
+                "documentos de peluqueria",
+                self._scalar(
+                    "SELECT COUNT(*) AS total FROM grooming_documents WHERE owner_id = ?",
+                    (owner_id,),
+                ),
+            ),
+            (
+                "documentos de facturacion",
+                self._scalar(
+                    "SELECT COUNT(*) AS total FROM billing_documents WHERE owner_id = ?",
+                    (owner_id,),
+                ),
+            ),
+        ]
+        active_dependencies = [label for label, total in dependencies if total > 0]
+        if active_dependencies:
+            raise ValidationError(
+                "No puedes eliminar el propietario porque tiene registros asociados en: "
+                + ", ".join(active_dependencies)
+                + "."
+            )
+        with self._tx():
+            deleted = self.connection.execute("DELETE FROM owners WHERE id = ?", (owner_id,))
+            if not deleted.rowcount:
+                raise ValidationError("El propietario seleccionado no existe.")
+            self._record_audit("owner", owner_id, "delete", "recepcion", owner)
+        return {"id": owner_id, "deleted": True}
+
     def list_owners(self) -> list[dict]:
         rows = self.connection.execute(
             """
@@ -1137,6 +1201,63 @@ class Database:
             (patient_id,),
         ).fetchone()
         return self._row_to_dict(row)
+
+    def delete_patient(self, patient_id: str) -> dict:
+        patient = self._get_patient(patient_id)
+        dependencies = [
+            (
+                "citas",
+                self._scalar(
+                    "SELECT COUNT(*) AS total FROM appointments WHERE patient_id = ?",
+                    (patient_id,),
+                ),
+            ),
+            (
+                "historias clinicas",
+                self._scalar(
+                    "SELECT COUNT(*) AS total FROM clinical_records WHERE patient_id = ?",
+                    (patient_id,),
+                ),
+            ),
+            (
+                "consultas",
+                self._scalar(
+                    "SELECT COUNT(*) AS total FROM clinical_consultations WHERE patient_id = ?",
+                    (patient_id,),
+                ),
+            ),
+            (
+                "consentimientos",
+                self._scalar("SELECT COUNT(*) AS total FROM consents WHERE patient_id = ?", (patient_id,)),
+            ),
+            (
+                "documentos de peluqueria",
+                self._scalar(
+                    "SELECT COUNT(*) AS total FROM grooming_documents WHERE patient_id = ?",
+                    (patient_id,),
+                ),
+            ),
+            (
+                "documentos de facturacion",
+                self._scalar(
+                    "SELECT COUNT(*) AS total FROM billing_documents WHERE patient_id = ?",
+                    (patient_id,),
+                ),
+            ),
+        ]
+        active_dependencies = [label for label, total in dependencies if total > 0]
+        if active_dependencies:
+            raise ValidationError(
+                "No puedes eliminar el paciente porque tiene registros asociados en: "
+                + ", ".join(active_dependencies)
+                + "."
+            )
+        with self._tx():
+            deleted = self.connection.execute("DELETE FROM patients WHERE id = ?", (patient_id,))
+            if not deleted.rowcount:
+                raise ValidationError("El paciente seleccionado no existe.")
+            self._record_audit("patient", patient_id, "delete", "recepcion", patient)
+        return {"id": patient_id, "deleted": True}
 
     def _ensure_placeholder_patient(self, owner_id: str) -> dict:
         row = self.connection.execute(

@@ -712,10 +712,14 @@ const api = {
     apiRequest("/api/settings", { method: "POST", body: JSON.stringify(payload) }),
   saveOwner: (payload) =>
     apiRequest("/api/owners", { method: "POST", body: JSON.stringify(payload) }),
+  deleteOwner: (ownerId) =>
+    apiRequest(`/api/owners/${ownerId}`, { method: "DELETE" }),
   saveProvider: (payload) =>
     apiRequest("/api/providers", { method: "POST", body: JSON.stringify(payload) }),
   savePatient: (payload) =>
     apiRequest("/api/patients", { method: "POST", body: JSON.stringify(payload) }),
+  deletePatient: (patientId) =>
+    apiRequest(`/api/patients/${patientId}`, { method: "DELETE" }),
   saveCatalogItem: (payload) =>
     apiRequest("/api/catalog-items", { method: "POST", body: JSON.stringify(payload) }),
   saveAppointment: (payload) =>
@@ -871,6 +875,8 @@ function cacheElements() {
     "consultorioOwnerSummary",
     "consultorioOwnerName",
     "consultorioOwnerBackButton",
+    "consultorioOwnerEditButton",
+    "consultorioOwnerDeleteButton",
     "complianceNotes",
     "complianceSources",
     "appointmentForm",
@@ -937,6 +943,9 @@ function cacheElements() {
     "appointmentDetailLinks",
     "closeAppointmentDetailButton",
     "patientForm",
+    "patientFormTitle",
+    "patientFormSubmitButton",
+    "cancelPatientEditButton",
     "providerForm",
     "catalogForm",
     "billingDocumentForm",
@@ -1674,7 +1683,11 @@ function renderOwners() {
             <h4>${escapeHtml(owner.full_name)}</h4>
             <p>${escapeHtml(owner.identification_type)} ${escapeHtml(owner.identification_number)}</p>
           </div>
-          <button class="ghost-button" type="button" data-owner-select="${escapeHtml(owner.id)}">Ver</button>
+          <div class="item-actions owner-card__actions">
+            <button class="ghost-button" type="button" data-owner-select="${escapeHtml(owner.id)}">Ver</button>
+            <button class="secondary-button" type="button" data-owner-edit="${escapeHtml(owner.id)}">Editar</button>
+            <button class="ghost-button ghost-button--danger" type="button" data-owner-delete="${escapeHtml(owner.id)}">Eliminar</button>
+          </div>
         </div>
         <div class="owner-card__meta">
           <span>Telefono: ${escapeHtml(owner.phone || "Sin dato")}</span>
@@ -1705,8 +1718,16 @@ function renderPatients() {
     patients,
     (patient) => `
       <article class="list-card">
-        <h4>${escapeHtml(patient.name)}</h4>
-        <p>${escapeHtml(patient.species)}${patient.breed ? ` / ${escapeHtml(patient.breed)}` : ""}</p>
+        <div class="owner-card__header">
+          <div>
+            <h4>${escapeHtml(patient.name)}</h4>
+            <p>${escapeHtml(patient.species)}${patient.breed ? ` / ${escapeHtml(patient.breed)}` : ""}</p>
+          </div>
+          <div class="item-actions owner-card__actions">
+            <button class="secondary-button" type="button" data-patient-edit="${escapeHtml(patient.id)}">Editar</button>
+            <button class="ghost-button ghost-button--danger" type="button" data-patient-delete="${escapeHtml(patient.id)}">Eliminar</button>
+          </div>
+        </div>
         <p>Responsable: ${escapeHtml(patient.owner_name)}</p>
         <p>Historias: ${patient.records_count || 0}</p>
       </article>
@@ -1731,16 +1752,29 @@ function renderConsultorioOwnerDetail() {
     if (elements.consultorioOwnerName) {
       elements.consultorioOwnerName.textContent = "Detalle del propietario";
     }
+    if (elements.consultorioOwnerEditButton) {
+      elements.consultorioOwnerEditButton.disabled = true;
+    }
+    if (elements.consultorioOwnerDeleteButton) {
+      elements.consultorioOwnerDeleteButton.disabled = true;
+    }
     if (elements.patientOwnerSelect) {
       elements.patientOwnerSelect.value = "";
       elements.patientOwnerSelect.disabled = false;
     }
+    resetPatientEditor();
     return;
   }
   elements.consultorioOwnersPanel.classList.add("is-hidden");
   elements.consultorioOwnerDetailPanel.classList.remove("is-hidden");
   if (elements.consultorioOwnerName) {
     elements.consultorioOwnerName.textContent = owner.full_name || "Propietario";
+  }
+  if (elements.consultorioOwnerEditButton) {
+    elements.consultorioOwnerEditButton.disabled = false;
+  }
+  if (elements.consultorioOwnerDeleteButton) {
+    elements.consultorioOwnerDeleteButton.disabled = false;
   }
   renderSummary(
     elements.consultorioOwnerSummary,
@@ -1757,6 +1791,67 @@ function renderConsultorioOwnerDetail() {
   if (elements.patientOwnerSelect) {
     elements.patientOwnerSelect.value = owner.id;
     elements.patientOwnerSelect.disabled = true;
+  }
+}
+
+function resetPatientEditor() {
+  if (!elements.patientForm) {
+    return;
+  }
+  resetForm(elements.patientForm);
+  if (elements.patientForm.elements.id) {
+    elements.patientForm.elements.id.value = "";
+  }
+  if (elements.patientFormTitle) {
+    elements.patientFormTitle.textContent = "Registrar mascota";
+  }
+  if (elements.patientFormSubmitButton) {
+    elements.patientFormSubmitButton.textContent = "Guardar mascota";
+  }
+  if (elements.cancelPatientEditButton) {
+    elements.cancelPatientEditButton.classList.add("is-hidden");
+  }
+  const owner = getConsultorioOwner();
+  if (elements.patientOwnerSelect) {
+    elements.patientOwnerSelect.value = owner?.id || "";
+    elements.patientOwnerSelect.disabled = Boolean(owner);
+  }
+}
+
+function openPatientEditor(patient) {
+  if (!patient || !elements.patientForm) {
+    return;
+  }
+  elements.patientForm.reset();
+  const fields = elements.patientForm.elements;
+  fields.id.value = patient.id || "";
+  fields.owner_id.value = patient.owner_id || consultorioOwnerId || "";
+  fields.name.value = patient.name || "";
+  fields.species.value = patient.species || "";
+  fields.breed.value = patient.breed || "";
+  fields.sex.value = patient.sex || "";
+  fields.birth_date.value = patient.birth_date || "";
+  fields.age_years.value = patient.age_years ?? "";
+  fields.color.value = patient.color || "";
+  fields.reproductive_status.value = patient.reproductive_status || "";
+  fields.microchip.value = patient.microchip || "";
+  fields.weight_kg.value = patient.weight_kg ?? "";
+  fields.allergies.value = patient.allergies || "";
+  fields.chronic_conditions.value = patient.chronic_conditions || "";
+  fields.vaccination_status.value = patient.vaccination_status || "";
+  fields.deworming_status.value = patient.deworming_status || "";
+  fields.notes.value = patient.notes || "";
+  if (elements.patientFormTitle) {
+    elements.patientFormTitle.textContent = "Editar mascota";
+  }
+  if (elements.patientFormSubmitButton) {
+    elements.patientFormSubmitButton.textContent = "Guardar cambios";
+  }
+  if (elements.cancelPatientEditButton) {
+    elements.cancelPatientEditButton.classList.remove("is-hidden");
+  }
+  if (elements.patientOwnerSelect) {
+    elements.patientOwnerSelect.disabled = Boolean(getConsultorioOwner());
   }
 }
 
@@ -2783,6 +2878,10 @@ function getProfessionalOptions() {
 
 function getOwnerById(ownerId) {
   return (state.owners || []).find((owner) => owner.id === ownerId) || null;
+}
+
+function getPatientById(patientId) {
+  return (state.patients || []).find((patient) => patient.id === patientId) || null;
 }
 
 function buildOwnerLabel(owner) {
@@ -3822,6 +3921,89 @@ function setAuthUI(authenticated) {
   applyPermissionsVisibility();
 }
 
+async function handleOwnerDelete(ownerId) {
+  const owner = getOwnerById(ownerId);
+  if (!owner) {
+    throw new Error("No se encontro el propietario seleccionado.");
+  }
+  const confirmed = window.confirm(
+    `Eliminar al propietario ${owner.full_name || ""}? Esta accion no se puede deshacer.`
+  );
+  if (!confirmed) {
+    return;
+  }
+  await api.deleteOwner(ownerId);
+  if (consultorioOwnerId === ownerId) {
+    consultorioOwnerId = "";
+  }
+  resetPatientEditor();
+  await refreshData("Propietario eliminado.");
+  setActiveSection("consultorio");
+  setSectionSubsection("consultorio", "patients");
+}
+
+async function handlePatientDelete(patientId) {
+  const patient = getPatientById(patientId);
+  if (!patient) {
+    throw new Error("No se encontro la mascota seleccionada.");
+  }
+  const confirmed = window.confirm(
+    `Eliminar a ${patient.name || "esta mascota"}? Esta accion no se puede deshacer.`
+  );
+  if (!confirmed) {
+    return;
+  }
+  await api.deletePatient(patientId);
+  if (elements.patientForm?.elements?.id?.value === patientId) {
+    resetPatientEditor();
+  }
+  await refreshData("Paciente eliminado.");
+  setActiveSection("consultorio");
+  setSectionSubsection("consultorio", "patients");
+}
+
+async function handleOwnersListClick(event) {
+  const editButton = event.target.closest("[data-owner-edit]");
+  if (editButton) {
+    const owner = getOwnerById(editButton.dataset.ownerEdit || "");
+    if (!owner) {
+      throw new Error("No se encontro el propietario seleccionado.");
+    }
+    openOwnerModal(owner);
+    return;
+  }
+  const deleteButton = event.target.closest("[data-owner-delete]");
+  if (deleteButton) {
+    await handleOwnerDelete(deleteButton.dataset.ownerDelete || "");
+    return;
+  }
+  const selectButton = event.target.closest("[data-owner-select]");
+  if (!selectButton) {
+    return;
+  }
+  consultorioOwnerId = selectButton.dataset.ownerSelect || "";
+  resetPatientEditor();
+  setSectionSubsection("consultorio", "patients");
+  renderConsultorioOwnerDetail();
+  renderPatients();
+}
+
+async function handlePatientsListClick(event) {
+  const editButton = event.target.closest("[data-patient-edit]");
+  if (editButton) {
+    const patient = getPatientById(editButton.dataset.patientEdit || "");
+    if (!patient) {
+      throw new Error("No se encontro la mascota seleccionada.");
+    }
+    openPatientEditor(patient);
+    return;
+  }
+  const deleteButton = event.target.closest("[data-patient-delete]");
+  if (deleteButton) {
+    await handlePatientDelete(deleteButton.dataset.patientDelete || "");
+  }
+}
+
 
 function applyConsentTemplate(type) {
   const template = consentTemplates[type];
@@ -3949,8 +4131,11 @@ async function handlePatientSubmit(event) {
       elements.patientOwnerSelect?.value ||
       "";
   }
-  await api.savePatient(payload);
-  resetForm(event.currentTarget);
+  const patient = await api.savePatient(payload);
+  if (patient?.owner_id) {
+    consultorioOwnerId = patient.owner_id;
+  }
+  resetPatientEditor();
   await refreshData("Paciente guardado.");
   setActiveSection("consultorio");
   setSectionSubsection("consultorio", "patients");
@@ -4597,23 +4782,39 @@ function bindForms() {
     });
   }
   if (elements.ownersList) {
-    elements.ownersList.addEventListener("click", (event) => {
-      const button = event.target.closest("[data-owner-select]");
-      if (!button) {
-        return;
-      }
-      consultorioOwnerId = button.dataset.ownerSelect || "";
-      setSectionSubsection("consultorio", "patients");
-      renderConsultorioOwnerDetail();
-      renderPatients();
-    });
+    elements.ownersList.addEventListener("click", wrapAsync(handleOwnersListClick));
   }
   if (elements.consultorioOwnerBackButton) {
     elements.consultorioOwnerBackButton.addEventListener("click", () => {
       consultorioOwnerId = "";
+      resetPatientEditor();
       renderConsultorioOwnerDetail();
       renderPatients();
     });
+  }
+  if (elements.consultorioOwnerEditButton) {
+    elements.consultorioOwnerEditButton.addEventListener("click", () => {
+      const owner = getConsultorioOwner();
+      if (owner) {
+        openOwnerModal(owner);
+      }
+    });
+  }
+  if (elements.consultorioOwnerDeleteButton) {
+    elements.consultorioOwnerDeleteButton.addEventListener(
+      "click",
+      wrapAsync(async () => {
+        if (consultorioOwnerId) {
+          await handleOwnerDelete(consultorioOwnerId);
+        }
+      })
+    );
+  }
+  if (elements.cancelPatientEditButton) {
+    elements.cancelPatientEditButton.addEventListener("click", resetPatientEditor);
+  }
+  if (elements.patientsList) {
+    elements.patientsList.addEventListener("click", wrapAsync(handlePatientsListClick));
   }
   if (elements.exportUsersButton) {
     elements.exportUsersButton.addEventListener("click", () => {

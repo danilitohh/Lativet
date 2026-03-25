@@ -176,6 +176,11 @@ button:active {
   box-shadow: none;
 }
 
+.ghost-button--danger {
+  color: var(--danger);
+  background: rgba(196, 70, 83, 0.08);
+}
+
 .header-link.is-active,
 .workspace-link.is-active {
   background: rgba(15, 118, 110, 0.12);
@@ -608,6 +613,11 @@ button:active {
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
+}
+
+.owner-card__actions {
+  justify-content: flex-end;
+  flex-wrap: wrap;
 }
 
 .owner-card__meta {

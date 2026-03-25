@@ -116,6 +116,10 @@ class LativetService:
         return self._db.save_owner(payload)
 
     @safe_api_call
+    def delete_owner(self, owner_id: str) -> dict:
+        return self._db.delete_owner(owner_id)
+
+    @safe_api_call
     def save_provider(self, payload: dict) -> dict:
         return self._db.save_provider(payload)
 
@@ -136,6 +140,10 @@ class LativetService:
     @safe_api_call
     def save_patient(self, payload: dict) -> dict:
         return self._db.save_patient(payload)
+
+    @safe_api_call
+    def delete_patient(self, patient_id: str) -> dict:
+        return self._db.delete_patient(patient_id)
 
     @safe_api_call
     def save_catalog_item(self, payload: dict) -> dict:

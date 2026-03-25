@@ -214,6 +214,10 @@ def create_app(base_dir: Path | None = None, data_dir: Path | None = None) -> Fl
     def save_owner():
         return respond(service.save_owner(payload()))
 
+    @app.delete("/api/owners/<owner_id>")
+    def delete_owner(owner_id: str):
+        return respond(service.delete_owner(owner_id))
+
     @app.post("/api/providers")
     def save_provider():
         return respond(service.save_provider(payload()))
@@ -234,6 +238,10 @@ def create_app(base_dir: Path | None = None, data_dir: Path | None = None) -> Fl
     @app.post("/api/patients")
     def save_patient():
         return respond(service.save_patient(payload()))
+
+    @app.delete("/api/patients/<patient_id>")
+    def delete_patient(patient_id: str):
+        return respond(service.delete_patient(patient_id))
 
     @app.post("/api/catalog-items")
     def save_catalog_item():
