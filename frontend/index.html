@@ -1086,6 +1086,15 @@
             <span class="appointment-modal__info" aria-hidden="true">i</span>
           </label>
 
+          <div class="appointment-modal__row">
+            <div class="appointment-modal__field">
+              <div class="appointment-modal__label-row">
+                <span>Horas disponibles</span>
+              </div>
+              <div id="appointmentSlotsStrip" class="appointment-slots-strip"></div>
+            </div>
+          </div>
+
           <div class="appointment-modal__row appointment-modal__row--split">
             <label class="appointment-modal__field">
               <span>Inicia</span>
@@ -1096,6 +1105,19 @@
               <input id="appointmentEndInput" name="appointment_end_at" type="datetime-local" />
             </label>
           </div>
+
+          <label class="appointment-modal__field">
+            <span>Duracion (min)</span>
+            <input
+              id="appointmentDurationInput"
+              name="duration_minutes"
+              type="number"
+              min="15"
+              max="240"
+              step="15"
+              value="30"
+            />
+          </label>
 
           <label class="appointment-modal__field">
             <span>Titulo</span>
@@ -1115,8 +1137,8 @@
             <span>Sin lugar</span>
           </label>
 
-          <input type="hidden" name="status" value="scheduled" />
-          <input id="appointmentDurationInput" type="hidden" name="duration_minutes" value="30" />
+          <input id="appointmentIdInput" type="hidden" name="id" />
+          <input id="appointmentStatusInput" type="hidden" name="status" value="scheduled" />
 
           <div class="appointment-modal__footer">
             <button class="appointment-modal__button" type="submit">

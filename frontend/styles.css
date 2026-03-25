@@ -1877,6 +1877,48 @@ body.auth-locked .page-shell > :not(#loginModal) {
   color: var(--muted);
 }
 
+.appointment-slots-strip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 2px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.appointment-slots-strip.is-hidden {
+  display: none;
+}
+
+.appointment-slot-pill {
+  border-radius: 999px;
+  border: 1px solid rgba(79, 91, 213, 0.28);
+  background: #fff;
+  color: #3f4bc8;
+  padding: 8px 14px;
+  font-size: 0.85rem;
+  white-space: nowrap;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.appointment-slot-pill:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px rgba(79, 91, 213, 0.16);
+}
+
+.appointment-slot-pill.is-selected {
+  background: #4f5bd5;
+  border-color: #4f5bd5;
+  color: #fff;
+  box-shadow: 0 10px 20px rgba(79, 91, 213, 0.28);
+}
+
+.appointment-slots-empty {
+  font-size: 0.82rem;
+  color: var(--muted);
+  padding: 4px 0;
+}
+
 .appointment-modal__field--autocomplete {
   position: relative;
 }

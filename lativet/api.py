@@ -154,6 +154,18 @@ class LativetService:
         return appointment
 
     @safe_api_call
+    def delete_appointment(self, appointment_id: str) -> dict:
+        appointment = self._db.get_appointment(appointment_id)
+        google_calendar = {"synced": False, "skipped": True, "reason": "no_event"}
+        if appointment.get("google_event_id"):
+            google_calendar = self._sync_google_calendar_for_appointment(
+                {**appointment, "status": "cancelled"}
+            )
+        deleted = self._db.delete_appointment(appointment_id)
+        deleted["google_calendar"] = google_calendar
+        return deleted
+
+    @safe_api_call
     def save_availability_rule(self, payload: dict) -> dict:
         return self._db.save_availability_rule(payload)
 

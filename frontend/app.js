@@ -587,6 +587,28 @@ function buildAgendaSlots(dateValue) {
   return slots;
 }
 
+function getAvailableSlotsForDate(dateValue) {
+  if (!dateValue) {
+    return [];
+  }
+  const latestEnd = getLatestAppointmentEnd(dateValue);
+  const currentAppointmentId = elements.appointmentIdInput?.value || "";
+  return buildAgendaSlots(dateValue).filter((slot) => {
+    const isCurrent = slot.appointment_id && slot.appointment_id === currentAppointmentId;
+    if (slot.occupied && !isCurrent) {
+      return false;
+    }
+    if (isCurrent) {
+      return true;
+    }
+    if (!latestEnd) {
+      return true;
+    }
+    const slotStart = new Date(slot.slot_at);
+    return slotStart >= latestEnd;
+  });
+}
+
 function serializeForm(form) {
   const payload = Object.fromEntries(new FormData(form).entries());
   form.querySelectorAll('input[type="checkbox"]').forEach((checkbox) => {
@@ -691,6 +713,8 @@ const api = {
       method: "PATCH",
       body: JSON.stringify({ status }),
     }),
+  deleteAppointment: (appointmentId) =>
+    apiRequest(`/api/appointments/${appointmentId}`, { method: "DELETE" }),
   saveAvailability: (payload) =>
     apiRequest("/api/availability", { method: "POST", body: JSON.stringify(payload) }),
   deleteAvailability: (ruleId) =>
@@ -845,6 +869,7 @@ function cacheElements() {
     "appointmentPatientInput",
     "appointmentPatientId",
     "appointmentOwnerId",
+    "appointmentIdInput",
     "appointmentPatientDropdown",
     "appointmentStartInput",
     "appointmentEndInput",
@@ -852,6 +877,8 @@ function cacheElements() {
     "appointmentReserveCheckbox",
     "appointmentNoLocationCheckbox",
     "appointmentDurationInput",
+    "appointmentStatusInput",
+    "appointmentSlotsStrip",
     "availabilityForm",
     "availabilityRulesList",
     "availabilityModal",
@@ -886,6 +913,7 @@ function cacheElements() {
     "agendaTimezoneLabel",
     "openAppointmentModalButton",
     "appointmentModal",
+    "appointmentModalTitle",
     "appointmentModalSelectedDate",
     "closeAppointmentModalButton",
     "appointmentDetailModal",
@@ -1721,6 +1749,23 @@ function renderAppointments() {
     (appointment) => {
       const actions = [];
       const terminal = ["completed", "cancelled", "no_show"].includes(appointment.status);
+      actions.push(
+        `<button data-appointment-id="${escapeHtml(
+          appointment.id
+        )}" data-appointment-action="edit">Editar</button>`
+      );
+      actions.push(
+        `<button data-appointment-id="${escapeHtml(
+          appointment.id
+        )}" data-appointment-action="delete">Eliminar</button>`
+      );
+      if (["cancelled", "no_show"].includes(appointment.status)) {
+        actions.push(
+          `<button data-appointment-id="${escapeHtml(
+            appointment.id
+          )}" data-appointment-action="reactivate">Reactivar</button>`
+        );
+      }
       if (!terminal && appointment.status !== "confirmed") {
         actions.push(
           `<button data-appointment-id="${escapeHtml(appointment.id)}" data-status="confirmed">Confirmar</button>`
@@ -2733,8 +2778,17 @@ function buildOwnerLabel(owner) {
   return parts.filter(Boolean).join(" / ");
 }
 
+function normalizeQuery(value) {
+  return String(value || "")
+    .toLowerCase()
+    .trim()
+    .split(/[\s/]+/)
+    .filter(Boolean);
+}
+
 function matchesOwner(owner, query) {
-  if (!query) {
+  const tokens = normalizeQuery(query);
+  if (!tokens.length) {
     return true;
   }
   const haystack = [
@@ -2747,7 +2801,7 @@ function matchesOwner(owner, query) {
     .filter(Boolean)
     .join(" ")
     .toLowerCase();
-  return haystack.includes(query);
+  return tokens.every((token) => haystack.includes(token));
 }
 
 function buildAppointmentPatientLabel(patient) {
@@ -2770,7 +2824,8 @@ function buildOwnerOnlyLabel(owner) {
 }
 
 function matchesAppointmentPatient(patient, query) {
-  if (!query) {
+  const tokens = normalizeQuery(query);
+  if (!tokens.length) {
     return true;
   }
   const owner = getOwnerById(patient.owner_id);
@@ -2788,7 +2843,7 @@ function matchesAppointmentPatient(patient, query) {
     .filter(Boolean)
     .join(" ")
     .toLowerCase();
-  return haystack.includes(query);
+  return tokens.every((token) => haystack.includes(token));
 }
 
 function renderAppointmentPatientDropdown() {
@@ -3144,6 +3199,45 @@ function buildAppointmentEndValue(startValue, minutes = 30) {
   return toInputDateTime(addMinutes(start, minutes));
 }
 
+function renderAppointmentSlotsStrip() {
+  if (!elements.appointmentSlotsStrip) {
+    return;
+  }
+  if (elements.appointmentNoTimeCheckbox?.checked) {
+    elements.appointmentSlotsStrip.innerHTML = "";
+    elements.appointmentSlotsStrip.classList.add("is-hidden");
+    return;
+  }
+  const startValue = elements.appointmentStartInput?.value || "";
+  const dateValue = toIsoDate(startValue) || agendaSelectedDate;
+  const slots = getAvailableSlotsForDate(dateValue);
+  if (!slots.length) {
+    elements.appointmentSlotsStrip.innerHTML =
+      '<div class="appointment-slots-empty">No hay horarios disponibles.</div>';
+    elements.appointmentSlotsStrip.classList.remove("is-hidden");
+    return;
+  }
+  const selectedValue = startValue ? toInputDateTime(startValue) : "";
+  const items = slots.map((slot) => {
+    const duration = Number(slot.duration_minutes || 30);
+    const localValue = toInputDateTime(slot.slot_at);
+    const isSelected = selectedValue && localValue === selectedValue;
+    const label = `${slot.label} · ${duration} min`;
+    return `
+      <button
+        type="button"
+        class="appointment-slot-pill${isSelected ? " is-selected" : ""}"
+        data-slot-at="${escapeHtml(slot.slot_at)}"
+        data-slot-minutes="${duration}"
+      >
+        ${escapeHtml(label)}
+      </button>
+    `;
+  });
+  elements.appointmentSlotsStrip.innerHTML = items.join("");
+  elements.appointmentSlotsStrip.classList.remove("is-hidden");
+}
+
 function syncAppointmentSelectedDate() {
   if (!elements.appointmentModalSelectedDate) {
     return;
@@ -3151,6 +3245,7 @@ function syncAppointmentSelectedDate() {
   const startValue = elements.appointmentStartInput?.value || "";
   const targetDate = toIsoDate(startValue) || agendaSelectedDate;
   elements.appointmentModalSelectedDate.textContent = formatAgendaDateLabel(targetDate);
+  renderAppointmentSlotsStrip();
 }
 
 function syncAppointmentEndTime({ force = false } = {}) {
@@ -3181,6 +3276,19 @@ function toggleAppointmentNoTime(checked) {
   if (checked) {
     syncAppointmentEndTime({ force: true });
   }
+  renderAppointmentSlotsStrip();
+}
+
+function selectAppointmentSlot(slotAt, durationMinutes) {
+  if (!slotAt || !elements.appointmentStartInput) {
+    return;
+  }
+  elements.appointmentStartInput.value = toInputDateTime(slotAt);
+  if (elements.appointmentDurationInput) {
+    elements.appointmentDurationInput.value = String(durationMinutes || 30);
+  }
+  syncAppointmentEndTime({ force: true });
+  syncAppointmentSelectedDate();
 }
 
 function captureAppointmentDraft() {
@@ -3275,11 +3383,42 @@ function openOwnerModalFromAppointment() {
   openOwnerModal();
 }
 
+function openAppointmentModalForDate(dateValue) {
+  const targetDate = toIsoDate(dateValue) || agendaSelectedDate;
+  if (!targetDate) {
+    openAppointmentModal();
+    return;
+  }
+  setAgendaSelectedDate(targetDate);
+  const slots = getAvailableSlotsForDate(targetDate);
+  if (slots.length) {
+    openAppointmentModal(slots[0].slot_at, Number(slots[0].duration_minutes || 30));
+    return;
+  }
+  openAppointmentModal(`${targetDate}T08:00`, Number(elements.appointmentDurationInput?.value || 30));
+}
+
+function openAppointmentModalForSlot(slotAt, durationMinutes) {
+  const targetDate = toIsoDate(slotAt);
+  if (targetDate) {
+    setAgendaSelectedDate(targetDate);
+  }
+  openAppointmentModal(slotAt, durationMinutes);
+}
+
 function openAppointmentModal(initialDateTime = "", durationMinutes = 30) {
-  const dateTimeValue =
-    initialDateTime || `${agendaSelectedDate}T08:00`;
+  const dateTimeValue = initialDateTime || `${agendaSelectedDate}T08:00`;
   elements.appointmentModal.classList.remove("is-hidden");
   elements.appointmentModal.setAttribute("aria-hidden", "false");
+  if (elements.appointmentModalTitle) {
+    elements.appointmentModalTitle.textContent = "Crear evento";
+  }
+  if (elements.appointmentIdInput) {
+    elements.appointmentIdInput.value = "";
+  }
+  if (elements.appointmentStatusInput) {
+    elements.appointmentStatusInput.value = "scheduled";
+  }
   if (elements.appointmentStartInput) {
     elements.appointmentStartInput.value = toInputDateTime(dateTimeValue);
   }
@@ -3318,6 +3457,53 @@ function openAppointmentModal(initialDateTime = "", durationMinutes = 30) {
     if (hasAgenda) {
       elements.appointmentProfessionalSelect.value = "Agenda general";
     }
+  }
+  renderAppointmentPatientDropdown();
+  syncAppointmentSelectedDate();
+}
+
+function openAppointmentModalForEdit(appointment) {
+  if (!appointment) {
+    return;
+  }
+  openAppointmentModal(appointment.appointment_at, Number(appointment.duration_minutes || 30));
+  if (elements.appointmentModalTitle) {
+    elements.appointmentModalTitle.textContent = "Editar cita";
+  }
+  if (elements.appointmentIdInput) {
+    elements.appointmentIdInput.value = appointment.id || "";
+  }
+  if (elements.appointmentStatusInput) {
+    elements.appointmentStatusInput.value = appointment.status || "scheduled";
+  }
+  const patient = (state.patients || []).find((item) => item.id === appointment.patient_id);
+  const owner = appointment.owner_id ? getOwnerById(appointment.owner_id) : null;
+  const label = patient
+    ? buildAppointmentPatientLabel(patient)
+    : owner
+      ? buildOwnerOnlyLabel(owner)
+      : appointment.owner_name || "";
+  if (elements.appointmentPatientInput) {
+    elements.appointmentPatientInput.value = label;
+  }
+  if (elements.appointmentPatientId) {
+    elements.appointmentPatientId.value = appointment.patient_id || "";
+  }
+  if (elements.appointmentOwnerId) {
+    elements.appointmentOwnerId.value = appointment.owner_id || "";
+  }
+  if (elements.appointmentProfessionalSelect) {
+    elements.appointmentProfessionalSelect.value =
+      appointment.professional_name || "Agenda general";
+  }
+  if (elements.appointmentTypeSelect) {
+    elements.appointmentTypeSelect.value = "";
+  }
+  if (elements.appointmentForm?.elements?.reason) {
+    elements.appointmentForm.elements.reason.value = appointment.reason || "";
+  }
+  if (elements.appointmentForm?.elements?.notes) {
+    elements.appointmentForm.elements.notes.value = appointment.notes || "";
   }
   renderAppointmentPatientDropdown();
   syncAppointmentSelectedDate();
@@ -3981,7 +4167,44 @@ function handleBillingDraftClick(event) {
 }
 
 async function handleAppointmentsClick(event) {
-  const button = event.target.closest("button[data-appointment-id]");
+  const actionButton = event.target.closest("button[data-appointment-action]");
+  if (actionButton) {
+    const appointmentId = actionButton.dataset.appointmentId || "";
+    const action = actionButton.dataset.appointmentAction || "";
+    const appointment = (state.appointments || []).find((item) => item.id === appointmentId);
+    if (action === "edit") {
+      if (!appointment) {
+        showStatus("No se encontro la cita seleccionada.", "error");
+        return;
+      }
+      closeAgendaAppointmentsModal();
+      openAppointmentModalForEdit(appointment);
+      return;
+    }
+    if (action === "delete") {
+      if (!appointmentId) {
+        return;
+      }
+      const confirmed = window.confirm(
+        "¿Eliminar esta cita? Esta accion no se puede deshacer."
+      );
+      if (!confirmed) {
+        return;
+      }
+      await api.deleteAppointment(appointmentId);
+      await refreshData("Cita eliminada.");
+      return;
+    }
+    if (action === "reactivate") {
+      if (!appointmentId) {
+        return;
+      }
+      await api.updateAppointmentStatus(appointmentId, "scheduled");
+      await refreshData("Cita reactivada.");
+      return;
+    }
+  }
+  const button = event.target.closest("button[data-appointment-id][data-status]");
   if (!button) {
     return;
   }
@@ -3998,21 +4221,28 @@ async function handleAvailabilityListClick(event) {
   await refreshData("Disponibilidad eliminada.");
 }
 
+function handleAgendaMiniCalendarClick(event) {
+  const dateButton = event.target.closest("[data-agenda-date]");
+  if (dateButton) {
+    setAgendaSelectedDate(dateButton.dataset.agendaDate);
+  }
+}
+
 function handleAgendaMonthClick(event) {
   const appointmentButton = event.target.closest("[data-appointment-id]");
   if (appointmentButton) {
     openAppointmentDetailModal(appointmentButton.dataset.appointmentId);
     return;
   }
-  const dateButton = event.target.closest("[data-agenda-date]");
-  if (dateButton) {
-    setAgendaSelectedDate(dateButton.dataset.agendaDate);
-    return;
-  }
   const slotButton = event.target.closest("[data-slot-at]");
   if (slotButton && !slotButton.disabled) {
     const minutes = Number(slotButton.dataset.slotMinutes || 30);
-    openAppointmentModal(slotButton.dataset.slotAt, minutes);
+    openAppointmentModalForSlot(slotButton.dataset.slotAt, minutes);
+    return;
+  }
+  const dateButton = event.target.closest("[data-agenda-date]");
+  if (dateButton) {
+    openAppointmentModalForDate(dateButton.dataset.agendaDate);
   }
 }
 
@@ -4025,12 +4255,12 @@ function handleAgendaWeekClick(event) {
   const slotButton = event.target.closest("[data-slot-at]");
   if (slotButton && !slotButton.disabled) {
     const minutes = Number(slotButton.dataset.slotMinutes || 30);
-    openAppointmentModal(slotButton.dataset.slotAt, minutes);
+    openAppointmentModalForSlot(slotButton.dataset.slotAt, minutes);
     return;
   }
   const dayButton = event.target.closest("[data-agenda-date]");
   if (dayButton) {
-    setAgendaSelectedDate(dayButton.dataset.agendaDate);
+    openAppointmentModalForDate(dayButton.dataset.agendaDate);
   }
 }
 
@@ -4307,7 +4537,7 @@ function bindForms() {
     elements.appointmentsList.addEventListener("click", wrapAsync(handleAppointmentsClick));
   }
   if (elements.agendaMonthGrid) {
-    elements.agendaMonthGrid.addEventListener("click", handleAgendaMonthClick);
+    elements.agendaMonthGrid.addEventListener("click", handleAgendaMiniCalendarClick);
   }
   if (elements.agendaMonthGridLarge) {
     elements.agendaMonthGridLarge.addEventListener("click", handleAgendaMonthClick);
@@ -4325,7 +4555,9 @@ function bindForms() {
     elements.agendaListItems.addEventListener("click", handleAgendaMonthClick);
   }
   elements.recordsList.addEventListener("click", handleRecordsClick);
-  elements.openAppointmentModalButton.addEventListener("click", () => openAppointmentModal());
+  elements.openAppointmentModalButton.addEventListener("click", () =>
+    openAppointmentModalForDate(agendaSelectedDate)
+  );
   elements.closeAppointmentModalButton.addEventListener("click", closeAppointmentModal);
   if (elements.closeAppointmentDetailButton) {
     elements.closeAppointmentDetailButton.addEventListener("click", closeAppointmentDetailModal);
@@ -4380,9 +4612,25 @@ function bindForms() {
   if (elements.appointmentEndInput) {
     elements.appointmentEndInput.addEventListener("change", () => syncAppointmentEndTime());
   }
+  if (elements.appointmentDurationInput) {
+    elements.appointmentDurationInput.addEventListener("change", () => {
+      syncAppointmentEndTime({ force: true });
+      renderAppointmentSlotsStrip();
+    });
+  }
   if (elements.appointmentNoTimeCheckbox) {
     elements.appointmentNoTimeCheckbox.addEventListener("change", (event) => {
       toggleAppointmentNoTime(event.target.checked);
+    });
+  }
+  if (elements.appointmentSlotsStrip) {
+    elements.appointmentSlotsStrip.addEventListener("click", (event) => {
+      const button = event.target.closest("button[data-slot-at]");
+      if (!button) {
+        return;
+      }
+      const minutes = Number(button.dataset.slotMinutes || 30);
+      selectAppointmentSlot(button.dataset.slotAt, minutes);
     });
   }
   elements.appointmentModal.addEventListener("click", (event) => {

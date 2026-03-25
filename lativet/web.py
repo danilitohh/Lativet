@@ -272,6 +272,10 @@ def create_app(base_dir: Path | None = None, data_dir: Path | None = None) -> Fl
         status = payload().get("status")
         return respond(service.update_appointment_status(appointment_id, status))
 
+    @app.delete("/api/appointments/<appointment_id>")
+    def delete_appointment(appointment_id: str):
+        return respond(service.delete_appointment(appointment_id))
+
     @app.post("/api/consents")
     def save_consent():
         return respond(service.save_consent(payload()))

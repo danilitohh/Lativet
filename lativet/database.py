@@ -1270,6 +1270,45 @@ class Database:
         ).fetchone()
         return self._row_to_dict(row)
 
+    def get_appointment(self, appointment_id: str) -> dict:
+        row = self.connection.execute(
+            """
+            SELECT a.*, p.name AS patient_name, o.full_name AS owner_name
+            FROM appointments a
+            JOIN patients p ON p.id = a.patient_id
+            JOIN owners o ON o.id = a.owner_id
+            WHERE a.id = ?
+            """,
+            (appointment_id,),
+        ).fetchone()
+        if not row:
+            raise ValidationError("La cita seleccionada no existe.")
+        return self._row_to_dict(row)
+
+    def delete_appointment(self, appointment_id: str) -> dict:
+        with self._tx():
+            row = self.connection.execute(
+                """
+                SELECT a.*, p.name AS patient_name, o.full_name AS owner_name
+                FROM appointments a
+                JOIN patients p ON p.id = a.patient_id
+                JOIN owners o ON o.id = a.owner_id
+                WHERE a.id = ?
+                """,
+                (appointment_id,),
+            ).fetchone()
+            if not row:
+                raise ValidationError("La cita seleccionada no existe.")
+            self.connection.execute("DELETE FROM appointments WHERE id = ?", (appointment_id,))
+            self._record_audit(
+                "appointment",
+                appointment_id,
+                "delete",
+                "agenda",
+                {"status": "deleted"},
+            )
+        return self._row_to_dict(row)
+
     def list_appointments(self) -> list[dict]:
         rows = self.connection.execute(
             """
