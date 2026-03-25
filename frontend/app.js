@@ -70,12 +70,16 @@ const usersFilters = { query: "", pageSize: 10, showInactive: false };
 const ownersFilters = { query: "" };
 const authState = { requiresLogin: false, authenticated: false, currentUser: null };
 const AUTH_SESSION_KEY = "lativet_auth_session";
-const BOOTSTRAP_CACHE_KEY = "lativet_bootstrap_v2";
+const BOOTSTRAP_CACHE_KEY = "lativet_bootstrap_v3";
 const BOOTSTRAP_CACHE_TTL_MS = 5 * 60 * 1000;
 let bootstrapFullRequested = false;
 let bootstrapReadyForSectionLoads = false;
 const BOOTSTRAP_CORE_SECTIONS = ["settings"];
-const BOOTSTRAP_BACKGROUND_GROUPS = [["appointments"]];
+const BOOTSTRAP_BACKGROUND_GROUPS = [
+  ["owners", "patients"],
+  ["availability_rules"],
+  ["appointments"],
+];
 const OWNER_PATIENT_REFRESH_SECTIONS = ["owners", "patients"];
 const AGENDA_REFRESH_SECTIONS = ["appointments", "owners", "patients", "availability_rules"];
 const SECTION_DATA_REQUIREMENTS = {
@@ -3277,18 +3281,23 @@ function getSectionDataRequirements(sectionId) {
   return subsectionRequirements || SECTION_DATA_REQUIREMENTS[sectionId] || [];
 }
 
-async function ensureSectionData(sectionId) {
+async function ensureSectionData(sectionId, options = {}) {
+  const { showError = true } = options;
   const requiredSections = getSectionDataRequirements(sectionId);
   const missingSections = getMissingBootstrapSections(requiredSections);
   if (!missingSections.length) {
-    return;
+    return true;
   }
   markBootstrapSectionsPending(missingSections);
   try {
     await refreshData({ sections: missingSections });
+    return true;
   } catch (error) {
     clearBootstrapSectionsPending(missingSections);
-    showStatus(error.message || "No fue posible cargar los datos de esta seccion.", "error");
+    if (showError) {
+      showStatus(error.message || "No fue posible cargar los datos de esta seccion.", "error");
+    }
+    return false;
   }
 }
 
@@ -5162,7 +5171,18 @@ function scheduleFullBootstrapLoad() {
 }
 
 async function startDataLoad() {
-  showStatus("Version web lista. Cargando datos...", "info");
+  showStatus("Version web lista. Cargando configuracion...", "info");
+  const activeSectionId = getActiveSectionId();
+  const finalizeBootstrapStatus = async () => {
+    await ensureSectionData(activeSectionId, { showError: false });
+    const activeReady = getSectionDataRequirements(activeSectionId).every((section) =>
+      loadedBootstrapSections.has(section)
+    );
+    showStatus(
+      activeReady ? "Datos operativos cargados." : "Configuracion cargada. Cargando modulos...",
+      activeReady ? "success" : "info"
+    );
+  };
   const cached = loadBootstrapCache();
   if (cached) {
     Object.assign(state, cached);
@@ -5171,18 +5191,19 @@ async function startDataLoad() {
       agendaSelectedDate = toIsoDate(new Date());
     }
     renderAll();
-    showStatus("Datos basicos cargados.", "success");
     bootstrapReadyForSectionLoads = true;
-    ensureSectionData(getActiveSectionId());
+    await finalizeBootstrapStatus();
   }
   if (cached) {
     scheduleFullBootstrapLoad();
     return;
   }
-  refreshData({ sections: BOOTSTRAP_CORE_SECTIONS, message: "Datos basicos cargados." })
+  refreshData({ sections: BOOTSTRAP_CORE_SECTIONS })
     .then(() => {
       bootstrapReadyForSectionLoads = true;
-      ensureSectionData(getActiveSectionId());
+      return finalizeBootstrapStatus();
+    })
+    .then(() => {
       scheduleFullBootstrapLoad();
     })
     .catch((error) => {
