@@ -2809,6 +2809,9 @@ async function handleAppointmentSubmit(event) {
   if (!payload.reason) {
     payload.reason = payload.appointment_type || "Cita";
   }
+  if (payload.appointment_type && payload.reason && !payload.reason.includes(payload.appointment_type)) {
+    payload.reason = `${payload.appointment_type} - ${payload.reason}`;
+  }
   if (!payload.status) {
     payload.status = "scheduled";
   }
