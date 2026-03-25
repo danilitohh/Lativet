@@ -221,6 +221,13 @@ class Database:
         with self._lock:
             self.connection.close()
 
+    def rollback(self) -> None:
+        with self._lock:
+            try:
+                self.connection.rollback()
+            except Exception:
+                pass
+
     @contextmanager
     def _tx(self):
         with self._lock:

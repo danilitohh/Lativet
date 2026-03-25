@@ -18,8 +18,16 @@ def safe_api_call(fn):
         try:
             return {"ok": True, "data": fn(self, *args, **kwargs)}
         except ValidationError as exc:
+            try:
+                self._db.rollback()
+            except Exception:
+                pass
             return {"ok": False, "error": str(exc)}
         except Exception as exc:  # pragma: no cover
+            try:
+                self._db.rollback()
+            except Exception:
+                pass
             return {"ok": False, "error": f"Error interno: {exc}"}
 
     return wrapper
