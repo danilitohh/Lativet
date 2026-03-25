@@ -846,6 +846,10 @@ button:active {
   margin-top: 18px;
 }
 
+.workspace-section--internal .consultorio-profile-panel {
+  margin-top: 0;
+}
+
 .consultorio-profile-page {
   margin-top: 18px;
 }

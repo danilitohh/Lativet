@@ -51,11 +51,13 @@ let consultorioPatientId = "";
 let consultorioProfileView = "records";
 let consultorioPatientEditorVisible = false;
 let consultorioPatientProfileOpen = false;
+let activeSectionId = "dashboard";
 let pendingAppointmentDraft = null;
 let returnToAppointmentModal = false;
 const notifications = [];
 let unreadNotifications = 0;
 const MAX_NOTIFICATIONS = 60;
+const CONSULTORIO_PATIENT_PROFILE_SECTION_ID = "consultorioPatientProfile";
 const permissionOptions = [
   { key: "dashboard", label: "Dashboard" },
   { key: "administration", label: "Administracion" },
@@ -206,7 +208,6 @@ const CONSULTORIO_PROFILE_VIEW_MAP = CONSULTORIO_PROFILE_VIEWS.reduce((acc, opti
 const CONSULTORIO_PANEL_IDS = [
   "consultorioOwnersPanel",
   "consultorioOwnerDetailPanel",
-  "consultorioPatientProfilePanel",
   "consultorioRecordFormPanel",
   "consultorioConsultationFormPanel",
   "consultorioEvolutionFormPanel",
@@ -387,7 +388,7 @@ const sectionSubsections = {
       {
         value: "patients",
         label: "Pacientes",
-        panels: ["consultorioOwnersPanel", "consultorioOwnerDetailPanel", "consultorioPatientProfilePanel"],
+        panels: ["consultorioOwnersPanel", "consultorioOwnerDetailPanel"],
       },
       {
         value: "grooming",
@@ -1157,21 +1158,41 @@ function showStatus(message, tone = "info", html = false) {
   }
 }
 
+function getNavSectionId(sectionId) {
+  return sectionId === CONSULTORIO_PATIENT_PROFILE_SECTION_ID ? "consultorio" : sectionId;
+}
+
+function isInternalWorkspaceSection(section) {
+  return section?.dataset?.internalSection === "true";
+}
+
 function setActiveSection(sectionId) {
-  if (sectionId !== "consultorio" && consultorioPatientProfileOpen) {
+  if (
+    activeSectionId === CONSULTORIO_PATIENT_PROFILE_SECTION_ID &&
+    sectionId !== CONSULTORIO_PATIENT_PROFILE_SECTION_ID
+  ) {
+    consultorioPatientProfileOpen = false;
+  }
+  if (
+    sectionId !== "consultorio" &&
+    sectionId !== CONSULTORIO_PATIENT_PROFILE_SECTION_ID &&
+    consultorioPatientProfileOpen
+  ) {
     consultorioPatientProfileOpen = false;
     elements.consultorioPatientProfilePanel?.classList.add("is-hidden");
     elements.consultorioPatientProfilePanel?.setAttribute("aria-hidden", "true");
   }
+  activeSectionId = sectionId;
   const config = sectionSubsections[sectionId];
   if (config && !activeSubsections[sectionId]) {
     activeSubsections[sectionId] = config.options[0]?.value || "";
   }
+  const navSectionId = getNavSectionId(sectionId);
   queryAll(".workspace-section").forEach((section) => {
     section.classList.toggle("is-visible", section.id === sectionId);
   });
   queryAll(".switcher-tab").forEach((button) => {
-    button.classList.toggle("is-active", button.dataset.sectionTarget === sectionId);
+    button.classList.toggle("is-active", button.dataset.sectionTarget === navSectionId);
   });
   applySectionSubsection(sectionId);
   renderAll();
@@ -1987,7 +2008,11 @@ function isConsultorioPatientsViewActive() {
 }
 
 function isConsultorioPatientProfileActive() {
-  return isConsultorioPatientsViewActive() && Boolean(getConsultorioPatient()) && consultorioPatientProfileOpen;
+  return (
+    getActiveSectionId() === CONSULTORIO_PATIENT_PROFILE_SECTION_ID &&
+    Boolean(getConsultorioPatient()) &&
+    consultorioPatientProfileOpen
+  );
 }
 
 function syncConsultorioSelectionState() {
@@ -2057,10 +2082,7 @@ function getConsultorioVisiblePanels() {
   if (subsection === "grooming") {
     return new Set(["consultorioGroomingFormPanel", "consultorioGroomingPanel"]);
   }
-  if (!consultorioPatientId || !consultorioPatientProfileOpen) {
-    return new Set(["consultorioOwnersPanel", "consultorioOwnerDetailPanel"]);
-  }
-  return new Set(["consultorioPatientProfilePanel"]);
+  return new Set(["consultorioOwnersPanel", "consultorioOwnerDetailPanel"]);
 }
 
 function setConsultorioProfileView(value) {
@@ -2069,9 +2091,12 @@ function setConsultorioProfileView(value) {
   }
   consultorioProfileView = value;
   applySectionSubsection("consultorio");
-  renderSection("consultorio");
+  const targetSectionId = isConsultorioPatientProfileActive()
+    ? CONSULTORIO_PATIENT_PROFILE_SECTION_ID
+    : "consultorio";
+  renderSection(targetSectionId);
   if (bootstrapReadyForSectionLoads) {
-    ensureSectionData("consultorio");
+    ensureSectionData(targetSectionId);
   }
 }
 
@@ -2084,6 +2109,8 @@ function openConsultorioPatientProfile(patient) {
   consultorioPatientProfileOpen = true;
   consultorioProfileView = consultorioProfileView || "records";
   setSectionSubsection("consultorio", "patients");
+  setActiveSection(CONSULTORIO_PATIENT_PROFILE_SECTION_ID);
+  window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 function closeConsultorioPatientProfile(options = {}) {
@@ -2094,6 +2121,7 @@ function closeConsultorioPatientProfile(options = {}) {
     consultorioProfileView = "records";
   }
   setSectionSubsection("consultorio", "patients");
+  setActiveSection("consultorio");
 }
 
 function renderOwners() {
@@ -3322,12 +3350,16 @@ function applyPermissionsVisibility() {
     wrapper.classList.toggle("is-hidden", !allowed.has(sectionId));
   });
   queryAll(".workspace-section").forEach((section) => {
+    if (isInternalWorkspaceSection(section)) {
+      section.classList.remove("is-hidden");
+      return;
+    }
     section.classList.toggle("is-hidden", !allowed.has(section.id));
   });
   if (!allowed.size) {
     return;
   }
-  const active = document.querySelector(".switcher-tab.is-active")?.dataset.sectionTarget;
+  const active = getNavSectionId(getActiveSectionId());
   if (!active || !allowed.has(active)) {
     const firstAllowed = permissionOptions.find((option) => allowed.has(option.key))?.key;
     if (firstAllowed) {
@@ -4086,7 +4118,7 @@ function setDateTimeDefaults() {
 }
 
 function getActiveSectionId() {
-  return document.querySelector(".switcher-tab.is-active")?.dataset.sectionTarget || "dashboard";
+  return activeSectionId;
 }
 
 function renderSection(sectionId) {
@@ -4118,6 +4150,11 @@ function renderSection(sectionId) {
       renderConsultations();
       renderConsents();
       renderGrooming();
+      renderSelects();
+      return;
+    case CONSULTORIO_PATIENT_PROFILE_SECTION_ID:
+      syncConsultorioSelectionState();
+      renderConsultorioPatientProfile();
       renderSelects();
       return;
     case "hospamb":
@@ -4162,6 +4199,13 @@ function getMissingBootstrapSections(sections) {
 }
 
 function getSectionDataRequirements(sectionId) {
+  if (sectionId === CONSULTORIO_PATIENT_PROFILE_SECTION_ID) {
+    const baseRequirements = ["owners", "patients"];
+    const profileRequirements = consultorioPatientId
+      ? getConsultorioProfileViewConfig()?.dataRequirements || []
+      : [];
+    return Array.from(new Set([...baseRequirements, ...profileRequirements]));
+  }
   if (sectionId === "consultorio") {
     const subsectionValue = activeSubsections[sectionId] || "patients";
     if (subsectionValue === "grooming") {
@@ -5882,16 +5926,15 @@ function bindForms() {
   }
   if (elements.consultorioPatientBackButton) {
     elements.consultorioPatientBackButton.addEventListener("click", () => {
-      closeConsultorioPatientProfile();
+      closeConsultorioPatientProfile({ preservePatient: true });
     });
   }
   if (elements.consultorioPatientEditButton) {
     elements.consultorioPatientEditButton.addEventListener("click", () => {
       const patient = getConsultorioPatient();
       if (patient) {
-        consultorioPatientProfileOpen = false;
+        closeConsultorioPatientProfile({ preservePatient: true });
         openPatientEditor(patient);
-        setSectionSubsection("consultorio", "patients");
       }
     });
   }

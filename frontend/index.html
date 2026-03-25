@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Lativet Web</title>
-    <link rel="stylesheet" href="/styles.css?v=20260325-8" />
+    <link rel="stylesheet" href="/styles.css?v=20260325-9" />
   </head>
   <body>
     <div class="page-shell">
@@ -747,28 +747,6 @@
             </article>
           </div>
 
-          <article id="consultorioPatientProfilePanel" class="panel-card is-hidden consultorio-profile-panel consultorio-profile-page" aria-hidden="true">
-            <div class="panel-heading">
-              <div>
-                <p class="eyebrow">Perfil del paciente</p>
-                <h3 id="consultorioPatientProfileTitle">Perfil del paciente</h3>
-                <p id="consultorioPatientProfileSubtitle" class="section-copy consultorio-profile-copy">
-                  Selecciona una mascota para abrir su ficha clinica y desplegar sus secciones.
-                </p>
-              </div>
-              <div class="form-actions">
-                <button id="consultorioPatientEditButton" class="secondary-button" type="button">Editar mascota</button>
-                <button id="consultorioPatientBackButton" class="ghost-button" type="button">Volver a mascotas</button>
-              </div>
-            </div>
-            <div class="consultorio-profile-layout">
-              <aside class="consultorio-profile-sidebar">
-                <div id="consultorioPatientProfileNav" class="consultorio-profile-nav"></div>
-              </aside>
-              <div id="consultorioPatientProfileSummary" class="consultorio-profile-summary"></div>
-            </div>
-          </article>
-
           <div class="two-column-grid">
             <article id="consultorioRecordFormPanel" class="panel-card panel-card--wide">
               <div class="panel-heading"><div><p class="eyebrow">Historia clinica</p><h3>Nueva historia</h3></div></div>
@@ -895,6 +873,30 @@
               <div id="groomingList" class="list-surface"></div>
             </article>
           </div>
+        </section>
+
+        <section id="consultorioPatientProfile" class="workspace-section workspace-section--internal" data-internal-section="true">
+          <article id="consultorioPatientProfilePanel" class="panel-card is-hidden consultorio-profile-panel consultorio-profile-page" aria-hidden="true">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Perfil del paciente</p>
+                <h3 id="consultorioPatientProfileTitle">Perfil del paciente</h3>
+                <p id="consultorioPatientProfileSubtitle" class="section-copy consultorio-profile-copy">
+                  Selecciona una mascota para abrir su ficha clinica y desplegar sus secciones.
+                </p>
+              </div>
+              <div class="form-actions">
+                <button id="consultorioPatientEditButton" class="secondary-button" type="button">Editar mascota</button>
+                <button id="consultorioPatientBackButton" class="ghost-button" type="button">Volver a mascotas</button>
+              </div>
+            </div>
+            <div class="consultorio-profile-layout">
+              <aside class="consultorio-profile-sidebar">
+                <div id="consultorioPatientProfileNav" class="consultorio-profile-nav"></div>
+              </aside>
+              <div id="consultorioPatientProfileSummary" class="consultorio-profile-summary"></div>
+            </div>
+          </article>
         </section>
 
         <section id="hospamb" class="workspace-section">
@@ -1284,6 +1286,6 @@
     </div>
   </div>
 
-  <script src="/app.js?v=20260325-5"></script>
- </body>
+  <script src="/app.js?v=20260325-6"></script>
+</body>
 </html>
