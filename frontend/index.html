@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Lativet Web</title>
-    <link rel="stylesheet" href="/styles.css?v=20260325-1" />
+    <link rel="stylesheet" href="/styles.css?v=20260325-3" />
   </head>
   <body>
     <div class="page-shell">
@@ -326,22 +326,17 @@
             </div>
           </div>
 
-          <div class="two-column-grid">
-            <article id="agendaGeneralPanel" class="panel-card">
-              <div class="panel-heading">
-                <div>
-                  <p class="eyebrow">Agenda general</p>
-                  <h3>Calendario de citas</h3>
+          <div class="agenda-layout">
+            <article id="agendaGeneralPanel" class="panel-card agenda-calendar-panel">
+              <div class="panel-heading agenda-mini-header">
+                <div class="agenda-mini-title">
+                  <strong id="agendaMonthLabel"></strong>
                 </div>
                 <div class="form-actions">
-                  <button id="agendaPrevMonthButton" class="secondary-button" type="button">Anterior</button>
+                  <button id="agendaPrevMonthButton" class="ghost-button" type="button">&lsaquo;</button>
                   <button id="agendaTodayButton" class="secondary-button" type="button">Hoy</button>
-                  <button id="agendaNextMonthButton" class="secondary-button" type="button">Siguiente</button>
-                  <button id="openAppointmentModalButton" class="primary-button" type="button">Nueva cita</button>
+                  <button id="agendaNextMonthButton" class="ghost-button" type="button">&rsaquo;</button>
                 </div>
-              </div>
-              <div class="agenda-month-header">
-                <strong id="agendaMonthLabel"></strong>
               </div>
               <div class="agenda-weekdays">
                 <span>Lu</span>
@@ -355,11 +350,14 @@
               <div id="agendaMonthGrid" class="agenda-month-grid"></div>
             </article>
 
-            <article id="agendaDayPanel" class="panel-card">
+            <article id="agendaDayPanel" class="panel-card agenda-detail-panel">
               <div class="panel-heading">
                 <div>
                   <p class="eyebrow">Programacion del dia</p>
                   <h3 id="agendaSelectedDateLabel">Selecciona un dia</h3>
+                </div>
+                <div class="form-actions">
+                  <button id="openAppointmentModalButton" class="primary-button" type="button">Nueva cita</button>
                 </div>
               </div>
               <div id="agendaDaySlots" class="agenda-day-slots"></div>
