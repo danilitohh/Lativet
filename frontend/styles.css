@@ -76,15 +76,12 @@ button:active {
 }
 
 .page-topbar {
-  position: sticky;
-  top: 0;
-  z-index: 45;
+  position: relative;
   display: grid;
   gap: 18px;
-  padding-bottom: 14px;
-  background:
-    linear-gradient(180deg, rgba(242, 249, 249, 0.98) 0%, rgba(242, 249, 249, 0.94) 78%, rgba(242, 249, 249, 0) 100%);
-  backdrop-filter: blur(12px);
+  padding-bottom: 0;
+  background: transparent;
+  backdrop-filter: none;
 }
 
 .site-header,
