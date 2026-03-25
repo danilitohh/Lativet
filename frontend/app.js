@@ -2930,7 +2930,9 @@ function renderAppointmentPatientDropdown() {
       items.push(`<div class="appointment-dropdown__item is-muted">Sin resultados</div>`);
     }
     dropdown.innerHTML = items.join("");
-    dropdown.classList.toggle("is-hidden", !items.length);
+    const shouldShowDropdown =
+      items.length > 0 && document.activeElement === elements.appointmentPatientInput;
+    dropdown.classList.toggle("is-hidden", !shouldShowDropdown);
   }
   if (elements.appointmentPatientHelper) {
     let message = "";
