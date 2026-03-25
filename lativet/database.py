@@ -792,6 +792,7 @@ class Database:
         password_hash = ""
         audit_payload = {key: value for key, value in data.items() if key != "password"}
         with self._tx():
+            self._ensure_column("staff_users", "password_hash", "TEXT")
             existing = None
             existing_password_hash = ""
             if data["id"]:
