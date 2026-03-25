@@ -2285,6 +2285,34 @@ function buildAppointmentPatientLabel(patient) {
   return parts.join(" / ");
 }
 
+function buildOwnerLabel(owner) {
+  const parts = [owner.full_name];
+  if (owner.identification_number) {
+    parts.push(owner.identification_number);
+  }
+  if (owner.phone || owner.alternate_phone) {
+    parts.push(owner.phone || owner.alternate_phone);
+  }
+  return parts.filter(Boolean).join(" / ");
+}
+
+function matchesOwner(owner, query) {
+  if (!query) {
+    return true;
+  }
+  const haystack = [
+    owner.full_name,
+    owner.identification_number,
+    owner.phone,
+    owner.alternate_phone,
+    owner.email,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+  return haystack.includes(query);
+}
+
 function matchesAppointmentPatient(patient, query) {
   if (!query) {
     return true;
@@ -2311,15 +2339,39 @@ function renderAppointmentPatientSelect() {
   const query = String(elements.appointmentPatientSearchInput?.value || "")
     .trim()
     .toLowerCase();
+  const current = elements.appointmentPatientSelect?.value || "";
   const patients = (state.patients || []).filter((patient) =>
     matchesAppointmentPatient(patient, query)
   );
-  populateSelect(
-    elements.appointmentPatientSelect,
-    patients,
-    buildAppointmentPatientLabel,
-    "Selecciona paciente"
-  );
+  const ownerMatches = query
+    ? (state.owners || []).filter((owner) => matchesOwner(owner, query))
+    : [];
+  if (elements.appointmentPatientSelect) {
+    const options = [`<option value="">Selecciona paciente</option>`];
+    if (patients.length) {
+      options.push(
+        ...patients.map(
+          (patient) =>
+            `<option value="${escapeHtml(patient.id)}">${escapeHtml(
+              buildAppointmentPatientLabel(patient)
+            )}</option>`
+        )
+      );
+    } else if (ownerMatches.length) {
+      options.push(
+        `<option value="" disabled>Propietarios encontrados (sin mascotas)</option>`
+      );
+      ownerMatches.forEach((owner) => {
+        options.push(
+          `<option value="" disabled>${escapeHtml(buildOwnerLabel(owner))}</option>`
+        );
+      });
+    }
+    elements.appointmentPatientSelect.innerHTML = options.join("");
+    if (patients.some((item) => item.id === current)) {
+      elements.appointmentPatientSelect.value = current;
+    }
+  }
   if (elements.appointmentPatientHelper) {
     let message = "";
     if (!patients.length) {
@@ -2327,22 +2379,16 @@ function renderAppointmentPatientSelect() {
       if (allPatientsEmpty) {
         message = "Aun no hay mascotas registradas. Debes registrar una mascota para agendar.";
       } else if (query) {
-        const ownerMatch = (state.owners || []).some((owner) => {
-          const haystack = [
-            owner.full_name,
-            owner.identification_number,
-            owner.phone,
-            owner.alternate_phone,
-            owner.email,
-          ]
-            .filter(Boolean)
-            .join(" ")
-            .toLowerCase();
-          return haystack.includes(query);
-        });
-        message = ownerMatch
-          ? "Propietario encontrado, pero aun no tiene mascotas registradas."
-          : "No encontramos mascotas con ese propietario o documento.";
+        if (ownerMatches.length) {
+          const preview = ownerMatches
+            .slice(0, 3)
+            .map((owner) => buildOwnerLabel(owner))
+            .join(" | ");
+          const suffix = ownerMatches.length > 3 ? " | ..." : "";
+          message = `Propietario encontrado, pero aun no tiene mascotas registradas: ${preview}${suffix}`;
+        } else {
+          message = "No encontramos mascotas con ese propietario o documento.";
+        }
       } else {
         message = "No encontramos mascotas con ese propietario o documento.";
       }
