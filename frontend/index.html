@@ -358,26 +358,58 @@
             </article>
 
             <article id="agendaDayPanel" class="panel-card agenda-detail-panel">
-              <div class="panel-heading">
-                <div>
-                  <p class="eyebrow">Agenda semanal</p>
-                  <h3 id="agendaSelectedDateLabel"></h3>
+              <div class="panel-heading agenda-view-header">
+                <div class="agenda-view-nav">
+                  <button id="agendaWeekPrevButton" class="ghost-button" type="button">&lsaquo;</button>
+                  <button id="agendaViewTodayButton" class="secondary-button" type="button">Hoy</button>
+                  <button id="agendaWeekNextButton" class="ghost-button" type="button">&rsaquo;</button>
                 </div>
-                <div class="form-actions">
+                <div class="agenda-view-title">
+                  <h3 id="agendaSelectedDateLabel"></h3>
+                  <span id="agendaTimezoneLabel" class="agenda-view-timezone"></span>
+                </div>
+                <div class="agenda-view-actions">
+                  <div id="agendaViewTabs" class="agenda-view-tabs" role="tablist" aria-label="Vistas de agenda">
+                    <button class="agenda-view-tab" type="button" data-agenda-view="month">Mes</button>
+                    <button class="agenda-view-tab" type="button" data-agenda-view="week">Semana</button>
+                    <button class="agenda-view-tab" type="button" data-agenda-view="day">Dia</button>
+                    <button class="agenda-view-tab" type="button" data-agenda-view="list">Lista</button>
+                    <button class="agenda-view-tab" type="button" data-agenda-view="programador">Programador</button>
+                  </div>
                   <button id="openAppointmentModalButton" class="primary-button" type="button">Nueva cita</button>
                 </div>
               </div>
-              <div class="agenda-week-toolbar">
-                <button id="agendaWeekPrevButton" class="ghost-button" type="button">&lsaquo;</button>
-                <div class="agenda-week-meta">
-                  <span id="agendaWeekLabel"></span>
-                </div>
-                <div class="agenda-week-meta agenda-week-meta--timezone">
-                  <span id="agendaTimezoneLabel"></span>
-                </div>
-                <button id="agendaWeekNextButton" class="ghost-button" type="button">&rsaquo;</button>
+              <div class="agenda-view-body">
+                <section id="agendaMonthView" class="agenda-view-panel is-hidden">
+                  <div class="agenda-weekdays agenda-weekdays--large">
+                    <span>Lun</span>
+                    <span>Mar</span>
+                    <span>Mie</span>
+                    <span>Jue</span>
+                    <span>Vie</span>
+                    <span>Sab</span>
+                    <span>Dom</span>
+                  </div>
+                  <div id="agendaMonthGridLarge" class="agenda-month-grid agenda-month-grid--large"></div>
+                </section>
+                <section id="agendaWeekView" class="agenda-view-panel is-hidden">
+                  <div id="agendaWeekTimeline"></div>
+                </section>
+                <section id="agendaDayView" class="agenda-view-panel is-hidden">
+                  <div id="agendaDayTimeline"></div>
+                </section>
+                <section id="agendaListView" class="agenda-view-panel is-hidden">
+                  <div id="agendaListItems" class="agenda-list"></div>
+                </section>
+                <section id="agendaProgramView" class="agenda-view-panel">
+                  <div class="agenda-week-toolbar">
+                    <div class="agenda-week-meta">
+                      <span id="agendaWeekLabel"></span>
+                    </div>
+                  </div>
+                  <div id="agendaWeekSlots" class="agenda-week-grid"></div>
+                </section>
               </div>
-              <div id="agendaWeekSlots" class="agenda-week-grid"></div>
             </article>
           </div>
 

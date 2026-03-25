@@ -34,6 +34,17 @@ const activeSubsections = {};
 let openNavDropdownSection = "";
 let agendaViewDate = new Date();
 let agendaSelectedDate = new Date().toISOString().slice(0, 10);
+const AGENDA_VIEW_MODES = ["month", "week", "day", "list", "programador"];
+const AGENDA_VIEW_STORAGE_KEY = "lativet_agenda_view";
+let agendaViewMode = "programador";
+try {
+  const storedAgendaView = localStorage.getItem(AGENDA_VIEW_STORAGE_KEY);
+  if (storedAgendaView && AGENDA_VIEW_MODES.includes(storedAgendaView)) {
+    agendaViewMode = storedAgendaView;
+  }
+} catch (error) {
+  // ignore storage access errors
+}
 let consultorioOwnerId = "";
 let pendingAppointmentDraft = null;
 let returnToAppointmentModal = false;
@@ -84,6 +95,9 @@ const BOOTSTRAP_HEAVY_GROUPS = [
   ],
   ["requests", "reports"],
 ];
+const AGENDA_TIMELINE_START_HOUR = 6;
+const AGENDA_TIMELINE_END_HOUR = 21;
+const AGENDA_TIMELINE_HOUR_HEIGHT = 44;
 const consultationTypes = [
   "Vacunacion",
   "Formula",
@@ -444,6 +458,38 @@ function formatAgendaTimeShort(value) {
     return "";
   }
   return parsed.toLocaleTimeString("es-CO", { hour: "numeric", minute: "2-digit" });
+}
+
+function formatAgendaHourLabel(hour) {
+  const base = new Date();
+  base.setHours(hour, 0, 0, 0);
+  return base.toLocaleTimeString("es-CO", { hour: "numeric" });
+}
+
+function buildAgendaTimelineHours() {
+  const hours = [];
+  for (let hour = AGENDA_TIMELINE_START_HOUR; hour < AGENDA_TIMELINE_END_HOUR; hour += 1) {
+    hours.push({ hour, label: formatAgendaHourLabel(hour) });
+  }
+  return hours;
+}
+
+function normalizeAgendaTone(value) {
+  const toneRaw = String(agendaEventTone(value))
+    .replace(/[^a-z0-9_-]/gi, "")
+    .toLowerCase();
+  return [
+    "scheduled",
+    "draft",
+    "confirmed",
+    "in_progress",
+    "completed",
+    "finalized",
+    "cancelled",
+    "no_show",
+  ].includes(toneRaw)
+    ? toneRaw
+    : "default";
 }
 
 function agendaEventTone(status) {
@@ -808,6 +854,17 @@ function cacheElements() {
     "appointmentsList",
     "agendaMonthLabel",
     "agendaMonthGrid",
+    "agendaMonthGridLarge",
+    "agendaViewTabs",
+    "agendaViewTodayButton",
+    "agendaMonthView",
+    "agendaWeekView",
+    "agendaDayView",
+    "agendaListView",
+    "agendaProgramView",
+    "agendaWeekTimeline",
+    "agendaDayTimeline",
+    "agendaListItems",
     "agendaSelectedDateLabel",
     "agendaConnectionBadge",
     "agendaAvailabilityFormPanel",
@@ -1717,7 +1774,7 @@ function renderAvailability() {
     );
   }
   renderAgendaMonth();
-  renderAgendaWeekSlots();
+  renderAgendaView();
   renderGoogleCalendarStatus();
 }
 
@@ -1858,6 +1915,224 @@ function renderAgendaWeekSlots() {
   elements.agendaWeekSlots.innerHTML = columns.join("");
 }
 
+function renderAgendaView() {
+  syncAgendaViewTabs();
+  toggleAgendaViewPanels();
+  if (elements.agendaTimezoneLabel) {
+    elements.agendaTimezoneLabel.textContent = formatAgendaTimezoneLabel();
+  }
+  switch (agendaViewMode) {
+    case "month":
+      renderAgendaLargeMonth();
+      break;
+    case "week":
+      renderAgendaWeekTimeline();
+      break;
+    case "day":
+      renderAgendaDayTimeline();
+      break;
+    case "list":
+      renderAgendaListView();
+      break;
+    default:
+      renderAgendaWeekSlots();
+      break;
+  }
+}
+
+function buildAgendaTimelineEventMarkup(appointment, { dayStart, dayEnd, minuteHeight } = {}) {
+  const start = new Date(appointment.appointment_at);
+  if (Number.isNaN(start.getTime())) {
+    return "";
+  }
+  const duration = Number(appointment.duration_minutes || 30);
+  const end = addMinutes(start, duration);
+  if (end <= dayStart || start >= dayEnd) {
+    return "";
+  }
+  const clampedStart = start < dayStart ? dayStart : start;
+  const clampedEnd = end > dayEnd ? dayEnd : end;
+  const minutesFromStart = (clampedStart.getTime() - dayStart.getTime()) / 60000;
+  const minutesDuration = Math.max(15, (clampedEnd.getTime() - clampedStart.getTime()) / 60000);
+  const top = minutesFromStart * minuteHeight;
+  const height = Math.max(18, minutesDuration * minuteHeight);
+  const timeLabel = `${formatAgendaTimeShort(start)} - ${formatAgendaTimeShort(end)}`;
+  const label = truncate(appointment.reason || appointment.patient_name || "Cita", 32);
+  const tone = normalizeAgendaTone(appointment.status);
+  return `
+    <div class="agenda-timeline-event agenda-timeline-event--${tone}" style="top:${top}px;height:${height}px">
+      <span class="agenda-timeline-event__time">${escapeHtml(timeLabel)}</span>
+      <span class="agenda-timeline-event__text">${escapeHtml(label)}</span>
+    </div>
+  `;
+}
+
+function renderAgendaWeekTimeline() {
+  if (!elements.agendaWeekTimeline) {
+    return;
+  }
+  const selected = parseIsoDate(agendaSelectedDate);
+  const weekStart = addDays(selected, -getWeekdayIndex(selected));
+  const weekEnd = addDays(weekStart, 6);
+  if (elements.agendaSelectedDateLabel) {
+    elements.agendaSelectedDateLabel.textContent = formatAgendaWeekRange(weekStart, weekEnd);
+  }
+  const hours = buildAgendaTimelineHours();
+  const hourSlots = AGENDA_TIMELINE_END_HOUR - AGENDA_TIMELINE_START_HOUR;
+  const timelineHeight = hourSlots * AGENDA_TIMELINE_HOUR_HEIGHT;
+  const minuteHeight = AGENDA_TIMELINE_HOUR_HEIGHT / 60;
+  const headerDays = [];
+  const columns = [];
+  for (let index = 0; index < 7; index += 1) {
+    const current = addDays(weekStart, index);
+    const currentIso = toIsoDate(current);
+    headerDays.push(`
+      <button type="button" class="agenda-timeline__day-label" data-agenda-date="${escapeHtml(currentIso)}">
+        ${escapeHtml(formatWeekdayShort(current))} ${escapeHtml(String(current.getDate()))}
+      </button>
+    `);
+    const dayStart = new Date(
+      `${currentIso}T${String(AGENDA_TIMELINE_START_HOUR).padStart(2, "0")}:00:00`
+    );
+    const dayEnd = new Date(
+      `${currentIso}T${String(AGENDA_TIMELINE_END_HOUR).padStart(2, "0")}:00:00`
+    );
+    const appointments = listAppointmentsForDate(currentIso);
+    const events = appointments
+      .map((appointment) =>
+        buildAgendaTimelineEventMarkup(appointment, { dayStart, dayEnd, minuteHeight })
+      )
+      .join("");
+    columns.push(`
+      <div class="agenda-timeline__day-column" data-agenda-date="${escapeHtml(currentIso)}">
+        ${events}
+      </div>
+    `);
+  }
+  const timeLabels = hours
+    .map((hour) => `<div class="agenda-timeline__time">${escapeHtml(hour.label)}</div>`)
+    .join("");
+  elements.agendaWeekTimeline.innerHTML = `
+    <div class="agenda-timeline" style="--timeline-hour-height:${AGENDA_TIMELINE_HOUR_HEIGHT}px;--timeline-height:${timelineHeight}px;">
+      <div class="agenda-timeline__header">
+        <div class="agenda-timeline__corner"></div>
+        ${headerDays.join("")}
+      </div>
+      <div class="agenda-timeline__body">
+        <div class="agenda-timeline__times">
+          ${timeLabels}
+        </div>
+        <div class="agenda-timeline__grid">
+          ${columns.join("")}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderAgendaDayTimeline() {
+  if (!elements.agendaDayTimeline) {
+    return;
+  }
+  const currentIso = agendaSelectedDate;
+  if (elements.agendaSelectedDateLabel) {
+    elements.agendaSelectedDateLabel.textContent = formatAgendaDateLabel(currentIso);
+  }
+  const hours = buildAgendaTimelineHours();
+  const hourSlots = AGENDA_TIMELINE_END_HOUR - AGENDA_TIMELINE_START_HOUR;
+  const timelineHeight = hourSlots * AGENDA_TIMELINE_HOUR_HEIGHT;
+  const minuteHeight = AGENDA_TIMELINE_HOUR_HEIGHT / 60;
+  const dayStart = new Date(
+    `${currentIso}T${String(AGENDA_TIMELINE_START_HOUR).padStart(2, "0")}:00:00`
+  );
+  const dayEnd = new Date(
+    `${currentIso}T${String(AGENDA_TIMELINE_END_HOUR).padStart(2, "0")}:00:00`
+  );
+  const appointments = listAppointmentsForDate(currentIso);
+  const events = appointments
+    .map((appointment) =>
+      buildAgendaTimelineEventMarkup(appointment, { dayStart, dayEnd, minuteHeight })
+    )
+    .join("");
+  const timeLabels = hours
+    .map((hour) => `<div class="agenda-timeline__time">${escapeHtml(hour.label)}</div>`)
+    .join("");
+  elements.agendaDayTimeline.innerHTML = `
+    <div class="agenda-timeline agenda-timeline--day" style="--timeline-hour-height:${AGENDA_TIMELINE_HOUR_HEIGHT}px;--timeline-height:${timelineHeight}px;">
+      <div class="agenda-timeline__header">
+        <div class="agenda-timeline__corner"></div>
+        <div class="agenda-timeline__day-label">${escapeHtml(
+          formatWeekdayShort(parseIsoDate(currentIso))
+        )}</div>
+      </div>
+      <div class="agenda-timeline__body">
+        <div class="agenda-timeline__times">
+          ${timeLabels}
+        </div>
+        <div class="agenda-timeline__grid">
+          <div class="agenda-timeline__day-column" data-agenda-date="${escapeHtml(currentIso)}">
+            ${events}
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderAgendaListView() {
+  if (!elements.agendaListItems) {
+    return;
+  }
+  const selected = parseIsoDate(agendaSelectedDate);
+  const weekStart = addDays(selected, -getWeekdayIndex(selected));
+  const weekEnd = addDays(weekStart, 6);
+  if (elements.agendaSelectedDateLabel) {
+    elements.agendaSelectedDateLabel.textContent = formatAgendaWeekRange(weekStart, weekEnd);
+  }
+  const days = [];
+  for (let index = 0; index < 7; index += 1) {
+    const current = addDays(weekStart, index);
+    const currentIso = toIsoDate(current);
+    const appointments = listAppointmentsForDate(currentIso);
+    const items = appointments.length
+      ? appointments
+          .map((appointment) => {
+            const start = new Date(appointment.appointment_at);
+            const end = addMinutes(start, Number(appointment.duration_minutes || 30));
+            const timeLabel = `${formatAgendaTimeShort(start)} - ${formatAgendaTimeShort(end)}`;
+            const title = truncate(
+              `${appointment.reason || appointment.patient_name || "Cita"}`,
+              48
+            );
+            return `
+              <div class="agenda-list-item">
+                <div class="agenda-list-time">${escapeHtml(timeLabel)}</div>
+                <div class="agenda-list-title">
+                  <strong>${escapeHtml(title)}</strong>
+                  <span>${escapeHtml(appointment.owner_name || "")}</span>
+                </div>
+              </div>
+            `;
+          })
+          .join("")
+      : `<div class="agenda-list-item"><div class="agenda-list-time">--</div><div class="agenda-list-title"><span>Sin citas</span></div></div>`;
+    days.push(`
+      <article class="agenda-list-day" data-agenda-date="${escapeHtml(currentIso)}">
+        <div class="agenda-list-day__header">
+          <strong>${escapeHtml(formatWeekdayShort(current))}</strong>
+          <span>${escapeHtml(
+            current.toLocaleDateString("es-CO", { day: "numeric", month: "long", year: "numeric" })
+          )}</span>
+        </div>
+        <div class="agenda-list-day__items">
+          ${items}
+        </div>
+      </article>
+    `);
+  }
+  elements.agendaListItems.innerHTML = days.join("");
+}
+
 function renderAgendaLargeMonth() {
   if (elements.appointmentModalSelectedDate) {
     elements.appointmentModalSelectedDate.textContent = formatAgendaDateLabel(agendaSelectedDate);
@@ -1884,21 +2159,7 @@ function renderAgendaLargeMonth() {
           appointment.reason || appointment.patient_name || "Cita",
           26
         );
-        const toneRaw = String(agendaEventTone(appointment.status))
-          .replace(/[^a-z0-9_-]/gi, "")
-          .toLowerCase();
-        const tone = [
-          "scheduled",
-          "draft",
-          "confirmed",
-          "in_progress",
-          "completed",
-          "finalized",
-          "cancelled",
-          "no_show",
-        ].includes(toneRaw)
-          ? toneRaw
-          : "default";
+        const tone = normalizeAgendaTone(appointment.status);
         return `
           <div class="agenda-event-chip agenda-event-chip--${tone}">
             <span class="agenda-event-dot"></span>
@@ -2782,6 +3043,65 @@ function shiftAgendaWeek(direction) {
   const current = parseIsoDate(agendaSelectedDate);
   const next = addDays(current, direction * 7);
   setAgendaSelectedDate(toIsoDate(next));
+}
+
+function setAgendaToday() {
+  agendaSelectedDate = toIsoDate(new Date());
+  agendaViewDate = new Date();
+  renderAvailability();
+}
+
+function shiftAgendaView(direction) {
+  if (agendaViewMode === "month") {
+    agendaViewDate = new Date(agendaViewDate.getFullYear(), agendaViewDate.getMonth() + direction, 1);
+    renderAvailability();
+    return;
+  }
+  const current = parseIsoDate(agendaSelectedDate);
+  const multiplier = agendaViewMode === "day" ? 1 : 7;
+  const next = addDays(current, direction * multiplier);
+  setAgendaSelectedDate(toIsoDate(next));
+}
+
+function setAgendaViewMode(mode) {
+  if (!AGENDA_VIEW_MODES.includes(mode)) {
+    return;
+  }
+  agendaViewMode = mode;
+  try {
+    localStorage.setItem(AGENDA_VIEW_STORAGE_KEY, mode);
+  } catch (error) {
+    // ignore storage errors
+  }
+  renderAvailability();
+}
+
+function syncAgendaViewTabs() {
+  if (!elements.agendaViewTabs) {
+    return;
+  }
+  elements
+    .agendaViewTabs
+    .querySelectorAll("[data-agenda-view]")
+    .forEach((button) => {
+      button.classList.toggle("is-active", button.dataset.agendaView === agendaViewMode);
+    });
+}
+
+function toggleAgendaViewPanels() {
+  const panels = {
+    month: elements.agendaMonthView,
+    week: elements.agendaWeekView,
+    day: elements.agendaDayView,
+    list: elements.agendaListView,
+    programador: elements.agendaProgramView,
+  };
+  Object.entries(panels).forEach(([key, panel]) => {
+    if (!panel) {
+      return;
+    }
+    panel.classList.toggle("is-hidden", key !== agendaViewMode);
+  });
 }
 
 function parseAppointmentDateTime(value) {
@@ -3883,8 +4203,20 @@ function bindForms() {
   if (elements.agendaMonthGrid) {
     elements.agendaMonthGrid.addEventListener("click", handleAgendaMonthClick);
   }
+  if (elements.agendaMonthGridLarge) {
+    elements.agendaMonthGridLarge.addEventListener("click", handleAgendaMonthClick);
+  }
   if (elements.agendaWeekSlots) {
     elements.agendaWeekSlots.addEventListener("click", handleAgendaWeekClick);
+  }
+  if (elements.agendaWeekTimeline) {
+    elements.agendaWeekTimeline.addEventListener("click", handleAgendaMonthClick);
+  }
+  if (elements.agendaDayTimeline) {
+    elements.agendaDayTimeline.addEventListener("click", handleAgendaMonthClick);
+  }
+  if (elements.agendaListItems) {
+    elements.agendaListItems.addEventListener("click", handleAgendaMonthClick);
   }
   elements.recordsList.addEventListener("click", handleRecordsClick);
   elements.openAppointmentModalButton.addEventListener("click", () => openAppointmentModal());
@@ -3980,20 +4312,28 @@ function bindForms() {
     renderAvailability();
   });
   if (elements.agendaWeekPrevButton) {
-    elements.agendaWeekPrevButton.addEventListener("click", () => shiftAgendaWeek(-1));
+    elements.agendaWeekPrevButton.addEventListener("click", () => shiftAgendaView(-1));
   }
-  elements.agendaTodayButton.addEventListener("click", () => {
-    agendaSelectedDate = toIsoDate(new Date());
-    agendaViewDate = new Date();
-    renderAvailability();
-  });
+  elements.agendaTodayButton.addEventListener("click", () => setAgendaToday());
+  if (elements.agendaViewTodayButton) {
+    elements.agendaViewTodayButton.addEventListener("click", () => setAgendaToday());
+  }
   if (elements.agendaWeekNextButton) {
-    elements.agendaWeekNextButton.addEventListener("click", () => shiftAgendaWeek(1));
+    elements.agendaWeekNextButton.addEventListener("click", () => shiftAgendaView(1));
   }
   elements.agendaNextMonthButton.addEventListener("click", () => {
     agendaViewDate = new Date(agendaViewDate.getFullYear(), agendaViewDate.getMonth() + 1, 1);
     renderAvailability();
   });
+  if (elements.agendaViewTabs) {
+    elements.agendaViewTabs.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-agenda-view]");
+      if (!button) {
+        return;
+      }
+      setAgendaViewMode(button.dataset.agendaView || "");
+    });
+  }
   if (elements.googleCalendarConnectButton) {
     elements.googleCalendarConnectButton.addEventListener(
       "click",
