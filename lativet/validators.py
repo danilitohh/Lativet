@@ -196,9 +196,14 @@ def validate_appointment(payload: dict) -> dict:
         duration_minutes = 30
     if duration_minutes < 15 or duration_minutes > 240:
         raise ValidationError("La duracion de la cita debe estar entre 15 y 240 minutos.")
+    patient_id = optional_text(payload, "patient_id")
+    owner_id = optional_text(payload, "owner_id")
+    if not patient_id and not owner_id:
+        raise ValidationError("Debes seleccionar un propietario.")
     return {
         "id": optional_text(payload, "id"),
-        "patient_id": required_text(payload, "patient_id", "Paciente"),
+        "patient_id": patient_id,
+        "owner_id": owner_id,
         "appointment_at": parse_datetime(
             required_text(payload, "appointment_at", "Fecha y hora"), "Fecha y hora"
         ),

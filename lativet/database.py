@@ -1103,6 +1103,34 @@ class Database:
         ).fetchone()
         return self._row_to_dict(row)
 
+    def _ensure_placeholder_patient(self, owner_id: str) -> dict:
+        row = self.connection.execute(
+            "SELECT * FROM patients WHERE owner_id = ? AND name = ?",
+            (owner_id, "Mascota por registrar"),
+        ).fetchone()
+        if row:
+            return self._row_to_dict(row)
+        payload = {
+            "id": "",
+            "owner_id": owner_id,
+            "name": "Mascota por registrar",
+            "species": "Otros",
+            "breed": "Pendiente",
+            "sex": "Desconocido",
+            "birth_date": None,
+            "age_years": 0,
+            "color": "",
+            "reproductive_status": "Desconocido",
+            "microchip": "",
+            "weight_kg": 0,
+            "allergies": "",
+            "chronic_conditions": "",
+            "vaccination_status": "",
+            "deworming_status": "",
+            "notes": "Pendiente de registro",
+        }
+        return self.save_patient(payload)
+
     def list_patients(self) -> list[dict]:
         rows = self.connection.execute(
             """
@@ -1119,6 +1147,11 @@ class Database:
         data = validate_appointment(payload)
         if data["status"] not in APPOINTMENT_STATUSES:
             raise ValidationError("Estado de cita no válido.")
+        if not data.get("patient_id"):
+            if not data.get("owner_id"):
+                raise ValidationError("Debes seleccionar un propietario.")
+            placeholder = self._ensure_placeholder_patient(data["owner_id"])
+            data["patient_id"] = placeholder["id"]
         patient = self._get_patient(data["patient_id"])
         appointment_id = data["id"] or uuid.uuid4().hex
         matched_rule = self._match_availability_rule(
