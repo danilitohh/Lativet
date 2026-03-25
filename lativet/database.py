@@ -604,6 +604,9 @@ class Database:
             if script:
                 script = f"{script};"
         self.connection.executescript(script)
+        self._ensure_runtime_schema_state()
+
+    def _ensure_runtime_schema_state(self) -> None:
         self._ensure_column("appointments", "professional_name", "TEXT")
         self._ensure_column(
             "appointments", "duration_minutes", "INTEGER NOT NULL DEFAULT 30"
@@ -3403,6 +3406,18 @@ class PostgresDatabase(Database):
             "si",
             "s",
         }
+        try:
+            self.connection.execute("SET statement_timeout = '60s'")
+            self.connection.commit()
+        except Exception:
+            pass
+        if self._has_core_schema():
+            with self._lock:
+                self._ensure_runtime_schema_state()
+                self.connection.commit()
+                if not self._has_settings():
+                    self.save_settings(DEFAULT_SETTINGS)
+            return
         lock_id = 9245021
         lock_acquired = False
         with self._lock:
@@ -3418,10 +3433,6 @@ class PostgresDatabase(Database):
                     break
                 time_module.sleep(0.2)
             try:
-                try:
-                    self.connection.execute("SET statement_timeout = '60s'")
-                except Exception:
-                    pass
                 self._init_schema(skip_indexes=not init_indexes)
                 self.connection.commit()
                 if not self._has_settings():
@@ -3449,6 +3460,29 @@ class PostgresDatabase(Database):
                         self.connection.commit()
                     except Exception:
                         pass
+
+    def _has_core_schema(self) -> bool:
+        row = self.connection.execute(
+            """
+            SELECT COUNT(*) AS total
+            FROM information_schema.tables
+            WHERE table_schema = 'public'
+              AND table_name IN (
+                'settings',
+                'owners',
+                'patients',
+                'appointments',
+                'consents',
+                'clinical_records',
+                'clinical_consultations',
+                'agenda_availability_rules',
+                'grooming_documents',
+                'billing_documents',
+                'staff_users'
+              )
+            """
+        ).fetchone()
+        return bool(row and int(row["total"] or 0) >= 11)
 
     def _ensure_column(self, table: str, column: str, definition: str) -> None:
         self.connection.execute(

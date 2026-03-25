@@ -76,6 +76,15 @@ class LativetService:
             smtp_enabled = True
 
         settings = self._db.get_settings()
+        current_password = self._db.get_secret_setting("smtp_app_password")
+        if (
+            bool(settings.get("smtp_enabled")) == smtp_enabled
+            and str(settings.get("smtp_from") or "") == smtp_from
+            and str(settings.get("smtp_host") or "") == smtp_host
+            and int(settings.get("smtp_port") or 587) == smtp_port
+            and current_password == smtp_password
+        ):
+            return
         updated = {
             **settings,
             "smtp_enabled": smtp_enabled,
