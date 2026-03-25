@@ -985,25 +985,101 @@
 
     <div id="appointmentModal" class="modal-shell is-hidden" aria-hidden="true">
       <div class="modal-backdrop" data-close-appointment-modal="true"></div>
-      <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="appointmentModalTitle">
-        <div class="panel-heading">
+      <div class="modal-card appointment-modal" role="dialog" aria-modal="true" aria-labelledby="appointmentModalTitle">
+        <div class="appointment-modal__header">
           <div>
-            <p class="eyebrow">Agenda general</p>
-            <h3 id="appointmentModalTitle">Crear cita</h3>
-            <p id="appointmentModalSelectedDate" class="meta-copy"></p>
+            <h3 id="appointmentModalTitle">Crear evento</h3>
+            <p id="appointmentModalSelectedDate" class="appointment-modal__subtitle"></p>
           </div>
-          <button id="closeAppointmentModalButton" class="ghost-button" type="button">Cerrar</button>
+          <button id="closeAppointmentModalButton" class="appointment-modal__close" type="button" aria-label="Cerrar">
+            &times;
+          </button>
         </div>
-        <form id="appointmentForm" class="form-grid">
-          <label class="full"><span>Paciente</span><select id="appointmentPatientSelect" name="patient_id" required></select></label>
-          <label><span>Fecha y hora</span><input name="appointment_at" type="datetime-local" required /></label>
-          <label><span>Estado</span><select name="status"><option value="scheduled">Programada</option><option value="confirmed">Confirmada</option></select></label>
-          <label><span>Encargado / recurso</span><input name="professional_name" placeholder="Agenda general, Dra. Laura, Sala 1" /></label>
-          <label><span>Duracion (min)</span><input name="duration_minutes" type="number" min="15" step="15" value="30" /></label>
-          <label class="full"><span>Titulo o motivo</span><textarea name="reason" rows="2" required></textarea></label>
-          <label class="full"><span>Descripcion</span><textarea name="notes" rows="3"></textarea></label>
-          <div class="full form-actions">
-            <button class="primary-button" type="submit">Guardar cita</button>
+        <form id="appointmentForm" class="appointment-modal__form">
+          <label class="appointment-modal__checkbox">
+            <input id="appointmentReserveCheckbox" type="checkbox" name="reserve_only" />
+            <span>Solo reservar el espacio</span>
+            <span class="appointment-modal__info" aria-hidden="true">i</span>
+          </label>
+
+          <div class="appointment-modal__row">
+            <div class="appointment-modal__field">
+              <div class="appointment-modal__label-row">
+                <span>Propietario</span>
+                <button id="appointmentRegisterOwnerButton" class="appointment-modal__link" type="button">
+                  + Registrar propietario
+                </button>
+              </div>
+              <select id="appointmentPatientSelect" name="patient_id" required></select>
+            </div>
+          </div>
+
+          <div class="appointment-modal__row appointment-modal__row--split">
+            <label class="appointment-modal__field">
+              <span>Tipo</span>
+              <select id="appointmentTypeSelect" name="appointment_type">
+                <option value="">Selecciona una opcion</option>
+                <option>Consulta</option>
+                <option>Vacunacion</option>
+                <option>Desparasitacion</option>
+                <option>Cirugia / procedimiento</option>
+                <option>Laboratorio</option>
+                <option>Imagen diagnostica</option>
+                <option>Seguimiento</option>
+                <option>Peluqueria</option>
+                <option>Documento</option>
+              </select>
+            </label>
+            <label class="appointment-modal__field">
+              <span>Encargados</span>
+              <select id="appointmentProfessionalSelect" name="professional_name"></select>
+            </label>
+          </div>
+
+          <div class="appointment-modal__divider"></div>
+
+          <label class="appointment-modal__checkbox">
+            <input id="appointmentNoTimeCheckbox" type="checkbox" name="appointment_no_time" />
+            <span>Sin hora definida</span>
+            <span class="appointment-modal__info" aria-hidden="true">i</span>
+          </label>
+
+          <div class="appointment-modal__row appointment-modal__row--split">
+            <label class="appointment-modal__field">
+              <span>Inicia</span>
+              <input id="appointmentStartInput" name="appointment_at" type="datetime-local" required />
+            </label>
+            <label class="appointment-modal__field">
+              <span>Finaliza</span>
+              <input id="appointmentEndInput" name="appointment_end_at" type="datetime-local" />
+            </label>
+          </div>
+
+          <label class="appointment-modal__field">
+            <span>Titulo</span>
+            <input id="appointmentTitleInput" name="reason" placeholder="-" required />
+          </label>
+
+          <label class="appointment-modal__field">
+            <div class="appointment-modal__label-row">
+              <span>Descripcion</span>
+              <span class="appointment-modal__hint">Este contenido es visible por el encargado y propietario</span>
+            </div>
+            <textarea name="notes" rows="3" placeholder="Descripcion y detalles de la cita"></textarea>
+          </label>
+
+          <label class="appointment-modal__checkbox">
+            <input id="appointmentNoLocationCheckbox" type="checkbox" name="appointment_no_location" checked />
+            <span>Sin lugar</span>
+          </label>
+
+          <input type="hidden" name="status" value="scheduled" />
+          <input id="appointmentDurationInput" type="hidden" name="duration_minutes" value="30" />
+
+          <div class="appointment-modal__footer">
+            <button class="appointment-modal__button" type="submit">
+              Guardar
+            </button>
           </div>
         </form>
       </div>

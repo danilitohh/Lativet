@@ -729,6 +729,15 @@ function cacheElements() {
     "complianceNotes",
     "complianceSources",
     "appointmentForm",
+    "appointmentRegisterOwnerButton",
+    "appointmentTypeSelect",
+    "appointmentProfessionalSelect",
+    "appointmentStartInput",
+    "appointmentEndInput",
+    "appointmentNoTimeCheckbox",
+    "appointmentReserveCheckbox",
+    "appointmentNoLocationCheckbox",
+    "appointmentDurationInput",
     "availabilityForm",
     "availabilityRulesList",
     "availabilityModal",
@@ -2229,6 +2238,30 @@ function renderCompliance() {
   );
 }
 
+function getProfessionalOptions() {
+  const names = new Set();
+  (state.availability_rules || []).forEach((rule) => {
+    const name = String(rule.professional_name || "").trim();
+    if (name) {
+      names.add(name);
+    }
+  });
+  (state.appointments || []).forEach((appointment) => {
+    const name = String(appointment.professional_name || "").trim();
+    if (name) {
+      names.add(name);
+    }
+  });
+  if (!names.size) {
+    names.add("Agenda general");
+  } else if (!names.has("Agenda general")) {
+    names.add("Agenda general");
+  }
+  return Array.from(names)
+    .sort((left, right) => left.localeCompare(right, "es"))
+    .map((label) => ({ id: label, label }));
+}
+
 function renderSelects() {
   populateSelect(
     elements.patientOwnerSelect,
@@ -2243,13 +2276,24 @@ function renderSelects() {
     "Proveedor opcional"
   );
   const patientLabel = (patient) => `${patient.name} / ${patient.species} / ${patient.owner_name}`;
-  [
+  populateSelect(
     elements.appointmentPatientSelect,
+    state.patients,
+    patientLabel,
+    "Buscar propietario por identificacion, nombres o telefono"
+  );
+  [
     elements.billingPatientSelect,
     elements.recordPatientSelect,
     elements.consentPatientSelect,
     elements.groomingPatientSelect,
   ].forEach((select) => populateSelect(select, state.patients, patientLabel, "Selecciona paciente"));
+  populateSelect(
+    elements.appointmentProfessionalSelect,
+    getProfessionalOptions(),
+    (option) => option.label,
+    "Selecciona una opcion"
+  );
   const recordLabel = (record) => `${record.patient_name} / ${formatDateTime(record.opened_at)}`;
   [elements.consultationRecordSelect, elements.evolutionRecordSelect, elements.consentRecordSelect].forEach(
     (select) => populateSelect(select, state.records, recordLabel, "Selecciona historia")
@@ -2383,15 +2427,96 @@ function setAgendaSelectedDate(value) {
   renderAvailability();
 }
 
+function parseAppointmentDateTime(value) {
+  if (!value) {
+    return null;
+  }
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+  return parsed;
+}
+
+function buildAppointmentEndValue(startValue, minutes = 30) {
+  const start = parseAppointmentDateTime(startValue);
+  if (!start) {
+    return "";
+  }
+  return toInputDateTime(addMinutes(start, minutes));
+}
+
+function syncAppointmentSelectedDate() {
+  if (!elements.appointmentModalSelectedDate) {
+    return;
+  }
+  const startValue = elements.appointmentStartInput?.value || "";
+  const targetDate = toIsoDate(startValue) || agendaSelectedDate;
+  elements.appointmentModalSelectedDate.textContent = formatAgendaDateLabel(targetDate);
+}
+
+function syncAppointmentEndTime({ force = false } = {}) {
+  if (!elements.appointmentStartInput || !elements.appointmentEndInput) {
+    return;
+  }
+  const startValue = elements.appointmentStartInput.value;
+  if (!startValue) {
+    return;
+  }
+  const start = parseAppointmentDateTime(startValue);
+  if (!start) {
+    return;
+  }
+  const endValue = elements.appointmentEndInput.value;
+  const end = parseAppointmentDateTime(endValue);
+  if (force || !end || end <= start) {
+    elements.appointmentEndInput.value = buildAppointmentEndValue(startValue, 30);
+  }
+}
+
+function toggleAppointmentNoTime(checked) {
+  if (!elements.appointmentEndInput) {
+    return;
+  }
+  elements.appointmentEndInput.disabled = checked;
+  if (checked) {
+    syncAppointmentEndTime({ force: true });
+  }
+}
+
 function openAppointmentModal(initialDateTime = "") {
   const dateTimeValue =
     initialDateTime || `${agendaSelectedDate}T08:00`;
   elements.appointmentModal.classList.remove("is-hidden");
   elements.appointmentModal.setAttribute("aria-hidden", "false");
-  elements.appointmentForm.elements.appointment_at.value = toInputDateTime(dateTimeValue);
-  elements.appointmentModalSelectedDate.textContent = formatAgendaDateLabel(
-    toIsoDate(dateTimeValue) || agendaSelectedDate
-  );
+  if (elements.appointmentStartInput) {
+    elements.appointmentStartInput.value = toInputDateTime(dateTimeValue);
+  }
+  if (elements.appointmentEndInput) {
+    elements.appointmentEndInput.value = buildAppointmentEndValue(dateTimeValue, 30);
+  }
+  if (elements.appointmentReserveCheckbox) {
+    elements.appointmentReserveCheckbox.checked = false;
+  }
+  if (elements.appointmentNoTimeCheckbox) {
+    elements.appointmentNoTimeCheckbox.checked = false;
+    toggleAppointmentNoTime(false);
+  }
+  if (elements.appointmentNoLocationCheckbox) {
+    elements.appointmentNoLocationCheckbox.checked = true;
+  }
+  if (elements.appointmentTypeSelect) {
+    elements.appointmentTypeSelect.value = "";
+  }
+  if (elements.appointmentProfessionalSelect && elements.appointmentProfessionalSelect.options.length) {
+    const hasAgenda = Array.from(elements.appointmentProfessionalSelect.options).some(
+      (option) => option.value === "Agenda general"
+    );
+    if (hasAgenda) {
+      elements.appointmentProfessionalSelect.value = "Agenda general";
+    }
+  }
+  syncAppointmentSelectedDate();
 }
 
 function closeAppointmentModal() {
@@ -2673,6 +2798,23 @@ async function handleCatalogSubmit(event) {
 async function handleAppointmentSubmit(event) {
   event.preventDefault();
   const payload = serializeForm(event.currentTarget);
+  const start = parseAppointmentDateTime(payload.appointment_at);
+  const end = parseAppointmentDateTime(payload.appointment_end_at);
+  if (start && end) {
+    const duration = Math.round((end.getTime() - start.getTime()) / 60000);
+    if (duration > 0) {
+      payload.duration_minutes = Math.min(240, Math.max(15, duration));
+    }
+  }
+  if (!payload.reason) {
+    payload.reason = payload.appointment_type || "Cita";
+  }
+  if (!payload.status) {
+    payload.status = "scheduled";
+  }
+  if (!payload.professional_name) {
+    payload.professional_name = "Agenda general";
+  }
   await api.saveAppointment(payload);
   agendaSelectedDate = toIsoDate(payload.appointment_at) || agendaSelectedDate;
   resetForm(event.currentTarget);
@@ -3247,6 +3389,23 @@ function bindForms() {
   elements.recordsList.addEventListener("click", handleRecordsClick);
   elements.openAppointmentModalButton.addEventListener("click", () => openAppointmentModal());
   elements.closeAppointmentModalButton.addEventListener("click", closeAppointmentModal);
+  if (elements.appointmentRegisterOwnerButton) {
+    elements.appointmentRegisterOwnerButton.addEventListener("click", () => openOwnerModal());
+  }
+  if (elements.appointmentStartInput) {
+    elements.appointmentStartInput.addEventListener("change", () => {
+      syncAppointmentEndTime();
+      syncAppointmentSelectedDate();
+    });
+  }
+  if (elements.appointmentEndInput) {
+    elements.appointmentEndInput.addEventListener("change", () => syncAppointmentEndTime());
+  }
+  if (elements.appointmentNoTimeCheckbox) {
+    elements.appointmentNoTimeCheckbox.addEventListener("change", (event) => {
+      toggleAppointmentNoTime(event.target.checked);
+    });
+  }
   elements.appointmentModal.addEventListener("click", (event) => {
     if (event.target.dataset.closeAppointmentModal) {
       closeAppointmentModal();
