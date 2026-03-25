@@ -148,6 +148,59 @@ class WebSmokeTests(unittest.TestCase):
         backup = self.assert_ok(self.client.post("/api/backups", json={}))
         self.assertTrue(backup["path"].endswith(".sqlite3"))
 
+    def test_http_supports_owner_and_patient_delete_via_post_fallback(self) -> None:
+        owner = self.assert_ok(
+            self.client.post(
+                "/api/owners",
+                json={
+                    "full_name": "Borrar Owner",
+                    "identification_type": "CC",
+                    "identification_number": "998877",
+                    "phone": "3009988776",
+                    "email": "delete-owner@example.com",
+                    "address": "Calle 77",
+                },
+            )
+        )
+        deleted_owner = self.assert_ok(
+            self.client.post(f"/api/owners/{owner['id']}/delete", json={})
+        )
+        self.assertTrue(deleted_owner["deleted"])
+
+        owner_with_pet = self.assert_ok(
+            self.client.post(
+                "/api/owners",
+                json={
+                    "full_name": "Borrar Patient",
+                    "identification_type": "CC",
+                    "identification_number": "887766",
+                    "phone": "3008877665",
+                    "email": "delete-patient@example.com",
+                    "address": "Carrera 44",
+                },
+            )
+        )
+        patient = self.assert_ok(
+            self.client.post(
+                "/api/patients",
+                json={
+                    "owner_id": owner_with_pet["id"],
+                    "name": "Copo",
+                    "species": "Canino",
+                    "breed": "Mestizo",
+                    "sex": "Macho",
+                    "age_years": "2",
+                    "weight_kg": "9.4",
+                    "reproductive_status": "Esterilizado",
+                    "notes": "Paciente de prueba.",
+                },
+            )
+        )
+        deleted_patient = self.assert_ok(
+            self.client.post(f"/api/patients/{patient['id']}/delete", json={})
+        )
+        self.assertTrue(deleted_patient["deleted"])
+
     def test_http_supports_consultations_availability_and_grooming(self) -> None:
         owner = self.assert_ok(
             self.client.post(

@@ -731,13 +731,13 @@ const api = {
   saveOwner: (payload) =>
     apiRequest("/api/owners", { method: "POST", body: JSON.stringify(payload) }),
   deleteOwner: (ownerId) =>
-    apiRequest(`/api/owners/${ownerId}`, { method: "DELETE" }),
+    apiRequest(`/api/owners/${ownerId}/delete`, { method: "POST", body: "{}" }),
   saveProvider: (payload) =>
     apiRequest("/api/providers", { method: "POST", body: JSON.stringify(payload) }),
   savePatient: (payload) =>
     apiRequest("/api/patients", { method: "POST", body: JSON.stringify(payload) }),
   deletePatient: (patientId) =>
-    apiRequest(`/api/patients/${patientId}`, { method: "DELETE" }),
+    apiRequest(`/api/patients/${patientId}/delete`, { method: "POST", body: "{}" }),
   saveCatalogItem: (payload) =>
     apiRequest("/api/catalog-items", { method: "POST", body: JSON.stringify(payload) }),
   saveAppointment: (payload) =>
