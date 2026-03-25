@@ -888,6 +888,14 @@ function cacheElements() {
     "appointmentModal",
     "appointmentModalSelectedDate",
     "closeAppointmentModalButton",
+    "appointmentDetailModal",
+    "appointmentDetailTitle",
+    "appointmentDetailSubtitle",
+    "appointmentDetailStatus",
+    "appointmentDetailSummary",
+    "appointmentDetailNotes",
+    "appointmentDetailLinks",
+    "closeAppointmentDetailButton",
     "patientForm",
     "providerForm",
     "catalogForm",
@@ -1967,7 +1975,9 @@ function buildAgendaTimelineEventMarkup(appointment, { dayStart, dayEnd, minuteH
   const label = truncate(appointment.reason || appointment.patient_name || "Cita", 32);
   const tone = normalizeAgendaTone(appointment.status);
   return `
-    <div class="agenda-timeline-event agenda-timeline-event--${tone}" style="top:${top}px;height:${height}px">
+    <div class="agenda-timeline-event agenda-timeline-event--${tone}" data-appointment-id="${escapeHtml(
+      appointment.id
+    )}" role="button" tabindex="0" style="top:${top}px;height:${height}px">
       <span class="agenda-timeline-event__time">${escapeHtml(timeLabel)}</span>
       <span class="agenda-timeline-event__text">${escapeHtml(label)}</span>
     </div>
@@ -2112,7 +2122,9 @@ function renderAgendaListView() {
               48
             );
             return `
-              <div class="agenda-list-item">
+              <div class="agenda-list-item" data-appointment-id="${escapeHtml(
+                appointment.id
+              )}" role="button" tabindex="0">
                 <div class="agenda-list-time">${escapeHtml(timeLabel)}</div>
                 <div class="agenda-list-title">
                   <strong>${escapeHtml(title)}</strong>
@@ -2168,7 +2180,9 @@ function renderAgendaLargeMonth() {
         );
         const tone = normalizeAgendaTone(appointment.status);
         return `
-          <div class="agenda-event-chip agenda-event-chip--${tone}">
+          <div class="agenda-event-chip agenda-event-chip--${tone}" data-appointment-id="${escapeHtml(
+            appointment.id
+          )}" role="button" tabindex="0">
             <span class="agenda-event-dot"></span>
             <span class="agenda-event-time">${escapeHtml(timeLabel)}</span>
             <span class="agenda-event-text">${escapeHtml(label)}</span>
@@ -3314,6 +3328,81 @@ function closeAppointmentModal() {
   elements.appointmentModal.setAttribute("aria-hidden", "true");
 }
 
+function openAppointmentDetailModal(appointmentId) {
+  if (!elements.appointmentDetailModal) {
+    return;
+  }
+  const appointment = (state.appointments || []).find((item) => item.id === appointmentId);
+  if (!appointment) {
+    showStatus("No se encontro la cita seleccionada.", "error");
+    return;
+  }
+  const duration = Number(appointment.duration_minutes || 30);
+  const start = new Date(appointment.appointment_at);
+  let subtitle = formatDateTime(appointment.appointment_at);
+  if (!Number.isNaN(start.getTime())) {
+    const end = addMinutes(start, duration);
+    const dateLabel = start.toLocaleDateString("es-CO", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+    subtitle = `${dateLabel} · ${formatAgendaTimeShort(start)} - ${formatAgendaTimeShort(end)}`;
+  }
+  if (elements.appointmentDetailTitle) {
+    elements.appointmentDetailTitle.textContent =
+      appointment.reason || appointment.patient_name || "Detalle de cita";
+  }
+  if (elements.appointmentDetailSubtitle) {
+    elements.appointmentDetailSubtitle.textContent = subtitle;
+  }
+  if (elements.appointmentDetailStatus) {
+    elements.appointmentDetailStatus.innerHTML = `<span class="${statusClass(
+      appointment.status
+    )}">${escapeHtml(humanStatus(appointment.status))}</span>`;
+  }
+  const summary = [
+    ["Propietario", appointment.owner_name || "Sin dato"],
+    ["Paciente", appointment.patient_name || "Sin dato"],
+    ["Encargado", appointment.professional_name || "Agenda general"],
+    ["Duracion", `${duration} min`],
+  ];
+  renderSummary(elements.appointmentDetailSummary, summary, "Sin informacion disponible.");
+  if (elements.appointmentDetailNotes) {
+    elements.appointmentDetailNotes.textContent = appointment.notes || "Sin descripcion";
+  }
+  if (elements.appointmentDetailLinks) {
+    const links = [];
+    if (appointment.google_event_url) {
+      links.push(
+        `<a href="${escapeHtml(
+          appointment.google_event_url
+        )}" target="_blank" rel="noreferrer">Abrir en Google Calendar</a>`
+      );
+    }
+    if (appointment.google_sync_status) {
+      links.push(
+        `Sync Google: ${escapeHtml(appointment.google_sync_status)}${
+          appointment.google_sync_error ? ` / ${escapeHtml(appointment.google_sync_error)}` : ""
+        }`
+      );
+    }
+    elements.appointmentDetailLinks.innerHTML = links.join("");
+    elements.appointmentDetailLinks.classList.toggle("is-hidden", !links.length);
+  }
+  elements.appointmentDetailModal.classList.remove("is-hidden");
+  elements.appointmentDetailModal.setAttribute("aria-hidden", "false");
+}
+
+function closeAppointmentDetailModal() {
+  if (!elements.appointmentDetailModal) {
+    return;
+  }
+  elements.appointmentDetailModal.classList.add("is-hidden");
+  elements.appointmentDetailModal.setAttribute("aria-hidden", "true");
+}
+
 function openAvailabilityModal() {
   elements.availabilityModal.classList.remove("is-hidden");
   elements.availabilityModal.setAttribute("aria-hidden", "false");
@@ -3910,6 +3999,11 @@ async function handleAvailabilityListClick(event) {
 }
 
 function handleAgendaMonthClick(event) {
+  const appointmentButton = event.target.closest("[data-appointment-id]");
+  if (appointmentButton) {
+    openAppointmentDetailModal(appointmentButton.dataset.appointmentId);
+    return;
+  }
   const dateButton = event.target.closest("[data-agenda-date]");
   if (dateButton) {
     setAgendaSelectedDate(dateButton.dataset.agendaDate);
@@ -3923,6 +4017,11 @@ function handleAgendaMonthClick(event) {
 }
 
 function handleAgendaWeekClick(event) {
+  const appointmentButton = event.target.closest("[data-appointment-id]");
+  if (appointmentButton) {
+    openAppointmentDetailModal(appointmentButton.dataset.appointmentId);
+    return;
+  }
   const slotButton = event.target.closest("[data-slot-at]");
   if (slotButton && !slotButton.disabled) {
     const minutes = Number(slotButton.dataset.slotMinutes || 30);
@@ -4228,6 +4327,9 @@ function bindForms() {
   elements.recordsList.addEventListener("click", handleRecordsClick);
   elements.openAppointmentModalButton.addEventListener("click", () => openAppointmentModal());
   elements.closeAppointmentModalButton.addEventListener("click", closeAppointmentModal);
+  if (elements.closeAppointmentDetailButton) {
+    elements.closeAppointmentDetailButton.addEventListener("click", closeAppointmentDetailModal);
+  }
   if (elements.appointmentRegisterOwnerButton) {
     elements.appointmentRegisterOwnerButton.addEventListener("click", () => openOwnerModalFromAppointment());
   }
@@ -4288,6 +4390,13 @@ function bindForms() {
       closeAppointmentModal();
     }
   });
+  if (elements.appointmentDetailModal) {
+    elements.appointmentDetailModal.addEventListener("click", (event) => {
+      if (event.target.dataset.closeAppointmentDetailModal) {
+        closeAppointmentDetailModal();
+      }
+    });
+  }
   if (elements.agendaAvailabilityFormPanel) {
     elements.agendaAvailabilityFormPanel.addEventListener("click", openAvailabilityModal);
   }

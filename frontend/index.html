@@ -1126,6 +1126,28 @@
         </form>
       </div>
     </div>
+
+    <div id="appointmentDetailModal" class="modal-shell is-hidden" aria-hidden="true">
+      <div class="modal-backdrop" data-close-appointment-detail-modal="true"></div>
+      <div class="modal-card appointment-detail-modal" role="dialog" aria-modal="true" aria-labelledby="appointmentDetailTitle">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Agenda</p>
+            <h3 id="appointmentDetailTitle">Detalle de cita</h3>
+            <p id="appointmentDetailSubtitle" class="appointment-detail-subtitle"></p>
+          </div>
+          <button id="closeAppointmentDetailButton" class="ghost-button" type="button">Cerrar</button>
+        </div>
+        <div id="appointmentDetailStatus" class="appointment-detail-status"></div>
+        <div id="appointmentDetailSummary" class="summary-list"></div>
+        <div class="appointment-detail-section">
+          <h4>Descripcion</h4>
+          <p id="appointmentDetailNotes" class="appointment-detail-notes"></p>
+        </div>
+        <div id="appointmentDetailLinks" class="appointment-detail-links"></div>
+      </div>
+    </div>
+
     <div id="availabilityModal" class="modal-shell is-hidden" aria-hidden="true">
       <div class="modal-backdrop" data-close-availability-modal="true"></div>
       <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="availabilityModalTitle">

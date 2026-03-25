@@ -1171,6 +1171,7 @@ textarea:focus {
   display: grid;
   gap: 2px;
   overflow: hidden;
+  cursor: pointer;
 }
 
 .agenda-timeline-event__time {
@@ -1259,6 +1260,11 @@ textarea:focus {
   padding: 8px 0;
   border-top: 1px dashed rgba(11, 39, 49, 0.08);
   align-items: center;
+  cursor: pointer;
+}
+
+.agenda-list-item:hover {
+  background: rgba(15, 118, 110, 0.06);
 }
 
 .agenda-list-item:first-child {
@@ -1361,6 +1367,7 @@ textarea:focus {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  cursor: pointer;
 }
 
 .agenda-event-dot {
@@ -1741,6 +1748,52 @@ body.auth-locked .page-shell > :not(#loginModal) {
 .appointment-modal__field > span {
   font-size: 0.9rem;
   color: #4b5563;
+}
+
+.appointment-detail-modal {
+  width: min(720px, 100%);
+}
+
+.appointment-detail-subtitle {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.appointment-detail-status {
+  margin-bottom: 12px;
+}
+
+.appointment-detail-section {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(11, 39, 49, 0.08);
+}
+
+.appointment-detail-section h4 {
+  margin: 0 0 6px;
+  font-size: 0.9rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.appointment-detail-notes {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.appointment-detail-links {
+  margin-top: 12px;
+  display: grid;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.appointment-detail-links a {
+  color: var(--brand);
+  text-decoration: underline;
 }
 
 .appointment-modal__label-row {
