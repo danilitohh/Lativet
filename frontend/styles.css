@@ -1194,6 +1194,46 @@ button:active {
   font-size: 1.05rem;
 }
 
+.consultorio-vaccinations-shell {
+  min-height: 340px;
+}
+
+.consultorio-module-empty {
+  min-height: 220px;
+  margin-top: 16px;
+  display: grid;
+  place-items: center;
+  gap: 10px;
+  text-align: center;
+  border: 1px solid rgba(11, 39, 49, 0.06);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.72);
+  color: #6674a8;
+}
+
+.consultorio-module-empty__icon {
+  width: 42px;
+  height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #6d78ac;
+}
+
+.consultorio-module-empty__icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.consultorio-module-empty strong {
+  font-size: 0.96rem;
+  font-weight: 700;
+}
+
+.consultorio-vaccinations-table-wrapper {
+  margin-top: 16px;
+}
+
 .consultorio-consultations-table-wrapper {
   margin-top: 16px;
 }

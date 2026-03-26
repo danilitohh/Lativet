@@ -2178,6 +2178,48 @@ function getConsultorioProfileViewConfig() {
   return CONSULTORIO_PROFILE_VIEW_MAP[consultorioProfileView] || CONSULTORIO_PROFILE_VIEWS[0];
 }
 
+function isConsultorioWorkspaceOnlyView(profileConfig) {
+  return ["consultations", "vacunacion"].includes(profileConfig?.value || "");
+}
+
+function getConsultorioProfileDefaultConsultationTitle(profileConfig) {
+  return (
+    {
+      consultations: "Consulta general",
+      vacunacion: "Vacunacion",
+      formula: "Formula medica",
+      desparasitacion: "Desparasitacion",
+      hospamb: "Hospitalizacion",
+      cirugia: "Cirugia / procedimiento",
+      orders: "Documento clinico",
+      laboratorio: "Examen de laboratorio",
+      imagenes: "Imagen diagnostica",
+      seguimiento: "Seguimiento",
+      documents: "Documento clinico",
+      remisiones: "Remision",
+    }[profileConfig?.value || ""] || "Consulta general"
+  );
+}
+
+function getConsultorioProfileModalEntityLabel(consultationType) {
+  return (
+    {
+      Consulta: "Consulta",
+      Vacunacion: "Vacunacion",
+      Formula: "Formula medica",
+      Desparasitacion: "Desparasitacion",
+      Ambulatorio: "Ambulatorio",
+      Hospitalizacion: "Hospitalizacion",
+      "Cirugia / procedimiento": "Cirugia / procedimiento",
+      "Examen de laboratorio": "Examen de laboratorio",
+      "Imagen diagnostica": "Imagen diagnostica",
+      Seguimiento: "Seguimiento",
+      Documento: "Documento clinico",
+      Remision: "Remision",
+    }[consultationType || ""] || "Consulta"
+  );
+}
+
 function isConsultorioPatientsViewActive() {
   return getActiveSectionId() === "consultorio" && getSubsectionOption("consultorio")?.value === "patients";
 }
@@ -2964,6 +3006,95 @@ function buildConsultorioConsultationsWorkspace(patient, profileConfig) {
   `;
 }
 
+function buildConsultorioVaccinationsWorkspace(patient, profileConfig) {
+  const vaccinations = getConsultorioScopedConsultations(profileConfig?.consultationTypes || null);
+  const content = vaccinations.length
+    ? `
+      <div class="table-wrapper consultorio-consultations-table-wrapper consultorio-vaccinations-table-wrapper">
+        <table class="data-table consultorio-consultations-table consultorio-vaccinations-table">
+          <thead>
+            <tr>
+              <th>Opc.</th>
+              <th>Fecha</th>
+              <th>Vacuna</th>
+              <th>Detalle</th>
+              <th>Proximo refuerzo</th>
+              <th>Usuario</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${vaccinations
+              .map((consultation) => {
+                const details = parseConsultorioConsultationDetails(consultation);
+                return `
+                  <tr>
+                    <td>
+                      <div class="table-actions consultorio-consultations-table__actions">
+                        <button
+                          class="ghost-button"
+                          type="button"
+                          data-edit-patient-consultation="${escapeHtml(consultation.id)}"
+                        >
+                          Editar
+                        </button>
+                      </div>
+                    </td>
+                    <td>${escapeHtml(formatDateTime(consultation.consultation_at))}</td>
+                    <td>${escapeHtml(consultation.title || "Vacunacion")}</td>
+                    <td>${escapeHtml(
+                      details.objective ||
+                        details.subjective ||
+                        truncate(consultation.summary || "Sin detalle registrado.", 88)
+                    )}</td>
+                    <td>${escapeHtml(details.nextControl || "Sin fecha")}</td>
+                    <td>${escapeHtml(consultation.professional_name || "Sin usuario")}</td>
+                  </tr>
+                `;
+              })
+              .join("")}
+          </tbody>
+        </table>
+      </div>
+    `
+    : `
+      <div class="consultorio-module-empty consultorio-module-empty--vaccinations">
+        <span class="consultorio-module-empty__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M15 4l5 5"></path>
+            <path d="M14 5l5 5"></path>
+            <path d="M11 8l5 5"></path>
+            <path d="M7 12l5 5"></path>
+            <path d="M5 14l5 5"></path>
+            <path d="M4 20l3-3"></path>
+            <path d="M2 22l3-3"></path>
+          </svg>
+        </span>
+        <strong>No hay registros de vacunacion</strong>
+      </div>
+    `;
+  return `
+    <article class="consultorio-profile-shell consultorio-vaccinations-shell">
+      <div class="consultorio-profile-table-toolbar">
+        <div>
+          <span class="consultorio-profile-shell__eyebrow">Vacunaciones</span>
+          <h4>Vacunaciones de ${escapeHtml(patient?.name || "Paciente")}</h4>
+        </div>
+        <div class="form-actions">
+          <button
+            class="primary-button"
+            type="button"
+            data-open-patient-consultation-modal="true"
+            data-consultation-profile-view="vacunacion"
+          >
+            Registrar vacunacion
+          </button>
+        </div>
+      </div>
+      ${content}
+    </article>
+  `;
+}
+
 function renderConsultorioPatientProfile() {
   if (!elements.consultorioPatientProfilePanel) {
     return;
@@ -3112,7 +3243,7 @@ function renderConsultorioPatientProfile() {
     } | Tutor: ${ownerLabel} | Seccion activa: ${profileConfig?.label || "Historia clinica"}`;
   }
   if (elements.consultorioPatientProfileSummary) {
-    const showOverview = profileConfig?.value !== "consultations";
+    const showOverview = !isConsultorioWorkspaceOnlyView(profileConfig);
     const overviewMarkup = showOverview
       ? buildConsultorioProfileOverviewMarkup({
           owner,
@@ -3125,6 +3256,8 @@ function renderConsultorioPatientProfile() {
     const contentMarkup =
       profileConfig?.value === "consultations"
         ? buildConsultorioConsultationsWorkspace(patient, profileConfig)
+        : profileConfig?.value === "vacunacion"
+        ? buildConsultorioVaccinationsWorkspace(patient, profileConfig)
         : buildConsultorioProfileTimelineMarkup(profileConfig, timelineItems);
     elements.consultorioPatientProfileSummary.innerHTML = `
       <div class="consultorio-profile-workspace">
@@ -5702,11 +5835,19 @@ function openPatientConsultationModal(consultation = null) {
     return;
   }
   const form = elements.patientConsultationForm;
+  const profileConfig =
+    CONSULTORIO_PROFILE_VIEW_MAP[consultorioProfileView] || getConsultorioProfileViewConfig();
+  const defaultConsultationType =
+    consultation?.consultation_type ||
+    profileConfig?.formConsultationType ||
+    "Consulta";
+  const defaultTitle =
+    consultation?.title || getConsultorioProfileDefaultConsultationTitle(profileConfig);
   form.reset();
   const details = parseConsultorioConsultationDetails(consultation);
   form.elements.id.value = consultation?.id || "";
   form.elements.record_id.value = record?.id || "";
-  form.elements.consultation_type.value = "Consulta";
+  form.elements.consultation_type.value = defaultConsultationType;
   form.elements.professional_name.value =
     consultation?.professional_name || getDefaultConsultorioProfessionalName();
   form.elements.professional_license.value =
@@ -5714,8 +5855,8 @@ function openPatientConsultationModal(consultation = null) {
   form.elements.consultation_at.value = toInputDateTime(
     consultation?.consultation_at || new Date().toISOString()
   );
-  ensurePatientConsultationReasonOption(consultation?.title || "Consulta general");
-  form.elements.title.value = consultation?.title || "Consulta general";
+  ensurePatientConsultationReasonOption(defaultTitle);
+  form.elements.title.value = defaultTitle;
   form.elements.subjective.value = details.subjective || "";
   form.elements.objective.value = details.objective || "";
   form.elements.interpretation.value = details.interpretation || "";
@@ -5737,8 +5878,9 @@ function openPatientConsultationModal(consultation = null) {
   }
   setPatientConsultationAttachments(parseConsultorioAttachments(consultation?.attachments_summary || ""));
   if (elements.patientConsultationModalTitle) {
+    const entityLabel = getConsultorioProfileModalEntityLabel(defaultConsultationType);
     elements.patientConsultationModalTitle.textContent = `${
-      consultation ? "Editar Consulta" : "Registro de Consulta"
+      consultation ? `Editar ${entityLabel}` : `Registro de ${entityLabel}`
     } - ${patient.name || "Paciente"}`;
   }
   if (elements.patientConsultationModalSubtitle) {
@@ -6399,7 +6541,10 @@ async function handlePatientConsultationSubmit(event) {
   }
   const examGeneralSummary = buildConsultorioExamGeneralSummary(payload);
   const examSpecialSummary = buildConsultorioExamSpecialSummary(payload);
-  payload.consultation_type = "Consulta";
+  payload.consultation_type =
+    payload.consultation_type ||
+    getConsultorioProfileViewConfig()?.formConsultationType ||
+    "Consulta";
   payload.summary = buildConsultorioStructuredText([
     ["Subjetivo", payload.subjective],
     ["Objetivo", payload.objective],
@@ -6432,7 +6577,10 @@ async function handlePatientConsultationSubmit(event) {
   }
   const consultation = await api.saveConsultation(payload);
   closePatientConsultationModal();
-  let statusMessage = payload.id ? "Consulta actualizada." : "Consulta registrada.";
+  const entityLabel = getConsultorioProfileModalEntityLabel(payload.consultation_type);
+  let statusMessage = payload.id
+    ? `${entityLabel} actualizada.`
+    : `${entityLabel} registrada.`;
   const reminder = consultation?.control_reminder;
   if (reminder?.scheduled) {
     statusMessage += ` Recordatorio de control programado para ${formatDateTime(
@@ -6447,7 +6595,10 @@ async function handlePatientConsultationSubmit(event) {
     message: statusMessage,
   });
   consultorioPatientProfileOpen = true;
-  consultorioProfileView = "consultations";
+  consultorioProfileView =
+    CONSULTORIO_PROFILE_VIEWS.find(
+      (option) => option.formConsultationType === payload.consultation_type
+    )?.value || "consultations";
   setActiveSection(CONSULTORIO_PATIENT_PROFILE_SECTION_ID);
 }
 
@@ -6932,6 +7083,11 @@ function bindForms() {
     elements.consultorioPatientProfileSummary.addEventListener("click", (event) => {
       const openConsultationButton = event.target.closest("[data-open-patient-consultation-modal]");
       if (openConsultationButton) {
+        const targetProfileView =
+          openConsultationButton.dataset.consultationProfileView || consultorioProfileView;
+        if (CONSULTORIO_PROFILE_VIEW_MAP[targetProfileView]) {
+          consultorioProfileView = targetProfileView;
+        }
         openPatientConsultationModal();
         return;
       }
