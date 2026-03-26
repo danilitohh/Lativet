@@ -1195,7 +1195,8 @@ button:active {
 }
 
 .consultorio-vaccinations-shell,
-.consultorio-formulas-shell {
+.consultorio-formulas-shell,
+.consultorio-deworming-shell {
   min-height: 340px;
 }
 

@@ -2214,7 +2214,9 @@ function getConsultorioProfileViewConfig() {
 }
 
 function isConsultorioWorkspaceOnlyView(profileConfig) {
-  return ["consultations", "vacunacion", "formula"].includes(profileConfig?.value || "");
+  return ["consultations", "vacunacion", "formula", "desparasitacion"].includes(
+    profileConfig?.value || ""
+  );
 }
 
 function getConsultorioProfileDefaultConsultationTitle(profileConfig) {
@@ -3382,6 +3384,106 @@ function buildConsultorioFormulasWorkspace(patient, profileConfig) {
   `;
 }
 
+function buildConsultorioDewormingWorkspace(patient, profileConfig) {
+  const dewormingEntries = getConsultorioScopedConsultations(profileConfig?.consultationTypes || null);
+  const content = dewormingEntries.length
+    ? `
+      <div class="table-wrapper consultorio-consultations-table-wrapper consultorio-deworming-table-wrapper">
+        <table class="data-table consultorio-consultations-table consultorio-deworming-table">
+          <thead>
+            <tr>
+              <th>Opc.</th>
+              <th>Fecha</th>
+              <th>Desparasitante</th>
+              <th>Detalle</th>
+              <th>Proximo control</th>
+              <th>Usuario</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${dewormingEntries
+              .map((consultation) => {
+                const details = parseConsultorioConsultationDetails(consultation);
+                const detailLabel = truncate(
+                  [
+                    details.therapeuticPlan ? `Tratamiento: ${details.therapeuticPlan}` : "",
+                    details.interpretation ? `Diagnostico: ${details.interpretation}` : "",
+                    !details.therapeuticPlan && !details.interpretation && consultation.summary
+                      ? consultation.summary
+                      : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" | ") || "Sin detalle registrado.",
+                  112
+                );
+                return `
+                  <tr>
+                    <td>
+                      <div class="table-actions consultorio-consultations-table__actions">
+                        <button
+                          class="ghost-button"
+                          type="button"
+                          data-edit-patient-consultation="${escapeHtml(consultation.id)}"
+                        >
+                          Editar
+                        </button>
+                      </div>
+                    </td>
+                    <td>${escapeHtml(formatDateTime(consultation.consultation_at))}</td>
+                    <td>${escapeHtml(consultation.title || "Desparasitacion")}</td>
+                    <td>${escapeHtml(detailLabel)}</td>
+                    <td>${escapeHtml(formatDateTime(details.nextControl || ""))}</td>
+                    <td>${escapeHtml(consultation.professional_name || "Sin usuario")}</td>
+                  </tr>
+                `;
+              })
+              .join("")}
+          </tbody>
+        </table>
+      </div>
+    `
+    : `
+      <div class="consultorio-module-empty consultorio-module-empty--deworming">
+        <span class="consultorio-module-empty__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 3h6"></path>
+            <path d="M10 3v3"></path>
+            <path d="M14 3v3"></path>
+            <path d="M7 8a5 5 0 0 1 10 0v4a5 5 0 0 1-10 0V8Z"></path>
+            <path d="M3 10h4"></path>
+            <path d="M17 10h4"></path>
+            <path d="M4 16l3-2"></path>
+            <path d="M20 16l-3-2"></path>
+            <path d="M9 19v2"></path>
+            <path d="M15 19v2"></path>
+          </svg>
+        </span>
+        <strong>No hay registros de desparasitacion</strong>
+      </div>
+    `;
+  return `
+    <article class="consultorio-profile-shell consultorio-deworming-shell">
+      <div class="consultorio-profile-table-toolbar">
+        <div>
+          <span class="consultorio-profile-shell__eyebrow">Desparasitaciones</span>
+          <h4>Desparasitaciones de ${escapeHtml(patient?.name || "Paciente")}</h4>
+        </div>
+        <div class="form-actions">
+          <button
+            class="primary-button"
+            type="button"
+            data-open-patient-consultation-modal="true"
+            data-consultation-profile-view="desparasitacion"
+          >
+            Registrar desparasitacion
+          </button>
+        </div>
+      </div>
+      ${content}
+    </article>
+  `;
+}
+
 function renderConsultorioPatientProfile() {
   if (!elements.consultorioPatientProfilePanel) {
     return;
@@ -3547,6 +3649,8 @@ function renderConsultorioPatientProfile() {
         ? buildConsultorioVaccinationsWorkspace(patient, profileConfig)
         : profileConfig?.value === "formula"
         ? buildConsultorioFormulasWorkspace(patient, profileConfig)
+        : profileConfig?.value === "desparasitacion"
+        ? buildConsultorioDewormingWorkspace(patient, profileConfig)
         : buildConsultorioProfileTimelineMarkup(profileConfig, timelineItems);
     elements.consultorioPatientProfileSummary.innerHTML = `
       <div class="consultorio-profile-workspace">
