@@ -1153,6 +1153,20 @@ button:active {
   line-height: 1.45;
 }
 
+.consultorio-profile-timeline__attachments {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.consultorio-profile-timeline__attachments > span {
+  color: #7b879d;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 .consultorio-profile-table-toolbar {
   display: flex;
   align-items: flex-start;
@@ -1308,10 +1322,24 @@ button:active {
   display: flex;
   gap: 10px;
   align-items: center;
+  flex-wrap: wrap;
 }
 
 .consultorio-consultation-form__attachment-row input {
   flex: 1 1 auto;
+}
+
+.consultorio-consultation-form__attachment-row--secondary {
+  justify-content: flex-start;
+}
+
+.consultorio-consultation-form__add--file {
+  white-space: nowrap;
+}
+
+.consultorio-consultation-form__attachment-hint {
+  color: #8b96ad;
+  font-size: 0.82rem;
 }
 
 .consultorio-consultation-form__add,
@@ -1332,25 +1360,113 @@ button:active {
 }
 
 .consultorio-consultation-attachments {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
   gap: 8px;
   min-height: 18px;
 }
 
 .consultorio-consultation-attachment {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
+  gap: 10px;
+  padding: 10px 12px;
   border: 1px solid rgba(11, 39, 49, 0.08);
-  border-radius: 999px;
+  border-radius: 12px;
   background: rgba(247, 250, 255, 0.96);
   color: var(--ink);
 }
 
+.consultorio-consultation-attachment--image {
+  align-items: flex-start;
+}
+
+.consultorio-consultation-attachment__preview {
+  flex: 0 0 auto;
+}
+
+.consultorio-consultation-attachment__thumbnail {
+  display: block;
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 1px solid rgba(120, 136, 220, 0.22);
+  background: #eef3fb;
+}
+
+.consultorio-consultation-attachment__body {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.consultorio-consultation-attachment__body strong {
+  font-size: 0.86rem;
+}
+
+.consultorio-consultation-attachment__body span {
+  color: var(--muted);
+  font-size: 0.84rem;
+  word-break: break-word;
+}
+
 .consultorio-consultation-attachment .ghost-button {
   padding: 4px 8px;
+  margin-left: auto;
+}
+
+.consultorio-attachment-gallery {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.consultorio-attachment-gallery--compact {
+  gap: 6px;
+}
+
+.consultorio-attachment-thumb {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 58px;
+  height: 58px;
+  border-radius: 12px;
+  border: 1px solid rgba(120, 136, 220, 0.2);
+  background: #f6f9ff;
+  overflow: hidden;
+}
+
+.consultorio-attachment-gallery--compact .consultorio-attachment-thumb {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+}
+
+.consultorio-attachment-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.consultorio-attachment-tag,
+.consultorio-attachment-more,
+.consultorio-attachment-placeholder {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #eff4fb;
+  color: #60708c;
+  font-size: 0.82rem;
+}
+
+.consultorio-attachment-more {
+  font-weight: 700;
 }
 
 .consultorio-consultation-section {

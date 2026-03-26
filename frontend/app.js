@@ -1141,6 +1141,8 @@ function cacheElements() {
     "patientConsultationRecordLabel",
     "patientConsultationAttachmentInput",
     "patientConsultationAttachmentAddButton",
+    "patientConsultationAttachmentFileInput",
+    "patientConsultationAttachmentFileButton",
     "patientConsultationAttachmentsList",
     "patientConsultationAttachmentsValue",
     "complianceNotes",
@@ -2107,6 +2109,7 @@ function getConsultorioProfileTimelineItems(option = getConsultorioProfileViewCo
     typeLabel: consultation.consultation_type || "Consulta",
     title: consultation.title || consultation.consultation_type || "Consulta clinica",
     tone: consultation.consent_required ? "pill pill--confirmed" : "pill pill--draft",
+    attachments: parseConsultorioAttachments(consultation.attachments_summary || ""),
     lines: [
       `Resumen: ${truncate(consultation.summary || "Sin resumen", 180)}`,
       consultation.indications ? `Indicaciones: ${truncate(consultation.indications, 180)}` : "",
@@ -2262,6 +2265,7 @@ function getConsultorioPrimaryRecord() {
 function buildConsultorioDraftRecordPayload(patient, consultationPayload = {}) {
   const consultationAt = consultationPayload.consultation_at || new Date().toISOString();
   const examGeneralSummary = buildConsultorioExamGeneralSummary(consultationPayload);
+  const examSpecialSummary = buildConsultorioExamSpecialSummary(consultationPayload);
   return {
     patient_id: patient.id,
     opened_at: consultationAt,
@@ -2270,7 +2274,7 @@ function buildConsultorioDraftRecordPayload(patient, consultationPayload = {}) {
     physical_exam_summary: buildConsultorioStructuredText([
       ["Objetivo", consultationPayload.objective],
       ["Examen general", examGeneralSummary],
-      ["Examen especial", consultationPayload.exam_special],
+      ["Examen especial", examSpecialSummary],
     ]),
     presumptive_diagnosis: consultationPayload.interpretation || "",
     procedures_plan: buildConsultorioStructuredText([
@@ -2865,6 +2869,16 @@ function buildConsultorioProfileTimelineMarkup(profileConfig, timelineItems) {
                         <div class="consultorio-profile-timeline__details">
                           ${item.lines.map((line) => `<p>${escapeHtml(line)}</p>`).join("")}
                         </div>
+                        ${
+                          item.attachments?.length
+                            ? `
+                              <div class="consultorio-profile-timeline__attachments">
+                                <span>Adjuntos</span>
+                                ${buildConsultorioAttachmentPreviewMarkup(item.attachments)}
+                              </div>
+                            `
+                            : ""
+                        }
                       </div>
                     </article>
                   `
@@ -2915,7 +2929,10 @@ function buildConsultorioConsultationsWorkspace(patient, profileConfig) {
                     <td>${escapeHtml(consultation.title || "Consulta")}</td>
                     <td>${escapeHtml(getConsultorioConsultationExamLabel(consultation))}</td>
                     <td>${escapeHtml(getConsultorioConsultationDiagnosisLabel(consultation))}</td>
-                    <td>${escapeHtml(truncate(consultation.attachments_summary || "-", 88))}</td>
+                    <td>${buildConsultorioAttachmentPreviewMarkup(
+                      parseConsultorioAttachments(consultation.attachments_summary || ""),
+                      { compact: true }
+                    )}</td>
                     <td>${escapeHtml(consultation.professional_name || "Sin usuario")}</td>
                   </tr>
                 `
@@ -5388,20 +5405,259 @@ function ensurePatientConsultationReasonOption(value) {
   }
 }
 
-function setPatientConsultationAttachments(lines = []) {
-  const items = (Array.isArray(lines) ? lines : [])
-    .map((item) => String(item || "").trim())
+const CONSULTORIO_IMAGE_ATTACHMENT_MAX_DIMENSION = 1280;
+const CONSULTORIO_IMAGE_ATTACHMENT_MAX_DATA_URL_LENGTH = 1_200_000;
+
+function normalizeConsultorioAttachmentItem(item) {
+  if (!item) {
+    return null;
+  }
+  if (typeof item === "string") {
+    const value = item.trim();
+    return value
+      ? {
+          kind: "text",
+          value,
+        }
+      : null;
+  }
+  if (typeof item !== "object") {
+    return null;
+  }
+  const kind = String(item.kind || item.type || "").trim().toLowerCase();
+  if (kind === "image") {
+    const dataUrl = String(item.dataUrl || item.url || "").trim();
+    if (!dataUrl) {
+      return null;
+    }
+    return {
+      kind: "image",
+      name: String(item.name || item.label || "Imagen clinica").trim() || "Imagen clinica",
+      dataUrl,
+      mimeType: String(item.mimeType || item.mime_type || "image/jpeg").trim() || "image/jpeg",
+    };
+  }
+  const value = String(item.value || item.label || item.name || "").trim();
+  return value
+    ? {
+        kind: "text",
+        value,
+      }
+    : null;
+}
+
+function parseConsultorioAttachments(value) {
+  const rawValue = String(value || "").trim();
+  if (!rawValue) {
+    return [];
+  }
+  if (rawValue.startsWith("[") || rawValue.startsWith("{")) {
+    try {
+      const parsed = JSON.parse(rawValue);
+      const items = Array.isArray(parsed)
+        ? parsed
+        : Array.isArray(parsed?.items)
+          ? parsed.items
+          : [];
+      return items.map(normalizeConsultorioAttachmentItem).filter(Boolean);
+    } catch (error) {
+      // Compatibilidad con adjuntos antiguos guardados como texto.
+    }
+  }
+  return rawValue
+    .split(/\r?\n+/)
+    .map((item) => normalizeConsultorioAttachmentItem(item))
+    .filter(Boolean);
+}
+
+function serializeConsultorioAttachments(items = []) {
+  const normalizedItems = (Array.isArray(items) ? items : [])
+    .map((item) => normalizeConsultorioAttachmentItem(item))
+    .filter(Boolean);
+  return normalizedItems.length ? JSON.stringify(normalizedItems) : "";
+}
+
+function buildConsultorioAttachmentPreviewMarkup(items = [], options = {}) {
+  const { compact = false } = options;
+  const attachments = (Array.isArray(items) ? items : [])
+    .map((item) => normalizeConsultorioAttachmentItem(item))
+    .filter(Boolean);
+  if (!attachments.length) {
+    return compact ? `<span class="consultorio-attachment-placeholder">-</span>` : "";
+  }
+  const imageLimit = compact ? 1 : 4;
+  const textLimit = compact ? 1 : 3;
+  let renderedCount = 0;
+  let renderedImages = 0;
+  let renderedText = 0;
+  const content = attachments
+    .map((item) => {
+      if (item.kind === "image") {
+        if (renderedImages >= imageLimit) {
+          return "";
+        }
+        renderedImages += 1;
+        renderedCount += 1;
+        return `
+          <a
+            class="consultorio-attachment-thumb"
+            href="${escapeHtml(item.dataUrl)}"
+            target="_blank"
+            rel="noreferrer"
+            title="${escapeHtml(item.name || "Imagen clinica")}"
+          >
+            <img src="${escapeHtml(item.dataUrl)}" alt="${escapeHtml(item.name || "Imagen clinica")}" loading="lazy" />
+          </a>
+        `;
+      }
+      if (renderedText >= textLimit) {
+        return "";
+      }
+      renderedText += 1;
+      renderedCount += 1;
+      return `<span class="consultorio-attachment-tag">${escapeHtml(
+        truncate(item.value || "Adjunto", compact ? 26 : 44)
+      )}</span>`;
+    })
+    .filter(Boolean);
+  const remaining = attachments.length - renderedCount;
+  if (remaining > 0) {
+    content.push(`<span class="consultorio-attachment-more">+${remaining}</span>`);
+  }
+  return `
+    <div class="consultorio-attachment-gallery${compact ? " consultorio-attachment-gallery--compact" : ""}">
+      ${content.join("")}
+    </div>
+  `;
+}
+
+function readConsultorioFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => reject(new Error("No se pudo leer la imagen seleccionada."));
+    reader.readAsDataURL(file);
+  });
+}
+
+function loadConsultorioImage(dataUrl) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error("No se pudo procesar la imagen seleccionada."));
+    image.src = dataUrl;
+  });
+}
+
+function getConsultorioScaledDimensions(width, height, maxDimension) {
+  if (!width || !height || Math.max(width, height) <= maxDimension) {
+    return { width, height };
+  }
+  const ratio = maxDimension / Math.max(width, height);
+  return {
+    width: Math.max(1, Math.round(width * ratio)),
+    height: Math.max(1, Math.round(height * ratio)),
+  };
+}
+
+async function buildConsultorioImageAttachment(file) {
+  if (!file || !String(file.type || "").startsWith("image/")) {
+    throw new Error("Solo puedes adjuntar archivos de imagen.");
+  }
+  const sourceDataUrl = await readConsultorioFileAsDataUrl(file);
+  const image = await loadConsultorioImage(sourceDataUrl);
+  const dimensions = getConsultorioScaledDimensions(
+    image.naturalWidth || image.width,
+    image.naturalHeight || image.height,
+    CONSULTORIO_IMAGE_ATTACHMENT_MAX_DIMENSION
+  );
+  const canvas = document.createElement("canvas");
+  canvas.width = dimensions.width;
+  canvas.height = dimensions.height;
+  const context = canvas.getContext("2d");
+  if (!context) {
+    throw new Error("No se pudo preparar la imagen para adjuntarla.");
+  }
+  context.drawImage(image, 0, 0, dimensions.width, dimensions.height);
+  let mimeType = file.type === "image/png" || file.type === "image/webp" ? "image/webp" : "image/jpeg";
+  let quality = mimeType === "image/jpeg" ? 0.82 : 0.84;
+  let dataUrl = canvas.toDataURL(mimeType, quality);
+  if (dataUrl.length > CONSULTORIO_IMAGE_ATTACHMENT_MAX_DATA_URL_LENGTH && mimeType !== "image/jpeg") {
+    mimeType = "image/jpeg";
+    quality = 0.82;
+    dataUrl = canvas.toDataURL(mimeType, quality);
+  }
+  while (
+    dataUrl.length > CONSULTORIO_IMAGE_ATTACHMENT_MAX_DATA_URL_LENGTH &&
+    quality > 0.55
+  ) {
+    quality -= 0.08;
+    dataUrl = canvas.toDataURL(mimeType, quality);
+  }
+  if (dataUrl.length > CONSULTORIO_IMAGE_ATTACHMENT_MAX_DATA_URL_LENGTH) {
+    throw new Error("La imagen es demasiado pesada. Usa una imagen mas liviana.");
+  }
+  return {
+    kind: "image",
+    name: String(file.name || "imagen-clinica").trim(),
+    dataUrl,
+    mimeType,
+  };
+}
+
+async function addPatientConsultationAttachmentImages(fileList) {
+  const files = Array.from(fileList || []);
+  if (!files.length) {
+    return;
+  }
+  const currentItems = getPatientConsultationAttachments();
+  for (const file of files) {
+    currentItems.push(await buildConsultorioImageAttachment(file));
+  }
+  setPatientConsultationAttachments(currentItems);
+}
+
+function setPatientConsultationAttachments(items = []) {
+  const normalizedItems = (Array.isArray(items) ? items : [])
+    .map((item) => normalizeConsultorioAttachmentItem(item))
     .filter(Boolean);
   if (elements.patientConsultationAttachmentsValue) {
-    elements.patientConsultationAttachmentsValue.value = items.join("\n");
+    elements.patientConsultationAttachmentsValue.value = serializeConsultorioAttachments(normalizedItems);
   }
   if (elements.patientConsultationAttachmentsList) {
-    elements.patientConsultationAttachmentsList.innerHTML = items.length
-      ? items
+    elements.patientConsultationAttachmentsList.innerHTML = normalizedItems.length
+      ? normalizedItems
           .map(
             (item, index) => `
-              <span class="consultorio-consultation-attachment">
-                ${escapeHtml(item)}
+              <div class="consultorio-consultation-attachment consultorio-consultation-attachment--${escapeHtml(
+                item.kind
+              )}">
+                ${
+                  item.kind === "image"
+                    ? `
+                      <a
+                        class="consultorio-consultation-attachment__preview"
+                        href="${escapeHtml(item.dataUrl)}"
+                        target="_blank"
+                        rel="noreferrer"
+                        title="${escapeHtml(item.name || "Imagen clinica")}"
+                      >
+                        <img
+                          class="consultorio-consultation-attachment__thumbnail"
+                          src="${escapeHtml(item.dataUrl)}"
+                          alt="${escapeHtml(item.name || "Imagen clinica")}"
+                          loading="lazy"
+                        />
+                      </a>
+                    `
+                    : ""
+                }
+                <span class="consultorio-consultation-attachment__body">
+                  <strong>${item.kind === "image" ? "Imagen clinica" : "Referencia"}</strong>
+                  <span>${escapeHtml(
+                    truncate(item.kind === "image" ? item.name || "Imagen clinica" : item.value || "Adjunto", 52)
+                  )}</span>
+                </span>
                 <button
                   class="ghost-button"
                   type="button"
@@ -5409,7 +5665,7 @@ function setPatientConsultationAttachments(lines = []) {
                 >
                   Quitar
                 </button>
-              </span>
+              </div>
             `
           )
           .join("")
@@ -5417,11 +5673,8 @@ function setPatientConsultationAttachments(lines = []) {
   }
 }
 
-function getPatientConsultationAttachmentLines() {
-  return String(elements.patientConsultationAttachmentsValue?.value || "")
-    .split(/\r?\n+/)
-    .map((item) => item.trim())
-    .filter(Boolean);
+function getPatientConsultationAttachments() {
+  return parseConsultorioAttachments(elements.patientConsultationAttachmentsValue?.value || "");
 }
 
 function closePatientConsultationModal() {
@@ -5484,12 +5737,10 @@ function openPatientConsultationModal(consultation = null) {
   if (elements.patientConsultationAttachmentInput) {
     elements.patientConsultationAttachmentInput.value = "";
   }
-  setPatientConsultationAttachments(
-    String(consultation?.attachments_summary || "")
-      .split(/\r?\n+/)
-      .map((item) => item.trim())
-      .filter(Boolean)
-  );
+  if (elements.patientConsultationAttachmentFileInput) {
+    elements.patientConsultationAttachmentFileInput.value = "";
+  }
+  setPatientConsultationAttachments(parseConsultorioAttachments(consultation?.attachments_summary || ""));
   if (elements.patientConsultationModalTitle) {
     elements.patientConsultationModalTitle.textContent = `${
       consultation ? "Editar Consulta" : "Registro de Consulta"
@@ -6166,7 +6417,9 @@ async function handlePatientConsultationSubmit(event) {
     ["Plan diagnostico", payload.diagnostic_plan],
     ["Proximo control", payload.next_control],
   ]);
-  payload.attachments_summary = String(payload.attachments_summary || "").trim();
+  payload.attachments_summary = serializeConsultorioAttachments(
+    getPatientConsultationAttachments()
+  );
   payload.document_reference = "";
   payload.referred_to = "";
   payload.consent_required = false;
@@ -6715,12 +6968,33 @@ function bindForms() {
       if (!nextValue) {
         return;
       }
-      setPatientConsultationAttachments([...getPatientConsultationAttachmentLines(), nextValue]);
+      setPatientConsultationAttachments([
+        ...getPatientConsultationAttachments(),
+        {
+          kind: "text",
+          value: nextValue,
+        },
+      ]);
       if (elements.patientConsultationAttachmentInput) {
         elements.patientConsultationAttachmentInput.value = "";
         elements.patientConsultationAttachmentInput.focus();
       }
     });
+  }
+  if (elements.patientConsultationAttachmentFileButton && elements.patientConsultationAttachmentFileInput) {
+    elements.patientConsultationAttachmentFileButton.addEventListener("click", () => {
+      elements.patientConsultationAttachmentFileInput.click();
+    });
+    elements.patientConsultationAttachmentFileInput.addEventListener(
+      "change",
+      wrapAsync(async (event) => {
+        try {
+          await addPatientConsultationAttachmentImages(event.currentTarget.files);
+        } finally {
+          event.currentTarget.value = "";
+        }
+      })
+    );
   }
   if (elements.patientConsultationAttachmentsList) {
     elements.patientConsultationAttachmentsList.addEventListener("click", (event) => {
@@ -6729,7 +7003,7 @@ function bindForms() {
         return;
       }
       const index = Number(removeButton.dataset.removePatientConsultationAttachment);
-      const items = getPatientConsultationAttachmentLines();
+      const items = getPatientConsultationAttachments();
       items.splice(index, 1);
       setPatientConsultationAttachments(items);
     });

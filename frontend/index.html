@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Lativet Web</title>
-    <link rel="stylesheet" href="/styles.css?v=20260326-6" />
+    <link rel="stylesheet" href="/styles.css?v=20260326-7" />
   </head>
   <body>
     <div class="page-shell">
@@ -1340,6 +1340,23 @@
               <input id="patientConsultationAttachmentInput" type="text" placeholder="Agregar referencia o adjunto" />
               <button id="patientConsultationAttachmentAddButton" class="consultorio-consultation-form__add" type="button">Agregar</button>
             </div>
+            <div class="consultorio-consultation-form__attachment-row consultorio-consultation-form__attachment-row--secondary">
+              <input
+                id="patientConsultationAttachmentFileInput"
+                class="is-hidden"
+                type="file"
+                accept="image/*"
+                multiple
+              />
+              <button
+                id="patientConsultationAttachmentFileButton"
+                class="consultorio-consultation-form__add consultorio-consultation-form__add--file"
+                type="button"
+              >
+                Adjuntar imagen
+              </button>
+              <span class="consultorio-consultation-form__attachment-hint">JPG, PNG o WEBP. Se mostrara como miniatura.</span>
+            </div>
             <div id="patientConsultationAttachmentsList" class="consultorio-consultation-attachments"></div>
             <textarea id="patientConsultationAttachmentsValue" name="attachments_summary" class="is-hidden"></textarea>
           </div>
@@ -1594,6 +1611,6 @@
     </div>
   </div>
 
-  <script src="/app.js?v=20260326-6"></script>
+  <script src="/app.js?v=20260326-7"></script>
 </body>
 </html>
