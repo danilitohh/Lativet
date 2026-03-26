@@ -7389,6 +7389,8 @@ async function handlePatientConsultationSubmit(event) {
       reminder.label ||
       (isVaccinationConsultationType(payload.consultation_type)
         ? "vacunacion"
+        : isDewormingConsultationType(payload.consultation_type)
+        ? "desparasitacion"
         : "control");
     statusMessage += ` Recordatorio de ${reminderLabel} programado para ${formatDateTime(
       reminder.scheduled_for

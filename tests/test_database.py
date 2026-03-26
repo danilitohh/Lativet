@@ -564,6 +564,64 @@ class DatabaseSmokeTests(unittest.TestCase):
         self.assertEqual(reminder["consultation_type"], "Vacunacion")
         self.assertEqual(reminder["consultation_title"], "Triple felina")
 
+    def test_deworming_next_control_creates_deworming_reminder(self) -> None:
+        owner = self.db.save_owner(
+            {
+                "full_name": "Luis Herrera",
+                "identification_type": "CC",
+                "identification_number": "778899",
+                "phone": "3007788990",
+                "email": "luis@example.com",
+                "address": "Calle 45",
+            }
+        )
+        patient = self.db.save_patient(
+            {
+                "owner_id": owner["id"],
+                "name": "Toby",
+                "species": "Canino",
+                "breed": "Mestizo",
+                "sex": "Macho",
+                "age_years": "4",
+                "weight_kg": "11.4",
+                "reproductive_status": "Esterilizado",
+                "notes": "Paciente para desparasitacion.",
+            }
+        )
+        record = self.db.save_clinical_record(
+            {
+                "patient_id": patient["id"],
+                "opened_at": "2026-03-24T11:00",
+                "reason_for_consultation": "Desparasitacion preventiva",
+                "anamnesis": "Paciente estable.",
+                "physical_exam_summary": "Sin novedades.",
+                "presumptive_diagnosis": "Prevencion antiparasitaria",
+                "procedures_plan": "Aplicar desparasitante.",
+                "recommendations": "Repetir segun cronograma.",
+                "professional_name": "Dra. Arias",
+                "professional_license": "MV-550",
+            },
+            finalize=False,
+        )
+
+        consultation = self.db.save_consultation(
+            {
+                "record_id": record["id"],
+                "consultation_at": "2026-03-24T12:00",
+                "consultation_type": "Desparasitacion",
+                "title": "Simparica Trio",
+                "summary": "Aplicacion de desparasitante.",
+                "next_control": "2026-04-10",
+                "professional_name": "Dra. Arias",
+                "professional_license": "MV-550",
+            }
+        )
+        reminder = self.db.get_control_reminder_for_consultation(consultation["id"])
+        self.assertIsNotNone(reminder)
+        self.assertEqual(reminder["scheduled_for"], "2026-04-10")
+        self.assertEqual(reminder["consultation_type"], "Desparasitacion")
+        self.assertEqual(reminder["consultation_title"], "Simparica Trio")
+
     def test_appointments_follow_general_availability_and_prevent_overlap(self) -> None:
         owner = self.db.save_owner(
             {

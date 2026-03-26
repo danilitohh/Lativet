@@ -516,6 +516,100 @@ class WebSmokeTests(unittest.TestCase):
         self.assertIn("vacunacion", kwargs["body"].lower())
         self.assertIn("Rabia anual", kwargs["body"])
 
+    @patch("lativet.api.send_email")
+    def test_deworming_reminder_job_sends_deworming_email(self, mocked_send_email) -> None:
+        bootstrap = self.client.get("/api/bootstrap")
+        self.assertEqual(bootstrap.status_code, 200, bootstrap.get_data(as_text=True))
+        service = self.app.extensions.get("lativet_service")
+        self.assertIsNotNone(service)
+        service._db.save_settings(
+            {
+                **service._db.get_settings(),
+                "clinic_name": "Lativet",
+                "smtp_enabled": True,
+                "smtp_from": "clinic@example.com",
+                "smtp_host": "smtp.gmail.com",
+                "smtp_port": 587,
+                "smtp_app_password": "app-secret",
+            }
+        )
+
+        owner = self.assert_ok(
+            self.client.post(
+                "/api/owners",
+                json={
+                    "full_name": "Laura Perez",
+                    "identification_type": "CC",
+                    "identification_number": "998877",
+                    "phone": "3009988770",
+                    "email": "laura@example.com",
+                    "address": "Carrera 12",
+                },
+            )
+        )
+        patient = self.assert_ok(
+            self.client.post(
+                "/api/patients",
+                json={
+                    "owner_id": owner["id"],
+                    "name": "Rocky",
+                    "species": "Canino",
+                    "breed": "Mestizo",
+                    "sex": "Macho",
+                    "age_years": "3",
+                    "weight_kg": "12.1",
+                    "reproductive_status": "Esterilizado",
+                    "notes": "Paciente desparasitacion.",
+                },
+            )
+        )
+        record = self.assert_ok(
+            self.client.post(
+                "/api/records",
+                json={
+                    "patient_id": patient["id"],
+                    "opened_at": "2026-03-24T09:00",
+                    "reason_for_consultation": "Desparasitacion preventiva",
+                    "anamnesis": "Paciente estable.",
+                    "physical_exam_summary": "Sin novedades.",
+                    "presumptive_diagnosis": "Prevencion antiparasitaria",
+                    "procedures_plan": "Aplicar desparasitante.",
+                    "recommendations": "Repetir segun cronograma.",
+                    "professional_name": "Dra. Perez",
+                    "professional_license": "MV-900",
+                },
+            )
+        )
+        consultation = self.assert_ok(
+            self.client.post(
+                "/api/consultations",
+                json={
+                    "record_id": record["id"],
+                    "consultation_at": "2026-03-24T10:15",
+                    "consultation_type": "Desparasitacion",
+                    "title": "Simparica Trio",
+                    "summary": "Paciente desparasitado.",
+                    "next_control": "2026-03-25",
+                    "professional_name": "Dra. Perez",
+                    "professional_license": "MV-900",
+                },
+            )
+        )
+        self.assertTrue(consultation["control_reminder"]["scheduled"])
+        self.assertEqual(consultation["control_reminder"]["label"], "desparasitacion")
+
+        job = self.assert_ok(
+            self.client.get("/api/jobs/control-reminders?date=2026-03-25")
+        )
+        self.assertEqual(job["processed"], 1)
+        self.assertEqual(job["sent"], 1)
+        self.assertEqual(job["items"][0]["kind"], "deworming")
+        mocked_send_email.assert_called_once()
+        _, kwargs = mocked_send_email.call_args
+        self.assertIn("desparasitacion", kwargs["subject"].lower())
+        self.assertIn("desparasitacion", kwargs["body"].lower())
+        self.assertIn("Simparica Trio", kwargs["body"])
+
     def test_http_supports_google_calendar_config_and_availability_delete(self) -> None:
         config = self.assert_ok(
             self.client.post(

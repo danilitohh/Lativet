@@ -396,6 +396,8 @@ class LativetService:
         consultation_type = str((reminder or {}).get("consultation_type") or "").strip()
         if consultation_type == "Vacunacion":
             return "vaccination", "vacunacion"
+        if consultation_type == "Desparasitacion":
+            return "deworming", "desparasitacion"
         return "control", "control"
 
     def _send_control_reminder_email(self, reminder: dict) -> dict:
@@ -434,6 +436,15 @@ class LativetService:
                 f"Hola {owner_name},\n\n"
                 f"Te recordamos que {patient_name} tiene vacunacion programada para el {control_date_label}.\n"
                 f"Vacuna registrada: {consultation_title}.\n\n"
+                "Si necesitas reprogramar o confirmar la asistencia, comunicate con la clinica.\n\n"
+                "Este correo fue generado automaticamente por Lativet.\n"
+            )
+        elif reminder_kind == "deworming":
+            subject = f"{clinic_name} - Recordatorio de desparasitacion para {patient_name}"
+            body = (
+                f"Hola {owner_name},\n\n"
+                f"Te recordamos que {patient_name} tiene desparasitacion programada para el {control_date_label}.\n"
+                f"Producto registrado: {consultation_title}.\n\n"
                 "Si necesitas reprogramar o confirmar la asistencia, comunicate con la clinica.\n\n"
                 "Este correo fue generado automaticamente por Lativet.\n"
             )
