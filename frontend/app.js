@@ -2776,6 +2776,7 @@ function setConsultorioProfileView(value) {
     ? CONSULTORIO_PATIENT_PROFILE_SECTION_ID
     : "consultorio";
   renderSection(targetSectionId);
+  saveAppViewState();
   if (bootstrapReadyForSectionLoads) {
     ensureSectionData(targetSectionId);
   }
