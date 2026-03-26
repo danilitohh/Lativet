@@ -1356,6 +1356,118 @@ button:active {
   gap: 12px;
 }
 
+.consultorio-formula-fields {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 12px;
+}
+
+.consultorio-formula-fields__top {
+  display: grid;
+  grid-template-columns: minmax(240px, 280px) minmax(220px, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.consultorio-formula-fields__date {
+  max-width: 280px;
+}
+
+.consultorio-formula-fields__note {
+  max-width: 340px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 8px 20px rgba(13, 34, 47, 0.08);
+  color: #7f8799;
+  font-size: 0.74rem;
+  line-height: 1.45;
+}
+
+.consultorio-formula-medications {
+  display: grid;
+  gap: 10px;
+  padding: 14px 16px;
+  border: 1px solid rgba(34, 211, 198, 0.34);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.96);
+}
+
+.consultorio-formula-medications__legend {
+  margin-bottom: 2px;
+  color: #18b8aa;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.consultorio-formula-medications__list {
+  display: grid;
+  gap: 10px;
+}
+
+.consultorio-formula-medication {
+  display: grid;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(11, 39, 49, 0.06);
+  border-radius: 8px;
+  background: rgba(252, 253, 255, 0.98);
+  box-shadow: 0 6px 18px rgba(13, 34, 47, 0.04);
+}
+
+.consultorio-formula-medication__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.consultorio-formula-medication__header strong {
+  color: #6172ed;
+  font-size: 0.82rem;
+}
+
+.consultorio-formula-medication__remove {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #9ea8c9;
+  box-shadow: none;
+  font-size: 0.72rem;
+}
+
+.consultorio-formula-medication__remove:hover {
+  transform: none;
+  text-decoration: underline;
+}
+
+.consultorio-formula-medication__grid {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.1fr) minmax(120px, 0.7fr) minmax(110px, 0.45fr) minmax(220px, 1.4fr);
+  gap: 10px 12px;
+  align-items: end;
+}
+
+.consultorio-formula-medications__footer {
+  display: flex;
+  justify-content: center;
+}
+
+.consultorio-formula-medications__add {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #8a95e8;
+  font-size: 0.8rem;
+  font-weight: 600;
+  box-shadow: none;
+}
+
+.consultorio-formula-medications__add:hover {
+  transform: none;
+  text-decoration: underline;
+}
+
 .consultorio-vaccination-fields__date,
 .consultorio-vaccination-fields__next {
   max-width: 280px;
@@ -1467,6 +1579,10 @@ button:active {
 }
 
 .consultorio-consultation-modal--vaccination {
+  width: min(980px, 100%);
+}
+
+.consultorio-consultation-modal--formula {
   width: min(980px, 100%);
 }
 
@@ -1817,6 +1933,16 @@ button:active {
 
   .consultorio-profile-facts {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .consultorio-formula-fields__top,
+  .consultorio-formula-medication__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .consultorio-formula-fields__note,
+  .consultorio-formula-fields__date {
+    max-width: none;
   }
 }
 

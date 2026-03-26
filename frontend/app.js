@@ -1141,6 +1141,12 @@ function cacheElements() {
     "patientConsultationForm",
     "patientConsultationClinicalFields",
     "patientVaccinationFields",
+    "patientFormulaFields",
+    "patientFormulaDateInput",
+    "patientFormulaDiagnosisInput",
+    "patientFormulaObservationsInput",
+    "patientFormulaMedicationsList",
+    "patientFormulaAddMedicationButton",
     "patientVaccinationDateInput",
     "patientVaccinationNameSelect",
     "patientVaccinationCustomNameInput",
@@ -2110,21 +2116,41 @@ function getConsultorioProfileTimelineItems(option = getConsultorioProfileViewCo
     ],
   });
 
-  const buildConsultationItem = (consultation) => ({
-    id: `consultation-${consultation.id}`,
-    at: consultation.consultation_at,
-    typeLabel: consultation.consultation_type || "Consulta",
-    title: consultation.title || consultation.consultation_type || "Consulta clinica",
-    tone: consultation.consent_required ? "pill pill--confirmed" : "pill pill--draft",
-    attachments: parseConsultorioAttachments(consultation.attachments_summary || ""),
-    lines: [
-      `Resumen: ${truncate(consultation.summary || "Sin resumen", 180)}`,
-      consultation.indications ? `Indicaciones: ${truncate(consultation.indications, 180)}` : "",
-      consultation.document_reference || consultation.referred_to
-        ? `Referencia: ${consultation.document_reference || consultation.referred_to}`
-        : "",
-    ].filter(Boolean),
-  });
+  const buildConsultationItem = (consultation) => {
+    const formulaDetails = isFormulaConsultationType(consultation.consultation_type)
+      ? parseConsultorioFormulaDetails(consultation)
+      : null;
+    return {
+      id: `consultation-${consultation.id}`,
+      at: consultation.consultation_at,
+      typeLabel: consultation.consultation_type || "Consulta",
+      title: consultation.title || consultation.consultation_type || "Consulta clinica",
+      tone: consultation.consent_required ? "pill pill--confirmed" : "pill pill--draft",
+      attachments: parseConsultorioAttachments(consultation.attachments_summary || ""),
+      lines: isFormulaConsultationType(consultation.consultation_type)
+        ? [
+            formulaDetails?.diagnosis
+              ? `Diagnostico: ${truncate(formulaDetails.diagnosis, 180)}`
+              : "",
+            buildConsultorioFormulaMedicationPreview(formulaDetails?.medications || [])
+              ? `Medicamentos: ${truncate(
+                  buildConsultorioFormulaMedicationPreview(formulaDetails?.medications || []),
+                  180
+                )}`
+              : "",
+            formulaDetails?.observations
+              ? `Observaciones: ${truncate(formulaDetails.observations, 180)}`
+              : "",
+          ].filter(Boolean)
+        : [
+            `Resumen: ${truncate(consultation.summary || "Sin resumen", 180)}`,
+            consultation.indications ? `Indicaciones: ${truncate(consultation.indications, 180)}` : "",
+            consultation.document_reference || consultation.referred_to
+              ? `Referencia: ${consultation.document_reference || consultation.referred_to}`
+              : "",
+          ].filter(Boolean),
+    };
+  };
 
   const buildConsentItem = (consent) => ({
     id: `consent-${consent.id}`,
@@ -2231,6 +2257,10 @@ function getConsultorioProfileModalEntityLabel(consultationType) {
 
 function isVaccinationConsultationType(consultationType) {
   return String(consultationType || "").trim() === "Vacunacion";
+}
+
+function isFormulaConsultationType(consultationType) {
+  return String(consultationType || "").trim() === "Formula";
 }
 
 function isConsultorioPatientsViewActive() {
@@ -2559,6 +2589,93 @@ function parseConsultorioVaccinationDetails(consultation) {
   };
 }
 
+function createConsultorioFormulaMedication(item = {}) {
+  return {
+    name: String(item.name || "").trim(),
+    presentation: String(item.presentation || "").trim(),
+    quantity: String(item.quantity || "1").trim() || "1",
+    dosage: String(item.dosage || item.posology || "").trim(),
+  };
+}
+
+function hasConsultorioFormulaMedicationContent(item = {}) {
+  const normalized = createConsultorioFormulaMedication(item);
+  return Boolean(
+    normalized.name ||
+      normalized.presentation ||
+      normalized.dosage ||
+      (normalized.quantity && normalized.quantity !== "1")
+  );
+}
+
+function buildConsultorioFormulaMedicationPreview(medications = []) {
+  return (Array.isArray(medications) ? medications : [])
+    .map((item) => createConsultorioFormulaMedication(item))
+    .filter((item) => hasConsultorioFormulaMedicationContent(item))
+    .map((item) =>
+      [
+        item.name,
+        item.presentation ? `(${item.presentation})` : "",
+        item.quantity ? `x${item.quantity}` : "",
+        item.dosage ? `- ${item.dosage}` : "",
+      ]
+        .filter(Boolean)
+        .join(" ")
+    )
+    .join(" | ");
+}
+
+function parseConsultorioFormulaDetails(consultation) {
+  const summary = parseConsultorioStructuredText(consultation?.summary || "", {
+    diagnostico: "diagnosis",
+    medicamentos: "medications",
+    observaciones: "observations",
+  });
+  const genericDetails = parseConsultorioConsultationDetails(consultation);
+  let stored = null;
+  const rawReference = String(consultation?.document_reference || "").trim();
+  if (rawReference.startsWith("{")) {
+    try {
+      const parsed = JSON.parse(rawReference);
+      if (parsed && parsed.kind === "formula") {
+        stored = parsed;
+      }
+    } catch (error) {
+      stored = null;
+    }
+  }
+  const storedMedications = Array.isArray(stored?.medications)
+    ? stored.medications.map((item) => createConsultorioFormulaMedication(item))
+    : [];
+  const fallbackMedications = genericDetails.therapeuticPlan
+    ? [
+        createConsultorioFormulaMedication({
+          name: consultation?.title || "Medicamento",
+          dosage: genericDetails.therapeuticPlan,
+        }),
+      ]
+    : [];
+  return {
+    formulaDate: normalizeDateFieldValue(consultation?.consultation_at),
+    diagnosis:
+      String(stored?.diagnosis || "").trim() ||
+      summary.diagnosis ||
+      genericDetails.interpretation ||
+      "",
+    observations:
+      String(stored?.observations || "").trim() ||
+      summary.observations ||
+      genericDetails.subjective ||
+      "",
+    medications:
+      storedMedications.length
+        ? storedMedications
+        : fallbackMedications.length
+        ? fallbackMedications
+        : [],
+  };
+}
+
 function buildConsultorioVaccinationSummary(payload) {
   return buildConsultorioStructuredText([
     ["Vacuna", payload.title],
@@ -2572,6 +2689,20 @@ function buildConsultorioVaccinationIndications(payload) {
   return buildConsultorioStructuredText([
     ["Proxima vacunacion", payload.vaccination_next_control],
     ["Proximo control", payload.next_control],
+  ]);
+}
+
+function buildConsultorioFormulaSummary(payload) {
+  return buildConsultorioStructuredText([
+    ["Diagnostico", payload.formula_diagnosis],
+    ["Medicamentos", buildConsultorioFormulaMedicationPreview(payload.formula_medications)],
+    ["Observaciones", payload.formula_observations],
+  ]);
+}
+
+function buildConsultorioFormulaIndications(payload) {
+  return buildConsultorioStructuredText([
+    ["Medicamentos", buildConsultorioFormulaMedicationPreview(payload.formula_medications)],
   ]);
 }
 
@@ -2607,13 +2738,16 @@ function getConsultorioConsultationDiagnosisLabel(consultation) {
 }
 
 function getConsultorioFormulaDiagnosisLabel(consultation) {
-  const details = parseConsultorioConsultationDetails(consultation);
-  return details.interpretation || truncate(consultation?.indications || "Sin diagnostico registrado", 96);
+  const details = parseConsultorioFormulaDetails(consultation);
+  return details.diagnosis || truncate(consultation?.summary || "Sin diagnostico registrado", 96);
 }
 
 function getConsultorioFormulaMedicationLabel(consultation) {
-  const details = parseConsultorioConsultationDetails(consultation);
-  return details.therapeuticPlan || truncate(consultation?.summary || "Sin medicamentos registrados", 112);
+  const details = parseConsultorioFormulaDetails(consultation);
+  return (
+    buildConsultorioFormulaMedicationPreview(details.medications) ||
+    truncate(consultation?.indications || consultation?.summary || "Sin medicamentos registrados", 112)
+  );
 }
 
 function getDefaultConsultorioProfessionalName() {
@@ -4342,8 +4476,16 @@ function renderConsultations() {
           )}">${consultation.consent_required ? "Con consentimiento" : "Sin consentimiento"}</span>
         </header>
         <p>Paciente: ${escapeHtml(consultation.patient_name)}</p>
-        <p>${escapeHtml(truncate(consultation.summary))}</p>
-        <p>${escapeHtml(consultation.document_reference || consultation.referred_to || "")}</p>
+        <p>${escapeHtml(
+          isFormulaConsultationType(consultation.consultation_type)
+            ? getConsultorioFormulaMedicationLabel(consultation)
+            : truncate(consultation.summary)
+        )}</p>
+        <p>${escapeHtml(
+          isFormulaConsultationType(consultation.consultation_type)
+            ? ""
+            : consultation.document_reference || consultation.referred_to || ""
+        )}</p>
       </article>
     `,
     isConsultorioPatientProfileActive()
@@ -6022,6 +6164,93 @@ function getPatientVaccinationNameValue(form) {
   return selected;
 }
 
+function renderPatientFormulaMedications(items = []) {
+  if (!elements.patientFormulaMedicationsList) {
+    return;
+  }
+  const normalizedItems = (Array.isArray(items) ? items : [])
+    .map((item) => createConsultorioFormulaMedication(item))
+    .filter((item) => hasConsultorioFormulaMedicationContent(item));
+  const rows = normalizedItems.length ? normalizedItems : [createConsultorioFormulaMedication()];
+  elements.patientFormulaMedicationsList.innerHTML = rows
+    .map(
+      (item, index) => `
+        <article class="consultorio-formula-medication" data-formula-medication-item="${escapeHtml(String(index))}">
+          <div class="consultorio-formula-medication__header">
+            <strong>Medicamento</strong>
+            <button
+              class="ghost-button consultorio-formula-medication__remove"
+              type="button"
+              data-remove-patient-formula-medication="${escapeHtml(String(index))}"
+            >
+              Eliminar
+            </button>
+          </div>
+          <div class="consultorio-formula-medication__grid">
+            <label class="consultorio-consultation-form__field">
+              <span>Nombre</span>
+              <input
+                data-formula-medication-field="name"
+                type="text"
+                value="${escapeHtml(item.name)}"
+                placeholder="Nombre"
+              />
+            </label>
+            <label class="consultorio-consultation-form__field">
+              <span>Presentacion</span>
+              <input
+                data-formula-medication-field="presentation"
+                type="text"
+                value="${escapeHtml(item.presentation)}"
+                placeholder="Presentacion"
+              />
+            </label>
+            <label class="consultorio-consultation-form__field">
+              <span>Cantidad</span>
+              <input
+                data-formula-medication-field="quantity"
+                type="number"
+                min="1"
+                step="1"
+                value="${escapeHtml(item.quantity || "1")}"
+                placeholder="1"
+              />
+            </label>
+            <label class="consultorio-consultation-form__field consultorio-formula-medication__dosage">
+              <span>Posologia (Forma de administracion)</span>
+              <input
+                data-formula-medication-field="dosage"
+                type="text"
+                value="${escapeHtml(item.dosage)}"
+                placeholder="Posologia (Forma de administracion)"
+              />
+            </label>
+          </div>
+        </article>
+      `
+    )
+    .join("");
+}
+
+function getPatientFormulaMedications() {
+  if (!elements.patientFormulaMedicationsList) {
+    return [];
+  }
+  return Array.from(
+    elements.patientFormulaMedicationsList.querySelectorAll("[data-formula-medication-item]")
+  )
+    .map((item) =>
+      createConsultorioFormulaMedication({
+        name: item.querySelector('[data-formula-medication-field="name"]')?.value || "",
+        presentation:
+          item.querySelector('[data-formula-medication-field="presentation"]')?.value || "",
+        quantity: item.querySelector('[data-formula-medication-field="quantity"]')?.value || "1",
+        dosage: item.querySelector('[data-formula-medication-field="dosage"]')?.value || "",
+      })
+    )
+    .filter((item) => hasConsultorioFormulaMedicationContent(item));
+}
+
 function openPatientConsultationModal(consultation = null) {
   if (!elements.patientConsultationModal || !elements.patientConsultationForm) {
     return;
@@ -6047,11 +6276,13 @@ function openPatientConsultationModal(consultation = null) {
     profileConfig?.formConsultationType ||
     "Consulta";
   const isVaccinationMode = isVaccinationConsultationType(defaultConsultationType);
+  const isFormulaMode = isFormulaConsultationType(defaultConsultationType);
   const defaultTitle =
     consultation?.title || getConsultorioProfileDefaultConsultationTitle(profileConfig);
   form.reset();
   const details = parseConsultorioConsultationDetails(consultation);
   const vaccinationDetails = parseConsultorioVaccinationDetails(consultation);
+  const formulaDetails = parseConsultorioFormulaDetails(consultation);
   form.elements.id.value = consultation?.id || "";
   form.elements.record_id.value = record?.id || "";
   form.elements.consultation_type.value = defaultConsultationType;
@@ -6088,6 +6319,17 @@ function openPatientConsultationModal(consultation = null) {
       vaccinationDetails.nextVaccination
     );
   }
+  if (form.elements.formula_date) {
+    form.elements.formula_date.value =
+      formulaDetails.formulaDate || normalizeDateFieldValue(new Date().toISOString());
+  }
+  if (form.elements.formula_diagnosis) {
+    form.elements.formula_diagnosis.value = formulaDetails.diagnosis || "";
+  }
+  if (form.elements.formula_observations) {
+    form.elements.formula_observations.value = formulaDetails.observations || "";
+  }
+  renderPatientFormulaMedications(formulaDetails.medications);
   setPatientVaccinationNameValue(vaccinationDetails.name || defaultTitle);
   Object.entries(details.examGeneral || {}).forEach(([fieldName, fieldValue]) => {
     if (form.elements[fieldName]) {
@@ -6114,38 +6356,46 @@ function openPatientConsultationModal(consultation = null) {
     elements.patientConsultationModalSubtitle.classList.add("is-hidden");
   }
   if (elements.patientConsultationModalBadge) {
-    const badgeText = isVaccinationMode ? formatConsultorioWeightBadge(patient) : "";
+    const badgeText = isVaccinationMode || isFormulaMode ? formatConsultorioWeightBadge(patient) : "";
     elements.patientConsultationModalBadge.textContent = badgeText;
     elements.patientConsultationModalBadge.classList.toggle("is-hidden", !badgeText);
   }
   if (elements.patientVaccinationFields) {
     elements.patientVaccinationFields.classList.toggle("is-hidden", !isVaccinationMode);
   }
-  if (elements.patientConsultationClinicalFields) {
-    elements.patientConsultationClinicalFields.classList.toggle("is-hidden", isVaccinationMode);
+  if (elements.patientFormulaFields) {
+    elements.patientFormulaFields.classList.toggle("is-hidden", !isFormulaMode);
   }
-  elements.patientConsultationModal
-    .querySelector(".modal-card")
-    ?.classList.toggle("consultorio-consultation-modal--vaccination", isVaccinationMode);
+  if (elements.patientConsultationClinicalFields) {
+    elements.patientConsultationClinicalFields.classList.toggle(
+      "is-hidden",
+      isVaccinationMode || isFormulaMode
+    );
+  }
+  const modalCard = elements.patientConsultationModal.querySelector(".modal-card");
+  modalCard?.classList.toggle("consultorio-consultation-modal--vaccination", isVaccinationMode);
+  modalCard?.classList.toggle("consultorio-consultation-modal--formula", isFormulaMode);
   if (elements.closePatientConsultationModalButton) {
     elements.closePatientConsultationModalButton.innerHTML = "&times;";
   }
   if (elements.patientConsultationRecordLabel) {
-    elements.patientConsultationRecordLabel.textContent = isVaccinationMode
+    elements.patientConsultationRecordLabel.textContent = isVaccinationMode || isFormulaMode
       ? ""
       : record
         ? `Historia clinica vinculada: ${record.id}`
         : "La historia clinica se creara automaticamente al guardar esta consulta.";
-    elements.patientConsultationRecordLabel.classList.toggle("is-hidden", isVaccinationMode);
+    elements.patientConsultationRecordLabel.classList.toggle("is-hidden", isVaccinationMode || isFormulaMode);
   }
   form
     .querySelector(".consultorio-consultation-form__footer")
-    ?.classList.toggle("consultorio-consultation-form__footer--align-end", isVaccinationMode);
+    ?.classList.toggle("consultorio-consultation-form__footer--align-end", isVaccinationMode || isFormulaMode);
   elements.patientConsultationModal.classList.remove("is-hidden");
   elements.patientConsultationModal.setAttribute("aria-hidden", "false");
   document.body?.classList.add("modal-open");
   elements.patientConsultationModal.querySelector(".modal-card")?.scrollTo({ top: 0, behavior: "auto" });
-  if (isVaccinationMode && form.elements.vaccination_date) {
+  if (isFormulaMode && form.elements.formula_date) {
+    form.elements.formula_date.focus();
+  } else if (isVaccinationMode && form.elements.vaccination_date) {
     form.elements.vaccination_date.focus();
   } else {
     form.elements.consultation_at.focus();
@@ -6795,7 +7045,31 @@ async function handlePatientConsultationSubmit(event) {
     payload.consultation_type ||
     getConsultorioProfileViewConfig()?.formConsultationType ||
     "Consulta";
-  if (isVaccinationConsultationType(payload.consultation_type)) {
+  if (isFormulaConsultationType(payload.consultation_type)) {
+    const formulaMedications = getPatientFormulaMedications();
+    if (!payload.formula_date) {
+      throw new Error("Selecciona la fecha de la formula.");
+    }
+    if (!String(payload.formula_diagnosis || "").trim()) {
+      throw new Error("Escribe el diagnostico presuntivo y/o final.");
+    }
+    if (!formulaMedications.length || !formulaMedications.some((item) => item.name)) {
+      throw new Error("Agrega al menos un medicamento a la formula.");
+    }
+    payload.title = "Formula medica";
+    payload.consultation_at = `${payload.formula_date}T12:00`;
+    payload.next_control = "";
+    payload.formula_medications = formulaMedications;
+    payload.summary = buildConsultorioFormulaSummary(payload);
+    payload.indications = buildConsultorioFormulaIndications(payload);
+    payload.attachments_summary = "";
+    payload.document_reference = JSON.stringify({
+      kind: "formula",
+      diagnosis: String(payload.formula_diagnosis || "").trim(),
+      observations: String(payload.formula_observations || "").trim(),
+      medications: formulaMedications,
+    });
+  } else if (isVaccinationConsultationType(payload.consultation_type)) {
     const vaccinationName = getPatientVaccinationNameValue(form);
     if (!payload.vaccination_date) {
       throw new Error("Selecciona la fecha de vacunacion.");
@@ -6815,6 +7089,7 @@ async function handlePatientConsultationSubmit(event) {
       title: vaccinationName,
     });
     payload.attachments_summary = "";
+    payload.document_reference = "";
   } else {
     payload.summary = buildConsultorioStructuredText([
       ["Subjetivo", payload.subjective],
@@ -6831,8 +7106,8 @@ async function handlePatientConsultationSubmit(event) {
     payload.attachments_summary = serializeConsultorioAttachments(
       getPatientConsultationAttachments()
     );
+    payload.document_reference = "";
   }
-  payload.document_reference = "";
   payload.referred_to = "";
   payload.consent_required = false;
   payload.consent_id = "";
@@ -7434,6 +7709,28 @@ function bindForms() {
       elements.patientVaccinationCustomNameInput?.focus();
     });
     elements.patientVaccinationNameSelect.addEventListener("change", syncPatientVaccinationCustomField);
+  }
+  if (elements.patientFormulaAddMedicationButton) {
+    elements.patientFormulaAddMedicationButton.addEventListener("click", () => {
+      const items = getPatientFormulaMedications();
+      items.push(createConsultorioFormulaMedication());
+      renderPatientFormulaMedications(items);
+      elements.patientFormulaMedicationsList
+        ?.querySelector('[data-formula-medication-item]:last-child [data-formula-medication-field="name"]')
+        ?.focus();
+    });
+  }
+  if (elements.patientFormulaMedicationsList) {
+    elements.patientFormulaMedicationsList.addEventListener("click", (event) => {
+      const removeButton = event.target.closest("[data-remove-patient-formula-medication]");
+      if (!removeButton) {
+        return;
+      }
+      const index = Number(removeButton.dataset.removePatientFormulaMedication);
+      const items = getPatientFormulaMedications();
+      items.splice(index, 1);
+      renderPatientFormulaMedications(items);
+    });
   }
   if (elements.patientConsultationForm) {
     elements.patientConsultationForm.addEventListener(

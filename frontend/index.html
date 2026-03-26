@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Lativet Web</title>
-    <link rel="stylesheet" href="/styles.css?v=20260326-15" />
+    <link rel="stylesheet" href="/styles.css?v=20260326-16" />
   </head>
   <body>
     <div class="page-shell">
@@ -1340,6 +1340,52 @@
             </label>
           </div>
 
+          <div id="patientFormulaFields" class="consultorio-formula-fields is-hidden">
+            <div class="consultorio-formula-fields__top">
+              <label class="consultorio-consultation-form__field consultorio-formula-fields__date">
+                <span>Fecha formula</span>
+                <input id="patientFormulaDateInput" name="formula_date" type="date" />
+              </label>
+              <div class="consultorio-formula-fields__note">
+                En la historia clinica se ordenara por la fecha de radicacion del registro, no por la fecha establecida.
+              </div>
+            </div>
+
+            <label class="full consultorio-consultation-form__field">
+              <span>Diagnostico presuntivo y/o final</span>
+              <textarea
+                id="patientFormulaDiagnosisInput"
+                name="formula_diagnosis"
+                rows="3"
+                placeholder="Diagnostico presuntivo y/o final"
+              ></textarea>
+            </label>
+
+            <section class="consultorio-formula-medications">
+              <div class="consultorio-formula-medications__legend">Medicamentos</div>
+              <div id="patientFormulaMedicationsList" class="consultorio-formula-medications__list"></div>
+              <div class="consultorio-formula-medications__footer">
+                <button
+                  id="patientFormulaAddMedicationButton"
+                  class="consultorio-formula-medications__add"
+                  type="button"
+                >
+                  + Agregar medicamento
+                </button>
+              </div>
+            </section>
+
+            <label class="full consultorio-consultation-form__field">
+              <span>Observaciones</span>
+              <textarea
+                id="patientFormulaObservationsInput"
+                name="formula_observations"
+                rows="4"
+                placeholder="Observaciones"
+              ></textarea>
+            </label>
+          </div>
+
           <div id="patientConsultationClinicalFields" class="consultorio-consultation-mode consultorio-consultation-mode--clinical">
             <label class="consultorio-consultation-form__field">
               <span>Fecha consulta</span>
@@ -1660,6 +1706,6 @@
     </div>
   </div>
 
-  <script src="/app.js?v=20260326-13"></script>
+  <script src="/app.js?v=20260326-14"></script>
 </body>
 </html>
