@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Lativet Web</title>
-    <link rel="stylesheet" href="/styles.css?v=20260326-2" />
+    <link rel="stylesheet" href="/styles.css?v=20260326-3" />
   </head>
   <body>
     <div class="page-shell">
@@ -1266,7 +1266,8 @@
       <div class="modal-backdrop" data-close-patient-consultation-modal="true"></div>
       <div class="modal-card consultorio-consultation-modal" role="dialog" aria-modal="true" aria-labelledby="patientConsultationModalTitle">
         <div class="panel-heading consultorio-consultation-modal__header">
-          <div>
+          <div class="consultorio-consultation-modal__heading">
+            <span class="consultorio-consultation-modal__heading-icon" aria-hidden="true"></span>
             <h3 id="patientConsultationModalTitle" class="consultorio-consultation-modal__title">Registro de Consulta</h3>
             <p id="patientConsultationModalSubtitle" class="meta-copy is-hidden"></p>
           </div>
@@ -1288,11 +1289,11 @@
           <input type="hidden" name="consent_id" value="" />
           <input type="hidden" name="consent_required" value="false" />
 
-          <label>
+          <label class="consultorio-consultation-form__field">
             <span>Fecha consulta</span>
             <input name="consultation_at" type="datetime-local" required />
           </label>
-          <label>
+          <label class="consultorio-consultation-form__field">
             <span>Motivo</span>
             <select id="patientConsultationReasonSelect" name="title" required>
               <option value="">Selecciona una opcion</option>
@@ -1307,37 +1308,37 @@
             </select>
           </label>
 
-          <label>
+          <label class="consultorio-consultation-form__field">
             <span>S: Subjetivo (Anamnesis)</span>
             <textarea name="subjective" rows="2" placeholder="Subjetivo: Motivo"></textarea>
           </label>
-          <label>
+          <label class="consultorio-consultation-form__field">
             <span>O: Objetivo (Detalles del examen)</span>
             <textarea name="objective" rows="2" placeholder="Objetivo: Detalles del examen, listado de problemas"></textarea>
           </label>
-          <label class="full">
+          <label class="full consultorio-consultation-form__field consultorio-consultation-form__field--full">
             <span>I: Interpretacion (Diagnostico presuntivo/final)</span>
             <textarea name="interpretation" rows="2" placeholder="Interpretacion: diagnostico presuntivo, diferencial y final"></textarea>
           </label>
 
-          <label>
+          <label class="consultorio-consultation-form__field">
             <span>P: Plan terapeutico</span>
             <textarea name="therapeutic_plan" rows="2" placeholder="Plan terapeutico y tratamiento"></textarea>
           </label>
-          <label>
+          <label class="consultorio-consultation-form__field">
             <span>P: Plan diagnostico</span>
             <textarea name="diagnostic_plan" rows="2" placeholder="Plan diagnostico"></textarea>
           </label>
 
-          <label>
+          <label class="consultorio-consultation-form__field">
             <span>Proximo control</span>
             <input name="next_control" type="date" />
           </label>
-          <div class="consultorio-consultation-form__attachments">
+          <div class="consultorio-consultation-form__field consultorio-consultation-form__attachments">
             <span>Imagenes/Fotos/Adjuntos</span>
             <div class="consultorio-consultation-form__attachment-row">
               <input id="patientConsultationAttachmentInput" type="text" placeholder="Agregar referencia o adjunto" />
-              <button id="patientConsultationAttachmentAddButton" class="ghost-button" type="button">Agregar</button>
+              <button id="patientConsultationAttachmentAddButton" class="consultorio-consultation-form__add" type="button">Agregar</button>
             </div>
             <div id="patientConsultationAttachmentsList" class="consultorio-consultation-attachments"></div>
             <textarea id="patientConsultationAttachmentsValue" name="attachments_summary" class="is-hidden"></textarea>
@@ -1355,8 +1356,8 @@
           <div class="full consultorio-consultation-form__footer">
             <p id="patientConsultationRecordLabel" class="meta-copy"></p>
             <div class="form-actions">
-              <button id="cancelPatientConsultationButton" class="ghost-button" type="button">Cerrar</button>
-              <button class="primary-button" type="submit">Guardar</button>
+              <button id="cancelPatientConsultationButton" class="consultorio-consultation-form__cancel" type="button">Cerrar</button>
+              <button class="consultorio-consultation-form__submit" type="submit">Guardar</button>
             </div>
           </div>
         </form>
@@ -1387,6 +1388,6 @@
     </div>
   </div>
 
-  <script src="/app.js?v=20260326-2"></script>
+  <script src="/app.js?v=20260326-3"></script>
 </body>
 </html>

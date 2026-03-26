@@ -5265,6 +5265,7 @@ function closePatientConsultationModal() {
   }
   elements.patientConsultationModal.classList.add("is-hidden");
   elements.patientConsultationModal.setAttribute("aria-hidden", "true");
+  document.body?.classList.remove("modal-open");
 }
 
 function openPatientConsultationModal(consultation = null) {
@@ -5318,18 +5319,24 @@ function openPatientConsultationModal(consultation = null) {
   );
   if (elements.patientConsultationModalTitle) {
     elements.patientConsultationModalTitle.textContent = `${
-      consultation ? "Editar consulta" : "Registro de consulta"
+      consultation ? "Editar Consulta" : "Registro de Consulta"
     } - ${patient.name || "Paciente"}`;
   }
   if (elements.patientConsultationModalSubtitle) {
     elements.patientConsultationModalSubtitle.textContent = "";
     elements.patientConsultationModalSubtitle.classList.add("is-hidden");
   }
+  if (elements.closePatientConsultationModalButton) {
+    elements.closePatientConsultationModalButton.innerHTML = "&times;";
+  }
   if (elements.patientConsultationRecordLabel) {
     elements.patientConsultationRecordLabel.textContent = "";
   }
   elements.patientConsultationModal.classList.remove("is-hidden");
   elements.patientConsultationModal.setAttribute("aria-hidden", "false");
+  document.body?.classList.add("modal-open");
+  elements.patientConsultationModal.querySelector(".modal-card")?.scrollTo({ top: 0, behavior: "auto" });
+  form.elements.consultation_at.focus();
 }
 
 function openUserModal(user = null) {
