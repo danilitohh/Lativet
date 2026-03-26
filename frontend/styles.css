@@ -1204,7 +1204,7 @@ button:active {
 }
 
 .consultorio-consultation-modal__header {
-  padding: 16px 18px 14px;
+  padding: 13px 16px 11px;
   border-bottom: 1px solid rgba(219, 226, 239, 0.9);
   background: #fff;
 }
@@ -1267,21 +1267,21 @@ button:active {
 }
 
 .consultorio-consultation-form {
-  padding: 18px 14px 12px;
+  padding: 14px 12px 10px;
   margin-top: 0;
-  gap: 18px 16px;
+  gap: 12px 14px;
 }
 
 .consultorio-consultation-form__field {
-  gap: 8px;
+  gap: 6px;
 }
 
 .consultorio-consultation-form__field > span {
-  font-size: 0.79rem;
+  font-size: 0.74rem;
   letter-spacing: 0;
   text-transform: none;
   color: #6a77ad;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .consultorio-consultation-form input,
@@ -1290,19 +1290,20 @@ button:active {
   border: 1px solid #d7dff0;
   border-radius: 4px;
   background: #fff;
-  padding: 11px 12px;
+  padding: 8px 10px;
   color: #364152;
-  font-size: 0.92rem;
+  font-size: 0.86rem;
+  line-height: 1.35;
   box-shadow: none;
 }
 
 .consultorio-consultation-form input,
 .consultorio-consultation-form select {
-  min-height: 42px;
+  min-height: 36px;
 }
 
 .consultorio-consultation-form textarea {
-  min-height: 48px;
+  min-height: 40px;
   resize: vertical;
 }
 
@@ -1313,14 +1314,14 @@ button:active {
 
 .consultorio-consultation-form__attachments {
   display: grid;
-  gap: 8px;
+  gap: 6px;
   color: #6a77ad;
-  font-size: 0.9rem;
+  font-size: 0.84rem;
 }
 
 .consultorio-consultation-form__attachment-row {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   align-items: center;
   flex-wrap: wrap;
 }
@@ -1335,16 +1336,16 @@ button:active {
 
 .consultorio-consultation-form__attachment-hint {
   color: #8b96ad;
-  font-size: 0.82rem;
+  font-size: 0.76rem;
 }
 
 .consultorio-consultation-form__add,
 .consultorio-consultation-form__cancel,
 .consultorio-consultation-form__submit {
-  min-height: 32px;
-  padding: 8px 14px;
+  min-height: 30px;
+  padding: 6px 12px;
   border-radius: 4px;
-  font-size: 0.88rem;
+  font-size: 0.82rem;
   font-weight: 600;
   box-shadow: none;
 }
@@ -1357,15 +1358,15 @@ button:active {
 
 .consultorio-consultation-attachments {
   display: grid;
-  gap: 8px;
+  gap: 6px;
   min-height: 18px;
 }
 
 .consultorio-consultation-attachment {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
+  gap: 8px;
+  padding: 8px 10px;
   border: 1px solid rgba(11, 39, 49, 0.08);
   border-radius: 12px;
   background: rgba(247, 250, 255, 0.96);
@@ -1382,8 +1383,8 @@ button:active {
 
 .consultorio-consultation-attachment__thumbnail {
   display: block;
-  width: 64px;
-  height: 64px;
+  width: 52px;
+  height: 52px;
   object-fit: cover;
   border-radius: 10px;
   border: 1px solid rgba(120, 136, 220, 0.22);
@@ -1398,17 +1399,17 @@ button:active {
 }
 
 .consultorio-consultation-attachment__body strong {
-  font-size: 0.86rem;
+  font-size: 0.8rem;
 }
 
 .consultorio-consultation-attachment__body span {
   color: var(--muted);
-  font-size: 0.84rem;
+  font-size: 0.78rem;
   word-break: break-word;
 }
 
 .consultorio-consultation-attachment .ghost-button {
-  padding: 4px 8px;
+  padding: 3px 7px;
   margin-left: auto;
 }
 
@@ -1516,11 +1517,12 @@ button:active {
 }
 
 .consultorio-consultation-section summary {
-  padding: 12px 14px;
+  padding: 10px 12px;
   border-radius: 4px;
   background: #eff3fa;
   color: #667085;
   font-weight: 500;
+  font-size: 0.88rem;
 }
 
 .consultorio-consultation-section summary::after {
@@ -1532,14 +1534,14 @@ button:active {
 }
 
 .consultorio-consultation-section textarea {
-  margin-top: 10px;
+  margin-top: 8px;
 }
 
 .consultorio-consultation-exam-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 16px 16px;
-  padding: 16px 0 4px;
+  gap: 12px 12px;
+  padding: 12px 0 2px;
 }
 
 .consultorio-consultation-exam-grid .consultorio-consultation-form__field {
@@ -1552,7 +1554,7 @@ button:active {
 }
 
 .consultorio-consultation-form__footer {
-  padding: 12px 0 0;
+  padding: 10px 0 0;
   border-top: 1px solid #e3e8f2;
 }
 
