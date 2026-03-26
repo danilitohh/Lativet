@@ -1423,6 +1423,17 @@ button:active {
   margin-top: 10px;
 }
 
+.consultorio-consultation-exam-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px 16px;
+  padding: 16px 0 4px;
+}
+
+.consultorio-consultation-exam-grid .consultorio-consultation-form__field {
+  min-width: 0;
+}
+
 .consultorio-consultation-form__footer {
   padding: 12px 0 0;
   border-top: 1px solid #e3e8f2;
@@ -2954,6 +2965,10 @@ body.auth-locked .page-shell > :not(#loginModal) {
   .appointment-modal__row--split {
     grid-template-columns: 1fr;
   }
+
+  .consultorio-consultation-exam-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 780px) {
@@ -3028,6 +3043,10 @@ body.auth-locked .page-shell > :not(#loginModal) {
   }
 
   .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .consultorio-consultation-exam-grid {
     grid-template-columns: 1fr;
   }
 

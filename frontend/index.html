@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Lativet Web</title>
-    <link rel="stylesheet" href="/styles.css?v=20260326-4" />
+    <link rel="stylesheet" href="/styles.css?v=20260326-5" />
   </head>
   <body>
     <div class="page-shell">
@@ -1346,7 +1346,92 @@
 
           <details class="consultorio-consultation-section full">
             <summary>Examen fisico general</summary>
-            <textarea name="exam_general" rows="3" placeholder="Hallazgos del examen fisico general"></textarea>
+            <div class="consultorio-consultation-exam-grid">
+              <label class="consultorio-consultation-form__field">
+                <span>Temperatura</span>
+                <input name="exam_general_temperature" type="text" placeholder="Temperatura" />
+              </label>
+              <label class="consultorio-consultation-form__field">
+                <span>U.Temperatura</span>
+                <select name="exam_general_temperature_unit">
+                  <option value="">Unidad de medida</option>
+                  <option value="C">C</option>
+                  <option value="F">F</option>
+                </select>
+              </label>
+              <label class="consultorio-consultation-form__field">
+                <span>Peso</span>
+                <input name="exam_general_weight" type="text" placeholder="Peso" />
+              </label>
+              <label class="consultorio-consultation-form__field">
+                <span>U.Peso</span>
+                <select name="exam_general_weight_unit">
+                  <option value="">Unidad de medida</option>
+                  <option value="kg">kg</option>
+                  <option value="g">g</option>
+                  <option value="lb">lb</option>
+                </select>
+              </label>
+              <label class="consultorio-consultation-form__field">
+                <span>ICC</span>
+                <input name="exam_general_icc" type="text" placeholder="Indice de Condicion Corporal" />
+              </label>
+              <label class="consultorio-consultation-form__field">
+                <span>TTLC</span>
+                <input name="exam_general_ttlc" type="text" placeholder="Tiempo de Llenado Capilar" />
+              </label>
+              <label class="consultorio-consultation-form__field">
+                <span>Frecuencia cardiaca</span>
+                <input name="exam_general_heart_rate" type="text" placeholder="Frecuencia cardiaca" />
+              </label>
+              <label class="consultorio-consultation-form__field">
+                <span>Frecuencia respiratoria</span>
+                <input name="exam_general_respiratory_rate" type="text" placeholder="Frecuencia respiratoria" />
+              </label>
+              <label class="consultorio-consultation-form__field">
+                <span>Reflejos</span>
+                <input name="exam_general_reflexes" type="text" placeholder="Reflejos" />
+              </label>
+              <label class="consultorio-consultation-form__field">
+                <span>Pulso</span>
+                <input name="exam_general_pulse" type="text" placeholder="Pulso" />
+              </label>
+              <label class="consultorio-consultation-form__field">
+                <span>Saturacion</span>
+                <input name="exam_general_saturation" type="text" placeholder="Saturacion" />
+              </label>
+              <label class="consultorio-consultation-form__field">
+                <span>Presion arterial</span>
+                <input name="exam_general_blood_pressure" type="text" placeholder="Presion arterial" />
+              </label>
+              <label class="consultorio-consultation-form__field">
+                <span>Mucosas</span>
+                <select name="exam_general_mucosa">
+                  <option value="">Seleccione una opcion</option>
+                  <option value="Normales">Normales</option>
+                  <option value="Palidas">Palidas</option>
+                  <option value="Congestionadas">Congestionadas</option>
+                  <option value="Ictericas">Ictericas</option>
+                  <option value="Cianoticas">Cianoticas</option>
+                </select>
+              </label>
+              <label class="consultorio-consultation-form__field">
+                <span>Glicemia</span>
+                <input name="exam_general_glucose" type="text" placeholder="Glicemia" />
+              </label>
+              <label class="consultorio-consultation-form__field">
+                <span>Palpacion</span>
+                <input name="exam_general_palpation" type="text" placeholder="Palpacion" />
+              </label>
+              <label class="consultorio-consultation-form__field">
+                <span>Turgencia</span>
+                <input name="exam_general_turgency" type="text" placeholder="Retorno del pliegue cutaneo o turgencia cutanea" />
+              </label>
+              <label class="full consultorio-consultation-form__field">
+                <span>Observaciones</span>
+                <textarea name="exam_general_observations" rows="3" placeholder="Observaciones"></textarea>
+              </label>
+            </div>
           </details>
           <details class="consultorio-consultation-section full">
             <summary>Examen fisico especial</summary>
@@ -1388,6 +1473,6 @@
     </div>
   </div>
 
-  <script src="/app.js?v=20260326-4"></script>
+  <script src="/app.js?v=20260326-5"></script>
 </body>
 </html>

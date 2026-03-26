@@ -2261,6 +2261,7 @@ function getConsultorioPrimaryRecord() {
 
 function buildConsultorioDraftRecordPayload(patient, consultationPayload = {}) {
   const consultationAt = consultationPayload.consultation_at || new Date().toISOString();
+  const examGeneralSummary = buildConsultorioExamGeneralSummary(consultationPayload);
   return {
     patient_id: patient.id,
     opened_at: consultationAt,
@@ -2268,7 +2269,7 @@ function buildConsultorioDraftRecordPayload(patient, consultationPayload = {}) {
     anamnesis: consultationPayload.subjective || "",
     physical_exam_summary: buildConsultorioStructuredText([
       ["Objetivo", consultationPayload.objective],
-      ["Examen general", consultationPayload.exam_general],
+      ["Examen general", examGeneralSummary],
       ["Examen especial", consultationPayload.exam_special],
     ]),
     presumptive_diagnosis: consultationPayload.interpretation || "",
@@ -2287,6 +2288,80 @@ function buildConsultorioDraftRecordPayload(patient, consultationPayload = {}) {
     professional_license:
       consultationPayload.professional_license || getDefaultConsultorioProfessionalLicense(),
   };
+}
+
+const CONSULTORIO_EXAM_GENERAL_FIELDS = [
+  ["Temperatura", "exam_general_temperature"],
+  ["U.Temperatura", "exam_general_temperature_unit"],
+  ["Peso", "exam_general_weight"],
+  ["U.Peso", "exam_general_weight_unit"],
+  ["ICC", "exam_general_icc"],
+  ["TTLC", "exam_general_ttlc"],
+  ["Frecuencia cardiaca", "exam_general_heart_rate"],
+  ["Frecuencia respiratoria", "exam_general_respiratory_rate"],
+  ["Reflejos", "exam_general_reflexes"],
+  ["Pulso", "exam_general_pulse"],
+  ["Saturacion", "exam_general_saturation"],
+  ["Presion arterial", "exam_general_blood_pressure"],
+  ["Mucosas", "exam_general_mucosa"],
+  ["Glicemia", "exam_general_glucose"],
+  ["Palpacion", "exam_general_palpation"],
+  ["Turgencia", "exam_general_turgency"],
+  ["Observaciones", "exam_general_observations"],
+];
+
+const CONSULTORIO_EXAM_GENERAL_LABELS = CONSULTORIO_EXAM_GENERAL_FIELDS.reduce((acc, [label, key]) => {
+  acc[label.toLowerCase()] = key;
+  return acc;
+}, {});
+
+function normalizeConsultorioSummaryValue(value) {
+  return String(value || "")
+    .trim()
+    .replace(/\s*[\r\n]+\s*/g, " / ")
+    .replace(/\s*;\s*/g, ", ");
+}
+
+function buildConsultorioExamGeneralSummary(payload = {}) {
+  return CONSULTORIO_EXAM_GENERAL_FIELDS.map(([label, key]) => [
+    label,
+    normalizeConsultorioSummaryValue(payload[key]),
+  ])
+    .filter(([, value]) => value)
+    .map(([label, value]) => `${label}: ${value}`)
+    .join("; ");
+}
+
+function parseConsultorioExamGeneralSummary(value) {
+  const result = Object.fromEntries(
+    CONSULTORIO_EXAM_GENERAL_FIELDS.map(([, key]) => [key, ""])
+  );
+  const rawValue = String(value || "").trim();
+  if (!rawValue) {
+    return result;
+  }
+  let matchedAny = false;
+  rawValue
+    .split(/\s*;\s*/)
+    .map((segment) => segment.trim())
+    .filter(Boolean)
+    .forEach((segment) => {
+      const separator = segment.indexOf(":");
+      if (separator === -1) {
+        return;
+      }
+      const rawLabel = segment.slice(0, separator).trim().toLowerCase();
+      const mappedKey = CONSULTORIO_EXAM_GENERAL_LABELS[rawLabel];
+      if (!mappedKey) {
+        return;
+      }
+      result[mappedKey] = segment.slice(separator + 1).trim();
+      matchedAny = true;
+    });
+  if (!matchedAny) {
+    result.exam_general_observations = rawValue;
+  }
+  return result;
 }
 
 function buildConsultorioStructuredText(entries) {
@@ -2330,10 +2405,12 @@ function parseConsultorioConsultationDetails(consultation) {
     "plan diagnostico": "diagnosticPlan",
     "proximo control": "nextControl",
   });
+  const examGeneral = parseConsultorioExamGeneralSummary(summary.examGeneral || "");
   return {
     subjective: summary.subjective || "",
     objective: summary.objective || "",
-    examGeneral: summary.examGeneral || "",
+    examGeneral: examGeneral,
+    examGeneralSummary: summary.examGeneral || "",
     examSpecial: summary.examSpecial || "",
     interpretation: indications.interpretation || "",
     therapeuticPlan: indications.therapeuticPlan || "",
@@ -2346,7 +2423,9 @@ function getConsultorioConsultationExamLabel(consultation) {
   const details = parseConsultorioConsultationDetails(consultation);
   return (
     details.objective ||
-    details.examGeneral ||
+    details.examGeneral.exam_general_observations ||
+    details.examGeneral.exam_general_temperature ||
+    details.examGeneralSummary ||
     truncate(consultation?.summary || "Sin examen registrado", 72)
   );
 }
@@ -5330,7 +5409,11 @@ function openPatientConsultationModal(consultation = null) {
   form.elements.therapeutic_plan.value = details.therapeuticPlan || "";
   form.elements.diagnostic_plan.value = details.diagnosticPlan || "";
   form.elements.next_control.value = normalizeDateFieldValue(details.nextControl);
-  form.elements.exam_general.value = details.examGeneral || "";
+  Object.entries(details.examGeneral || {}).forEach(([fieldName, fieldValue]) => {
+    if (form.elements[fieldName]) {
+      form.elements[fieldName].value = fieldValue || "";
+    }
+  });
   form.elements.exam_special.value = details.examSpecial || "";
   if (elements.patientConsultationAttachmentInput) {
     elements.patientConsultationAttachmentInput.value = "";
@@ -6002,11 +6085,12 @@ async function handlePatientConsultationSubmit(event) {
   if (!patient) {
     throw new Error("No se encontro la mascota seleccionada.");
   }
+  const examGeneralSummary = buildConsultorioExamGeneralSummary(payload);
   payload.consultation_type = "Consulta";
   payload.summary = buildConsultorioStructuredText([
     ["Subjetivo", payload.subjective],
     ["Objetivo", payload.objective],
-    ["Examen general", payload.exam_general],
+    ["Examen general", examGeneralSummary],
     ["Examen especial", payload.exam_special],
   ]);
   payload.indications = buildConsultorioStructuredText([
