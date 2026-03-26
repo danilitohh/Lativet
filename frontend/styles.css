@@ -179,11 +179,12 @@ button:active {
 .ghost-button,
 .secondary-button,
 .inline-link {
-  padding: 11px 16px;
+  padding: 8px 12px;
   border-radius: 999px;
   color: var(--brand);
   background: rgba(255, 255, 255, 0.76);
   box-shadow: none;
+  font-size: 0.86rem;
 }
 
 .ghost-button--danger {
@@ -198,11 +199,12 @@ button:active {
 }
 
 .primary-button {
-  padding: 12px 18px;
+  padding: 8px 13px;
   border-radius: 999px;
   color: #fff;
   background: linear-gradient(135deg, var(--brand), #14907f);
   box-shadow: 0 14px 34px rgba(15, 118, 110, 0.28);
+  font-size: 0.86rem;
 }
 
 .secondary-button {
@@ -1204,7 +1206,7 @@ button:active {
 }
 
 .consultorio-consultation-modal__header {
-  padding: 13px 16px 11px;
+  padding: 11px 14px 9px;
   border-bottom: 1px solid rgba(219, 226, 239, 0.9);
   background: #fff;
 }
@@ -1249,7 +1251,7 @@ button:active {
 
 .consultorio-consultation-modal__title {
   margin: 0;
-  font-size: 1rem;
+  font-size: 0.92rem;
   font-weight: 700;
   color: #4455aa;
 }
@@ -1267,17 +1269,17 @@ button:active {
 }
 
 .consultorio-consultation-form {
-  padding: 14px 12px 10px;
+  padding: 11px 10px 8px;
   margin-top: 0;
-  gap: 12px 14px;
+  gap: 10px 12px;
 }
 
 .consultorio-consultation-form__field {
-  gap: 6px;
+  gap: 5px;
 }
 
 .consultorio-consultation-form__field > span {
-  font-size: 0.74rem;
+  font-size: 0.68rem;
   letter-spacing: 0;
   text-transform: none;
   color: #6a77ad;
@@ -1290,20 +1292,20 @@ button:active {
   border: 1px solid #d7dff0;
   border-radius: 4px;
   background: #fff;
-  padding: 8px 10px;
+  padding: 6px 8px;
   color: #364152;
-  font-size: 0.86rem;
+  font-size: 0.8rem;
   line-height: 1.35;
   box-shadow: none;
 }
 
 .consultorio-consultation-form input,
 .consultorio-consultation-form select {
-  min-height: 36px;
+  min-height: 32px;
 }
 
 .consultorio-consultation-form textarea {
-  min-height: 40px;
+  min-height: 34px;
   resize: vertical;
 }
 
@@ -1314,14 +1316,14 @@ button:active {
 
 .consultorio-consultation-form__attachments {
   display: grid;
-  gap: 6px;
+  gap: 5px;
   color: #6a77ad;
-  font-size: 0.84rem;
+  font-size: 0.78rem;
 }
 
 .consultorio-consultation-form__attachment-row {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   align-items: center;
   flex-wrap: wrap;
 }
@@ -1336,16 +1338,16 @@ button:active {
 
 .consultorio-consultation-form__attachment-hint {
   color: #8b96ad;
-  font-size: 0.76rem;
+  font-size: 0.72rem;
 }
 
 .consultorio-consultation-form__add,
 .consultorio-consultation-form__cancel,
 .consultorio-consultation-form__submit {
-  min-height: 30px;
-  padding: 6px 12px;
+  min-height: 28px;
+  padding: 5px 10px;
   border-radius: 4px;
-  font-size: 0.82rem;
+  font-size: 0.76rem;
   font-weight: 600;
   box-shadow: none;
 }
@@ -1358,15 +1360,15 @@ button:active {
 
 .consultorio-consultation-attachments {
   display: grid;
-  gap: 6px;
+  gap: 5px;
   min-height: 18px;
 }
 
 .consultorio-consultation-attachment {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
+  gap: 7px;
+  padding: 6px 8px;
   border: 1px solid rgba(11, 39, 49, 0.08);
   border-radius: 12px;
   background: rgba(247, 250, 255, 0.96);
@@ -1383,8 +1385,8 @@ button:active {
 
 .consultorio-consultation-attachment__thumbnail {
   display: block;
-  width: 52px;
-  height: 52px;
+  width: 42px;
+  height: 42px;
   object-fit: cover;
   border-radius: 10px;
   border: 1px solid rgba(120, 136, 220, 0.22);
@@ -1399,17 +1401,17 @@ button:active {
 }
 
 .consultorio-consultation-attachment__body strong {
-  font-size: 0.8rem;
+  font-size: 0.74rem;
 }
 
 .consultorio-consultation-attachment__body span {
   color: var(--muted);
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   word-break: break-word;
 }
 
 .consultorio-consultation-attachment .ghost-button {
-  padding: 3px 7px;
+  padding: 2px 6px;
   margin-left: auto;
 }
 
@@ -1517,12 +1519,12 @@ button:active {
 }
 
 .consultorio-consultation-section summary {
-  padding: 10px 12px;
+  padding: 8px 10px;
   border-radius: 4px;
   background: #eff3fa;
   color: #667085;
   font-weight: 500;
-  font-size: 0.88rem;
+  font-size: 0.8rem;
 }
 
 .consultorio-consultation-section summary::after {
@@ -1534,14 +1536,14 @@ button:active {
 }
 
 .consultorio-consultation-section textarea {
-  margin-top: 8px;
+  margin-top: 6px;
 }
 
 .consultorio-consultation-exam-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px 12px;
-  padding: 12px 0 2px;
+  gap: 10px 10px;
+  padding: 10px 0 2px;
 }
 
 .consultorio-consultation-exam-grid .consultorio-consultation-form__field {
@@ -1554,7 +1556,7 @@ button:active {
 }
 
 .consultorio-consultation-form__footer {
-  padding: 10px 0 0;
+  padding: 8px 0 0;
   border-top: 1px solid #e3e8f2;
 }
 
@@ -1790,14 +1792,16 @@ select,
 textarea {
   width: 100%;
   border: 1px solid rgba(11, 39, 49, 0.14);
-  border-radius: 16px;
-  padding: 12px 14px;
+  border-radius: 12px;
+  padding: 8px 10px;
   color: var(--text);
   background: rgba(255, 255, 255, 0.92);
+  font-size: 0.85rem;
+  line-height: 1.3;
 }
 
 textarea {
-  min-height: 92px;
+  min-height: 64px;
   resize: vertical;
 }
 
@@ -1811,18 +1815,18 @@ textarea:focus {
 .checkbox-row {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding-top: 12px;
+  gap: 9px;
+  padding-top: 8px;
 }
 
 .checkbox-row input {
-  width: 18px;
-  height: 18px;
+  width: 15px;
+  height: 15px;
   margin: 0;
 }
 
 .checkbox-row span {
-  font-size: 0.92rem;
+  font-size: 0.84rem;
   letter-spacing: 0;
 }
 
@@ -2718,13 +2722,13 @@ body.auth-locked .page-shell > :not(#loginModal) {
 
 .appointment-modal__form {
   display: grid;
-  gap: 16px;
-  padding: 18px 22px 22px;
+  gap: 12px;
+  padding: 14px 18px 18px;
 }
 
 .appointment-modal__row {
   display: grid;
-  gap: 14px;
+  gap: 10px;
 }
 
 .appointment-modal__row--split {
@@ -2733,13 +2737,13 @@ body.auth-locked .page-shell > :not(#loginModal) {
 
 .appointment-modal__field {
   display: grid;
-  gap: 8px;
+  gap: 6px;
   color: #5b6672;
-  font-size: 0.92rem;
+  font-size: 0.84rem;
 }
 
 .appointment-modal__field > span {
-  font-size: 0.9rem;
+  font-size: 0.8rem;
   color: #4b5563;
 }
 
@@ -2814,9 +2818,10 @@ body.auth-locked .page-shell > :not(#loginModal) {
 .appointment-modal textarea {
   border-radius: 10px;
   border: 1px solid rgba(15, 23, 42, 0.15);
-  padding: 10px 12px;
+  padding: 7px 9px;
   background: #ffffff;
   color: var(--text);
+  font-size: 0.84rem;
 }
 
 .appointment-modal input[type="search"] {
@@ -2824,20 +2829,20 @@ body.auth-locked .page-shell > :not(#loginModal) {
 }
 
 .appointment-modal textarea {
-  min-height: 110px;
+  min-height: 78px;
 }
 
 .appointment-modal__checkbox {
   display: flex;
   align-items: center;
-  gap: 10px;
-  font-size: 0.94rem;
+  gap: 8px;
+  font-size: 0.84rem;
   color: #4b5563;
 }
 
 .appointment-modal__checkbox input {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   margin: 0;
 }
 
