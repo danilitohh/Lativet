@@ -2226,7 +2226,7 @@ function getConsultorioProfileViewConfig() {
 }
 
 function isConsultorioWorkspaceOnlyView(profileConfig) {
-  return ["consultations", "vacunacion", "formula", "desparasitacion"].includes(
+  return ["consultations", "vacunacion", "formula", "desparasitacion", "hospamb"].includes(
     profileConfig?.value || ""
   );
 }
@@ -3537,6 +3537,107 @@ function buildConsultorioDewormingWorkspace(patient, profileConfig) {
   `;
 }
 
+function buildConsultorioHospAmbWorkspace(patient, profileConfig) {
+  const entries = getConsultorioScopedConsultations(profileConfig?.consultationTypes || null);
+  const content = entries.length
+    ? `
+      <div class="table-wrapper consultorio-consultations-table-wrapper consultorio-hospamb-table-wrapper">
+        <table class="data-table consultorio-consultations-table consultorio-hospamb-table">
+          <thead>
+            <tr>
+              <th>Opc.</th>
+              <th>Fecha</th>
+              <th>Tipo</th>
+              <th>Motivo</th>
+              <th>Detalle</th>
+              <th>Usuario</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${entries
+              .map((consultation) => {
+                const details = parseConsultorioConsultationDetails(consultation);
+                const detailLabel = truncate(
+                  [
+                    details.interpretation ? `Diagnostico: ${details.interpretation}` : "",
+                    details.therapeuticPlan ? `Plan: ${details.therapeuticPlan}` : "",
+                    !details.interpretation && !details.therapeuticPlan && consultation.summary
+                      ? consultation.summary
+                      : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" | ") || "Sin detalle registrado.",
+                  112
+                );
+                return `
+                  <tr>
+                    <td>
+                      <div class="table-actions consultorio-consultations-table__actions">
+                        <button
+                          class="ghost-button"
+                          type="button"
+                          data-edit-patient-consultation="${escapeHtml(consultation.id)}"
+                        >
+                          Editar
+                        </button>
+                      </div>
+                    </td>
+                    <td>${escapeHtml(formatDateTime(consultation.consultation_at))}</td>
+                    <td>${escapeHtml(consultation.consultation_type || "Hospitalizacion")}</td>
+                    <td>${escapeHtml(consultation.title || "Sin motivo")}</td>
+                    <td>${escapeHtml(detailLabel)}</td>
+                    <td>${escapeHtml(consultation.professional_name || "Sin usuario")}</td>
+                  </tr>
+                `;
+              })
+              .join("")}
+          </tbody>
+        </table>
+      </div>
+    `
+    : `
+      <div class="consultorio-module-empty consultorio-module-empty--hospamb">
+        <span class="consultorio-module-empty__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M8 3h8v18H8z"></path>
+            <path d="M3 8h5v13H3z"></path>
+            <path d="M16 11h5v10h-5z"></path>
+            <path d="M10 7h4"></path>
+            <path d="M12 5v4"></path>
+            <path d="M6 11h0"></path>
+            <path d="M6 14h0"></path>
+            <path d="M11 11h0"></path>
+            <path d="M13 11h0"></path>
+            <path d="M11 14h0"></path>
+            <path d="M13 14h0"></path>
+          </svg>
+        </span>
+        <strong>No hay registros de hospitalizacion/ambulatorio</strong>
+      </div>
+    `;
+  return `
+    <article class="consultorio-profile-shell consultorio-hospamb-shell">
+      <div class="consultorio-profile-table-toolbar">
+        <div>
+          <span class="consultorio-profile-shell__eyebrow">Hospitalizaciones/ambulatorios</span>
+          <h4>Hospitalizaciones/ambulatorios de ${escapeHtml(patient?.name || "Paciente")}</h4>
+        </div>
+        <div class="form-actions">
+          <button
+            class="primary-button"
+            type="button"
+            data-open-patient-consultation-modal="true"
+            data-consultation-profile-view="hospamb"
+          >
+            Registrar hospitalizacion/ambulatorio
+          </button>
+        </div>
+      </div>
+      ${content}
+    </article>
+  `;
+}
+
 function renderConsultorioPatientProfile() {
   if (!elements.consultorioPatientProfilePanel) {
     return;
@@ -3704,6 +3805,8 @@ function renderConsultorioPatientProfile() {
         ? buildConsultorioFormulasWorkspace(patient, profileConfig)
         : profileConfig?.value === "desparasitacion"
         ? buildConsultorioDewormingWorkspace(patient, profileConfig)
+        : profileConfig?.value === "hospamb"
+        ? buildConsultorioHospAmbWorkspace(patient, profileConfig)
         : buildConsultorioProfileTimelineMarkup(profileConfig, timelineItems);
     elements.consultorioPatientProfileSummary.innerHTML = `
       <div class="consultorio-profile-workspace">
