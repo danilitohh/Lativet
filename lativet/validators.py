@@ -290,6 +290,7 @@ def validate_consultation(payload: dict) -> dict:
         "title": required_text(payload, "title", "Titulo"),
         "summary": required_text(payload, "summary", "Resumen"),
         "indications": optional_text(payload, "indications"),
+        "next_control": optional_date(payload, "next_control", "Proximo control"),
         "attachments_summary": optional_text(payload, "attachments_summary"),
         "document_reference": optional_text(payload, "document_reference"),
         "referred_to": optional_text(payload, "referred_to"),

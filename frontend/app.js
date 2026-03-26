@@ -6430,11 +6430,21 @@ async function handlePatientConsultationSubmit(event) {
     payload.record_id = createdRecord?.id || "";
     form.elements.record_id.value = payload.record_id;
   }
-  await api.saveConsultation(payload);
+  const consultation = await api.saveConsultation(payload);
   closePatientConsultationModal();
+  let statusMessage = payload.id ? "Consulta actualizada." : "Consulta registrada.";
+  const reminder = consultation?.control_reminder;
+  if (reminder?.scheduled) {
+    statusMessage += ` Recordatorio de control programado para ${formatDateTime(
+      reminder.scheduled_for
+    )}.`;
+    if (Array.isArray(reminder.warnings) && reminder.warnings.length) {
+      statusMessage += ` ${reminder.warnings.join(" ")}`;
+    }
+  }
   await refreshData({
     sections: ["consultations", "records"],
-    message: payload.id ? "Consulta actualizada." : "Consulta registrada.",
+    message: statusMessage,
   });
   consultorioPatientProfileOpen = true;
   consultorioProfileView = "consultations";

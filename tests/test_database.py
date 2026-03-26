@@ -431,6 +431,81 @@ class DatabaseSmokeTests(unittest.TestCase):
         self.assertEqual(snapshot["reports"]["totals"]["consultations"], 1)
         self.assertEqual(snapshot["requests"]["orders"][0]["id"], consultation["id"])
 
+    def test_consultation_next_control_creates_and_removes_reminder(self) -> None:
+        owner = self.db.save_owner(
+            {
+                "full_name": "Sofia Rojas",
+                "identification_type": "CC",
+                "identification_number": "778811",
+                "phone": "3007778811",
+                "email": "sofia@example.com",
+                "address": "Carrera 12",
+            }
+        )
+        patient = self.db.save_patient(
+            {
+                "owner_id": owner["id"],
+                "name": "Milo",
+                "species": "Canino",
+                "breed": "Mestizo",
+                "sex": "Macho",
+                "age_years": "4",
+                "weight_kg": "14.2",
+                "reproductive_status": "Esterilizado",
+                "notes": "Paciente estable.",
+            }
+        )
+        record = self.db.save_clinical_record(
+            {
+                "patient_id": patient["id"],
+                "opened_at": "2026-03-24T09:00",
+                "reason_for_consultation": "Control posterior",
+                "anamnesis": "Paciente estable.",
+                "physical_exam_summary": "Sin novedades.",
+                "presumptive_diagnosis": "Control",
+                "procedures_plan": "Seguimiento.",
+                "recommendations": "Volver en unos dias.",
+                "professional_name": "Dra. Arias",
+                "professional_license": "MV-550",
+            },
+            finalize=False,
+        )
+
+        consultation = self.db.save_consultation(
+            {
+                "record_id": record["id"],
+                "consultation_at": "2026-03-24T10:00",
+                "consultation_type": "Consulta",
+                "title": "Control posterior",
+                "summary": "Paciente sin complicaciones.",
+                "next_control": "2026-03-30",
+                "professional_name": "Dra. Arias",
+                "professional_license": "MV-550",
+            }
+        )
+        reminder = self.db.get_control_reminder_for_consultation(consultation["id"])
+        self.assertIsNotNone(reminder)
+        self.assertEqual(reminder["scheduled_for"], "2026-03-30")
+        self.assertEqual(reminder["status"], "pending")
+
+        updated_consultation = self.db.save_consultation(
+            {
+                "id": consultation["id"],
+                "record_id": record["id"],
+                "consultation_at": "2026-03-24T10:00",
+                "consultation_type": "Consulta",
+                "title": "Control posterior",
+                "summary": "Paciente sin complicaciones.",
+                "next_control": "",
+                "professional_name": "Dra. Arias",
+                "professional_license": "MV-550",
+            }
+        )
+        self.assertEqual(updated_consultation["id"], consultation["id"])
+        self.assertIsNone(
+            self.db.get_control_reminder_for_consultation(consultation["id"])
+        )
+
     def test_appointments_follow_general_availability_and_prevent_overlap(self) -> None:
         owner = self.db.save_owner(
             {

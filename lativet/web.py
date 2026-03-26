@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import hmac
+import os
 from pathlib import Path
 
-import os
 from flask import Flask, jsonify, request, send_from_directory, session
 
 from .api import LativetService
@@ -92,6 +93,16 @@ def create_app(base_dir: Path | None = None, data_dir: Path | None = None) -> Fl
         status_code = 200 if result.get("ok") else 400
         return jsonify(result), status_code
 
+    def job_authorized() -> bool:
+        cron_secret = os.getenv("CRON_SECRET", "").strip()
+        if not cron_secret:
+            return True
+        auth_header = (request.headers.get("Authorization") or "").strip()
+        if not auth_header.startswith("Bearer "):
+            return False
+        token = auth_header.removeprefix("Bearer ").strip()
+        return hmac.compare_digest(token, cron_secret)
+
     def service_unavailable():
         detail = f": {service_error}" if service_error else ""
         return (
@@ -107,6 +118,7 @@ def create_app(base_dir: Path | None = None, data_dir: Path | None = None) -> Fl
             "/api/auth/status",
             "/api/auth/login",
             "/api/google-calendar/callback",
+            "/api/jobs/control-reminders",
         ):
             return None
         if init_service() is None:
@@ -305,6 +317,20 @@ def create_app(base_dir: Path | None = None, data_dir: Path | None = None) -> Fl
     @app.post("/api/consultations")
     def save_consultation():
         return respond(service.save_consultation(payload()))
+
+    @app.get("/api/jobs/control-reminders")
+    def run_control_reminders_job():
+        if init_service() is None:
+            return service_unavailable()
+        if not job_authorized():
+            return jsonify({"ok": False, "error": "No autorizado"}), 401
+        run_date = (request.args.get("date") or "").strip() or None
+        limit_raw = (request.args.get("limit") or "").strip()
+        try:
+            limit = int(limit_raw) if limit_raw else 100
+        except ValueError:
+            limit = 100
+        return respond(init_service().run_control_reminder_job(run_date=run_date, limit=limit))
 
     @app.post("/api/evolutions")
     def save_evolution():

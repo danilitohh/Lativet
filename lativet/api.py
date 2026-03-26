@@ -1,15 +1,17 @@
 from __future__ import annotations
 
 import os
+from datetime import date, datetime
 from functools import wraps
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from .compliance import get_compliance_context
 from .consent_pdf import ConsentBundle, build_consent_pdf
 from .database import Database, PostgresDatabase, normalize_postgres_dsn
 from .google_calendar import GoogleCalendarBridge
-from .mailer import SmtpConfig, send_email_with_attachment
-from .validators import ValidationError, validate_google_calendar_config
+from .mailer import SmtpConfig, send_email, send_email_with_attachment
+from .validators import ValidationError, parse_date, validate_google_calendar_config
 
 
 def safe_api_call(fn):
@@ -345,7 +347,144 @@ class LativetService:
 
     @safe_api_call
     def save_consultation(self, payload: dict) -> dict:
-        return self._db.save_consultation(payload)
+        consultation = self._db.save_consultation(payload)
+        consultation["control_reminder"] = self._describe_control_reminder(
+            consultation["id"]
+        )
+        return consultation
+
+    def _current_local_date(self) -> tuple[str, str]:
+        settings = self._db.get_settings()
+        timezone_name = settings.get("agenda_timezone") or "America/Bogota"
+        try:
+            timezone = ZoneInfo(timezone_name)
+        except Exception:
+            timezone_name = "America/Bogota"
+            timezone = ZoneInfo(timezone_name)
+        return datetime.now(timezone).date().isoformat(), timezone_name
+
+    def _describe_control_reminder(self, consultation_id: str) -> dict:
+        reminder = self._db.get_control_reminder_for_consultation(consultation_id)
+        if not reminder:
+            return {"scheduled": False}
+        settings = self._db.get_settings()
+        warnings: list[str] = []
+        if not settings.get("smtp_enabled"):
+            warnings.append("El correo SMTP esta deshabilitado.")
+        sender = (settings.get("smtp_from") or "").strip()
+        if not sender:
+            warnings.append("No hay un correo remitente configurado.")
+        password = self._db.get_secret_setting("smtp_app_password").strip()
+        if not password:
+            warnings.append("Falta la app password del correo SMTP.")
+        owner_email = (reminder.get("owner_email") or "").strip()
+        if not owner_email:
+            warnings.append("El propietario no tiene correo registrado.")
+        return {
+            "scheduled": True,
+            "scheduled_for": reminder.get("scheduled_for"),
+            "status": reminder.get("status") or "pending",
+            "owner_email": owner_email,
+            "ready_to_send": not warnings,
+            "warnings": warnings,
+        }
+
+    def _send_control_reminder_email(self, reminder: dict) -> dict:
+        settings = self._db.get_settings()
+        if not settings.get("smtp_enabled"):
+            return {"sent": False, "skipped": True, "reason": "smtp_disabled"}
+
+        sender = (settings.get("smtp_from") or "").strip()
+        if not sender:
+            return {"sent": False, "skipped": True, "reason": "smtp_from_missing"}
+
+        password = self._db.get_secret_setting("smtp_app_password").strip()
+        if not password:
+            return {"sent": False, "skipped": True, "reason": "smtp_password_missing"}
+
+        to_address = (reminder.get("owner_email") or "").strip()
+        if not to_address:
+            return {"sent": False, "skipped": True, "reason": "owner_email_missing"}
+
+        host = (settings.get("smtp_host") or "smtp.gmail.com").strip()
+        port = int(settings.get("smtp_port") or 587)
+        clinic_name = settings.get("clinic_name") or "Lativet"
+        patient_name = reminder.get("patient_name") or "tu mascota"
+        owner_name = reminder.get("owner_name") or "propietario"
+        control_date = reminder.get("scheduled_for") or ""
+        consultation_title = reminder.get("consultation_title") or "control veterinario"
+        try:
+            control_date_label = date.fromisoformat(control_date).strftime("%d/%m/%Y")
+        except ValueError:
+            control_date_label = control_date
+
+        subject = f"{clinic_name} - Recordatorio de control para {patient_name}"
+        body = (
+            f"Hola {owner_name},\n\n"
+            f"Te recordamos que {patient_name} tiene control programado para el {control_date_label}.\n"
+            f"Motivo registrado: {consultation_title}.\n\n"
+            "Si necesitas reprogramar o confirmar la asistencia, comunicate con la clinica.\n\n"
+            "Este correo fue generado automaticamente por Lativet.\n"
+        )
+
+        config = SmtpConfig(
+            host=host,
+            port=port,
+            username=sender,
+            password=password,
+            sender=sender,
+        )
+        try:
+            send_email(
+                config,
+                to_address=to_address,
+                subject=subject,
+                body=body,
+            )
+            return {"sent": True, "to": to_address}
+        except Exception as exc:
+            return {"sent": False, "to": to_address, "error": str(exc)}
+
+    @safe_api_call
+    def run_control_reminder_job(self, run_date: str | None = None, limit: int = 100) -> dict:
+        effective_date, timezone_name = self._current_local_date()
+        if run_date:
+            effective_date = parse_date(run_date, "Fecha de proceso")
+        reminders = self._db.list_due_control_reminders(effective_date, limit=limit)
+        result = {
+            "date": effective_date,
+            "timezone": timezone_name,
+            "processed": 0,
+            "sent": 0,
+            "failed": 0,
+            "skipped": 0,
+            "items": [],
+        }
+        for reminder in reminders:
+            delivery = self._send_control_reminder_email(reminder)
+            result["processed"] += 1
+            item = {
+                "id": reminder.get("id"),
+                "consultation_id": reminder.get("consultation_id"),
+                "patient_name": reminder.get("patient_name"),
+                "owner_email": reminder.get("owner_email"),
+                "scheduled_for": reminder.get("scheduled_for"),
+            }
+            if delivery.get("sent"):
+                self._db.mark_control_reminder_sent(reminder["id"])
+                result["sent"] += 1
+                item["status"] = "sent"
+            else:
+                error_message = delivery.get("reason") or delivery.get("error") or "send_failed"
+                self._db.mark_control_reminder_pending(reminder["id"], error_message)
+                item["status"] = "pending"
+                item["error"] = error_message
+                if delivery.get("skipped"):
+                    result["skipped"] += 1
+                else:
+                    result["failed"] += 1
+            result["items"].append(item)
+        return result
 
     @safe_api_call
     def save_evolution(self, payload: dict) -> dict:

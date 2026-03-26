@@ -415,6 +415,21 @@ class Database:
                 FOREIGN KEY (owner_id) REFERENCES owners(id)
             );
 
+            CREATE TABLE IF NOT EXISTS control_reminders (
+                id TEXT PRIMARY KEY,
+                consultation_id TEXT NOT NULL UNIQUE,
+                record_id TEXT NOT NULL,
+                patient_id TEXT NOT NULL,
+                owner_id TEXT NOT NULL,
+                scheduled_for TEXT NOT NULL,
+                status TEXT NOT NULL,
+                sent_at TEXT,
+                last_attempt_at TEXT,
+                last_error TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            );
+
             CREATE TABLE IF NOT EXISTS agenda_availability_rules (
                 id TEXT PRIMARY KEY,
                 scope TEXT NOT NULL,
@@ -602,6 +617,9 @@ class Database:
             CREATE INDEX IF NOT EXISTS idx_consultations_record_at ON clinical_consultations(record_id, consultation_at);
             CREATE INDEX IF NOT EXISTS idx_consultations_type ON clinical_consultations(consultation_type);
             CREATE INDEX IF NOT EXISTS idx_consultations_at ON clinical_consultations(consultation_at);
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_control_reminders_consultation ON control_reminders(consultation_id);
+            CREATE INDEX IF NOT EXISTS idx_control_reminders_status_date ON control_reminders(status, scheduled_for);
+            CREATE INDEX IF NOT EXISTS idx_control_reminders_owner ON control_reminders(owner_id);
             CREATE INDEX IF NOT EXISTS idx_availability_day ON agenda_availability_rules(day_of_week);
             CREATE INDEX IF NOT EXISTS idx_grooming_service_at ON grooming_documents(service_at);
             CREATE INDEX IF NOT EXISTS idx_grooming_status ON grooming_documents(status);
@@ -641,6 +659,7 @@ class Database:
         self._ensure_column("patients", "age_years", "REAL")
         self._ensure_column("owners", "alternate_phone", "TEXT")
         self._ensure_column("staff_users", "password_hash", "TEXT")
+        self._ensure_control_reminder_schema()
 
     def _ensure_column(self, table: str, column: str, definition: str) -> None:
         columns = {
@@ -650,6 +669,44 @@ class Database:
         if column in columns:
             return
         self.connection.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
+
+    def _ensure_control_reminder_schema(self) -> None:
+        self.connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS control_reminders (
+                id TEXT PRIMARY KEY,
+                consultation_id TEXT NOT NULL UNIQUE,
+                record_id TEXT NOT NULL,
+                patient_id TEXT NOT NULL,
+                owner_id TEXT NOT NULL,
+                scheduled_for TEXT NOT NULL,
+                status TEXT NOT NULL,
+                sent_at TEXT,
+                last_attempt_at TEXT,
+                last_error TEXT,
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL
+            )
+            """
+        )
+        self.connection.execute(
+            """
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_control_reminders_consultation
+            ON control_reminders(consultation_id)
+            """
+        )
+        self.connection.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_control_reminders_status_date
+            ON control_reminders(status, scheduled_for)
+            """
+        )
+        self.connection.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_control_reminders_owner
+            ON control_reminders(owner_id)
+            """
+        )
 
     def _has_settings(self) -> bool:
         row = self.connection.execute("SELECT COUNT(*) AS total FROM settings").fetchone()
@@ -722,6 +779,15 @@ class Database:
             raise ValidationError("El paciente seleccionado no existe.")
         return self._row_to_dict(row)
 
+    def _get_owner(self, owner_id: str) -> dict:
+        row = self.connection.execute(
+            "SELECT * FROM owners WHERE id = ?",
+            (owner_id,),
+        ).fetchone()
+        if row is None:
+            raise ValidationError("El propietario seleccionado no existe.")
+        return self._row_to_dict(row)
+
     def _get_record(self, record_id: str) -> dict:
         row = self.connection.execute(
             "SELECT * FROM clinical_records WHERE id = ?",
@@ -738,6 +804,187 @@ class Database:
         ).fetchone()
         if row is None:
             raise ValidationError("La consulta seleccionada no existe.")
+        return self._row_to_dict(row)
+
+    def _sync_control_reminder_for_consultation(
+        self,
+        consultation_id: str,
+        data: dict,
+        record: dict,
+        patient: dict,
+        timestamp: str,
+    ) -> None:
+        self._ensure_control_reminder_schema()
+        scheduled_for = data.get("next_control") or ""
+        if not scheduled_for:
+            self.connection.execute(
+                "DELETE FROM control_reminders WHERE consultation_id = ?",
+                (consultation_id,),
+            )
+            return
+        reminder_row = self.connection.execute(
+            """
+            SELECT id, scheduled_for, status, sent_at
+            FROM control_reminders
+            WHERE consultation_id = ?
+            """,
+            (consultation_id,),
+        ).fetchone()
+        preserve_sent = bool(
+            reminder_row
+            and reminder_row["status"] == "sent"
+            and reminder_row["scheduled_for"] == scheduled_for
+        )
+        reminder_id = reminder_row["id"] if reminder_row else uuid.uuid4().hex
+        status = "sent" if preserve_sent else "pending"
+        sent_at = reminder_row["sent_at"] if preserve_sent else None
+        if reminder_row:
+            self.connection.execute(
+                """
+                UPDATE control_reminders
+                SET record_id = ?, patient_id = ?, owner_id = ?, scheduled_for = ?,
+                    status = ?, sent_at = ?, last_attempt_at = ?, last_error = ?, updated_at = ?
+                WHERE id = ?
+                """,
+                (
+                    record["id"],
+                    patient["id"],
+                    patient["owner_id"],
+                    scheduled_for,
+                    status,
+                    sent_at,
+                    None if not preserve_sent else timestamp,
+                    "",
+                    timestamp,
+                    reminder_id,
+                ),
+            )
+            action = "update"
+        else:
+            self.connection.execute(
+                """
+                INSERT INTO control_reminders (
+                    id, consultation_id, record_id, patient_id, owner_id, scheduled_for,
+                    status, sent_at, last_attempt_at, last_error, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    reminder_id,
+                    consultation_id,
+                    record["id"],
+                    patient["id"],
+                    patient["owner_id"],
+                    scheduled_for,
+                    status,
+                    sent_at,
+                    None,
+                    "",
+                    timestamp,
+                    timestamp,
+                ),
+            )
+            action = "create"
+        self._record_audit(
+            "control_reminder",
+            reminder_id,
+            action,
+            data["professional_name"],
+            {
+                "consultation_id": consultation_id,
+                "patient_id": patient["id"],
+                "owner_id": patient["owner_id"],
+                "scheduled_for": scheduled_for,
+                "status": status,
+            },
+        )
+
+    def get_control_reminder_for_consultation(self, consultation_id: str) -> dict | None:
+        self._ensure_control_reminder_schema()
+        row = self.connection.execute(
+            """
+            SELECT cr.*, o.full_name AS owner_name, o.email AS owner_email,
+                   p.name AS patient_name, c.title AS consultation_title
+            FROM control_reminders cr
+            JOIN owners o ON o.id = cr.owner_id
+            JOIN patients p ON p.id = cr.patient_id
+            LEFT JOIN clinical_consultations c ON c.id = cr.consultation_id
+            WHERE cr.consultation_id = ?
+            """,
+            (consultation_id,),
+        ).fetchone()
+        return self._row_to_dict(row)
+
+    def list_due_control_reminders(self, due_date: str, limit: int = 100) -> list[dict]:
+        self._ensure_control_reminder_schema()
+        rows = self.connection.execute(
+            """
+            SELECT cr.*, o.full_name AS owner_name, o.email AS owner_email,
+                   p.name AS patient_name, c.title AS consultation_title
+            FROM control_reminders cr
+            JOIN owners o ON o.id = cr.owner_id
+            JOIN patients p ON p.id = cr.patient_id
+            LEFT JOIN clinical_consultations c ON c.id = cr.consultation_id
+            WHERE cr.status = 'pending'
+              AND cr.scheduled_for <= ?
+            ORDER BY cr.scheduled_for ASC, cr.created_at ASC
+            LIMIT ?
+            """,
+            (due_date, int(limit)),
+        ).fetchall()
+        return [self._row_to_dict(row) for row in rows]
+
+    def mark_control_reminder_sent(self, reminder_id: str) -> dict:
+        self._ensure_control_reminder_schema()
+        timestamp = now_iso()
+        with self._tx():
+            updated = self.connection.execute(
+                """
+                UPDATE control_reminders
+                SET status = ?, sent_at = ?, last_attempt_at = ?, last_error = ?, updated_at = ?
+                WHERE id = ?
+                """,
+                ("sent", timestamp, timestamp, "", timestamp, reminder_id),
+            )
+            if not updated.rowcount:
+                raise ValidationError("El recordatorio de control seleccionado no existe.")
+            self._record_audit(
+                "control_reminder",
+                reminder_id,
+                "sent",
+                "sistema",
+                {"sent_at": timestamp},
+            )
+        row = self.connection.execute(
+            "SELECT * FROM control_reminders WHERE id = ?",
+            (reminder_id,),
+        ).fetchone()
+        return self._row_to_dict(row)
+
+    def mark_control_reminder_pending(self, reminder_id: str, error: str) -> dict:
+        self._ensure_control_reminder_schema()
+        timestamp = now_iso()
+        with self._tx():
+            updated = self.connection.execute(
+                """
+                UPDATE control_reminders
+                SET status = ?, last_attempt_at = ?, last_error = ?, updated_at = ?
+                WHERE id = ?
+                """,
+                ("pending", timestamp, error, timestamp, reminder_id),
+            )
+            if not updated.rowcount:
+                raise ValidationError("El recordatorio de control seleccionado no existe.")
+            self._record_audit(
+                "control_reminder",
+                reminder_id,
+                "retry_pending",
+                "sistema",
+                {"error": error, "attempted_at": timestamp},
+            )
+        row = self.connection.execute(
+            "SELECT * FROM control_reminders WHERE id = ?",
+            (reminder_id,),
+        ).fetchone()
         return self._row_to_dict(row)
 
     def get_settings(self) -> dict:
@@ -1734,6 +1981,13 @@ class Database:
                     timestamp,
                     data["record_id"],
                 ),
+            )
+            self._sync_control_reminder_for_consultation(
+                consultation_id,
+                data,
+                record,
+                patient,
+                timestamp,
             )
             self._record_audit(
                 "clinical_consultation",
