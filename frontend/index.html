@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Lativet Web</title>
-    <link rel="stylesheet" href="/styles.css?v=20260325-9" />
+    <link rel="stylesheet" href="/styles.css?v=20260326-1" />
   </head>
   <body>
     <div class="page-shell">
@@ -1267,11 +1267,17 @@
       <div class="modal-card consultorio-consultation-modal" role="dialog" aria-modal="true" aria-labelledby="patientConsultationModalTitle">
         <div class="panel-heading consultorio-consultation-modal__header">
           <div>
-            <p class="eyebrow">Consultas</p>
-            <h3 id="patientConsultationModalTitle">Registro de consulta</h3>
-            <p id="patientConsultationModalSubtitle" class="meta-copy">Completa la informacion clinica de la consulta.</p>
+            <h3 id="patientConsultationModalTitle" class="consultorio-consultation-modal__title">Registro de Consulta</h3>
+            <p id="patientConsultationModalSubtitle" class="meta-copy is-hidden"></p>
           </div>
-          <button id="closePatientConsultationModalButton" class="ghost-button" type="button">Cerrar</button>
+          <button
+            id="closePatientConsultationModalButton"
+            class="consultorio-consultation-modal__close"
+            type="button"
+            aria-label="Cerrar"
+          >
+            ×
+          </button>
         </div>
         <form id="patientConsultationForm" class="form-grid consultorio-consultation-form">
           <input type="hidden" name="id" />
@@ -1301,13 +1307,13 @@
             </select>
           </label>
 
-          <label class="full">
+          <label>
             <span>S: Subjetivo (Anamnesis)</span>
-            <textarea name="subjective" rows="2" placeholder="Subjetivo: motivo y antecedentes relevantes"></textarea>
+            <textarea name="subjective" rows="2" placeholder="Subjetivo: Motivo"></textarea>
           </label>
-          <label class="full">
+          <label>
             <span>O: Objetivo (Detalles del examen)</span>
-            <textarea name="objective" rows="2" placeholder="Objetivo: detalles del examen y listado de problemas"></textarea>
+            <textarea name="objective" rows="2" placeholder="Objetivo: Detalles del examen, listado de problemas"></textarea>
           </label>
           <label class="full">
             <span>I: Interpretacion (Diagnostico presuntivo/final)</span>
@@ -1381,6 +1387,6 @@
     </div>
   </div>
 
-  <script src="/app.js?v=20260325-8"></script>
+  <script src="/app.js?v=20260326-1"></script>
 </body>
 </html>

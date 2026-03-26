@@ -5093,7 +5093,7 @@ function setPatientConsultationAttachments(lines = []) {
             `
           )
           .join("")
-      : '<p class="meta-copy">Sin adjuntos agregados.</p>';
+      : "";
   }
 }
 
@@ -5129,7 +5129,6 @@ function openPatientConsultationModal(consultation = null) {
     );
     return;
   }
-  const owner = getConsultorioOwner();
   const form = elements.patientConsultationForm;
   form.reset();
   const details = parseConsultorioConsultationDetails(consultation);
@@ -5168,16 +5167,11 @@ function openPatientConsultationModal(consultation = null) {
     } - ${patient.name || "Paciente"}`;
   }
   if (elements.patientConsultationModalSubtitle) {
-    elements.patientConsultationModalSubtitle.textContent = `${
-      patient.species || "Paciente"
-    }${patient.breed ? ` / ${patient.breed}` : ""} | Tutor: ${
-      owner?.full_name || patient.owner_name || "Sin propietario"
-    }`;
+    elements.patientConsultationModalSubtitle.textContent = "";
+    elements.patientConsultationModalSubtitle.classList.add("is-hidden");
   }
   if (elements.patientConsultationRecordLabel) {
-    elements.patientConsultationRecordLabel.textContent = `Historia asociada: ${formatDateTime(
-      record.opened_at
-    )}`;
+    elements.patientConsultationRecordLabel.textContent = "";
   }
   elements.patientConsultationModal.classList.remove("is-hidden");
   elements.patientConsultationModal.setAttribute("aria-hidden", "false");
