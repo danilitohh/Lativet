@@ -1153,6 +1153,112 @@ button:active {
   line-height: 1.45;
 }
 
+.consultorio-profile-table-toolbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.consultorio-profile-table-toolbar h4 {
+  margin: 4px 0 0;
+  font-family: var(--font-head);
+  font-size: 1.05rem;
+}
+
+.consultorio-consultations-table-wrapper {
+  margin-top: 16px;
+}
+
+.consultorio-consultations-table td {
+  vertical-align: top;
+}
+
+.consultorio-consultations-table__actions {
+  flex-wrap: wrap;
+}
+
+.consultorio-consultation-modal {
+  width: min(1120px, 100%);
+}
+
+.consultorio-consultation-form {
+  margin-top: 12px;
+}
+
+.consultorio-consultation-form__attachments {
+  display: grid;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.consultorio-consultation-form__attachments > span {
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.consultorio-consultation-form__attachment-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.consultorio-consultation-form__attachment-row input {
+  flex: 1 1 auto;
+}
+
+.consultorio-consultation-attachments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.consultorio-consultation-attachment {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid rgba(11, 39, 49, 0.08);
+  border-radius: 999px;
+  background: rgba(247, 250, 255, 0.96);
+  color: var(--ink);
+}
+
+.consultorio-consultation-attachment .ghost-button {
+  padding: 4px 8px;
+}
+
+.consultorio-consultation-section {
+  border: 1px solid rgba(11, 39, 49, 0.08);
+  border-radius: 16px;
+  background: rgba(247, 250, 255, 0.92);
+  padding: 0 14px 14px;
+}
+
+.consultorio-consultation-section summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 14px 0;
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.consultorio-consultation-section summary::-webkit-details-marker {
+  display: none;
+}
+
+.consultorio-consultation-form__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
 .owner-patients-table__link {
   padding: 0;
   border: 0;
@@ -2738,6 +2844,13 @@ body.auth-locked .page-shell > :not(#loginModal) {
 
   .form-grid {
     grid-template-columns: 1fr;
+  }
+
+  .consultorio-profile-table-toolbar,
+  .consultorio-consultation-form__footer,
+  .consultorio-consultation-form__attachment-row {
+    flex-direction: column;
+    align-items: stretch;
   }
 
   .hero-copy h2 {

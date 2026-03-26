@@ -57,6 +57,7 @@ DEFAULT_SETTINGS = {
 APPOINTMENT_STATUSES = {"scheduled", "confirmed", "completed", "cancelled", "no_show"}
 ACTIVE_APPOINTMENT_STATUSES = {"scheduled", "confirmed"}
 CONSULTATION_TYPES = {
+    "Consulta",
     "Vacunacion",
     "Formula",
     "Desparasitacion",

@@ -101,7 +101,8 @@ const CONSULTORIO_PROFILE_VIEWS = [
     label: "Consultas",
     panels: ["consultorioConsultationFormPanel", "consultorioConsultationsPanel"],
     dataRequirements: ["owners", "patients", "records", "consultations"],
-    formConsultationType: "",
+    consultationTypes: ["Consulta"],
+    formConsultationType: "Consulta",
   },
   {
     value: "vacunacion",
@@ -265,6 +266,7 @@ const AGENDA_TIMELINE_START_HOUR = 6;
 const AGENDA_TIMELINE_END_HOUR = 21;
 const AGENDA_TIMELINE_HOUR_HEIGHT = 44;
 const consultationTypes = [
+  "Consulta",
   "Vacunacion",
   "Formula",
   "Desparasitacion",
@@ -980,6 +982,18 @@ function cacheElements() {
     "consultorioPatientProfileSummary",
     "consultorioPatientBackButton",
     "consultorioPatientEditButton",
+    "patientConsultationModal",
+    "closePatientConsultationModalButton",
+    "cancelPatientConsultationButton",
+    "patientConsultationModalTitle",
+    "patientConsultationModalSubtitle",
+    "patientConsultationForm",
+    "patientConsultationReasonSelect",
+    "patientConsultationRecordLabel",
+    "patientConsultationAttachmentInput",
+    "patientConsultationAttachmentAddButton",
+    "patientConsultationAttachmentsList",
+    "patientConsultationAttachmentsValue",
     "complianceNotes",
     "complianceSources",
     "appointmentForm",
@@ -2088,6 +2102,91 @@ function getConsultorioProfileCount(option) {
   return getConsultorioScopedConsultations(option.consultationTypes).length;
 }
 
+function getConsultorioPrimaryRecord() {
+  return getConsultorioScopedRecords()
+    .slice()
+    .sort((left, right) => String(right.opened_at || "").localeCompare(String(left.opened_at || "")))[0] || null;
+}
+
+function buildConsultorioStructuredText(entries) {
+  return entries
+    .map(([label, value]) => [label, String(value || "").trim()])
+    .filter(([, value]) => value)
+    .map(([label, value]) => `${label}: ${value}`)
+    .join("\n");
+}
+
+function parseConsultorioStructuredText(value, labels) {
+  const lines = String(value || "")
+    .split(/\r?\n+/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const result = Object.fromEntries(Object.values(labels).map((key) => [key, ""]));
+  lines.forEach((line) => {
+    const separator = line.indexOf(":");
+    if (separator === -1) {
+      return;
+    }
+    const rawLabel = line.slice(0, separator).trim().toLowerCase();
+    const mappedKey = labels[rawLabel];
+    if (mappedKey) {
+      result[mappedKey] = line.slice(separator + 1).trim();
+    }
+  });
+  return result;
+}
+
+function parseConsultorioConsultationDetails(consultation) {
+  const summary = parseConsultorioStructuredText(consultation?.summary || "", {
+    subjetivo: "subjective",
+    objetivo: "objective",
+    "examen general": "examGeneral",
+    "examen especial": "examSpecial",
+  });
+  const indications = parseConsultorioStructuredText(consultation?.indications || "", {
+    interpretacion: "interpretation",
+    "plan terapeutico": "therapeuticPlan",
+    "plan diagnostico": "diagnosticPlan",
+    "proximo control": "nextControl",
+  });
+  return {
+    subjective: summary.subjective || "",
+    objective: summary.objective || "",
+    examGeneral: summary.examGeneral || "",
+    examSpecial: summary.examSpecial || "",
+    interpretation: indications.interpretation || "",
+    therapeuticPlan: indications.therapeuticPlan || "",
+    diagnosticPlan: indications.diagnosticPlan || "",
+    nextControl: indications.nextControl || "",
+  };
+}
+
+function getConsultorioConsultationExamLabel(consultation) {
+  const details = parseConsultorioConsultationDetails(consultation);
+  return (
+    details.objective ||
+    details.examGeneral ||
+    truncate(consultation?.summary || "Sin examen registrado", 72)
+  );
+}
+
+function getConsultorioConsultationDiagnosisLabel(consultation) {
+  const details = parseConsultorioConsultationDetails(consultation);
+  return (
+    details.interpretation ||
+    details.therapeuticPlan ||
+    truncate(consultation?.indications || "Sin diagnostico registrado", 88)
+  );
+}
+
+function getDefaultConsultorioProfessionalName() {
+  return authState.currentUser?.full_name || state.settings?.clinic_name || "Lativet";
+}
+
+function getDefaultConsultorioProfessionalLicense() {
+  return state.settings?.clinic_registration || authState.currentUser?.role || "No registrada";
+}
+
 function getConsultorioVisiblePanels() {
   const subsection = getSubsectionOption("consultorio")?.value || "patients";
   if (subsection === "grooming") {
@@ -2126,6 +2225,7 @@ function openConsultorioPatientProfile(patient) {
 
 function closeConsultorioPatientProfile(options = {}) {
   const { preservePatient = false } = options;
+  closePatientConsultationModal();
   consultorioPatientProfileOpen = false;
   if (!preservePatient) {
     consultorioPatientId = "";
@@ -2315,6 +2415,226 @@ function renderPatients() {
   `;
 }
 
+function buildConsultorioProfileOverviewMarkup({
+  owner,
+  patient,
+  ownerPatients,
+  patientFacts,
+  profileConfig,
+}) {
+  return `
+    <div class="consultorio-profile-strip">
+      <article class="consultorio-profile-shell consultorio-profile-owner-card">
+        <header>
+          <span class="consultorio-profile-shell__eyebrow">Propietario</span>
+          <h4>${escapeHtml(owner?.full_name || patient?.owner_name || "Sin propietario")}</h4>
+        </header>
+        <dl class="consultorio-profile-owner-data">
+          <div>
+            <dt>Identificacion</dt>
+            <dd>${escapeHtml(
+              owner
+                ? [owner.identification_type, owner.identification_number].filter(Boolean).join(" ")
+                : "Sin dato"
+            )}</dd>
+          </div>
+          <div>
+            <dt>Telefonos</dt>
+            <dd>${escapeHtml([owner?.phone, owner?.alternate_phone].filter(Boolean).join(" / ") || "Sin dato")}</dd>
+          </div>
+          <div>
+            <dt>Correo</dt>
+            <dd>${escapeHtml(owner?.email || "Sin dato")}</dd>
+          </div>
+          <div>
+            <dt>Direccion</dt>
+            <dd>${escapeHtml(owner?.address || "Sin dato")}</dd>
+          </div>
+        </dl>
+      </article>
+
+      <article class="consultorio-profile-shell consultorio-profile-pets-card">
+        <header>
+          <span class="consultorio-profile-shell__eyebrow">Mascotas</span>
+          <h4>Mascotas del propietario</h4>
+        </header>
+        <div class="consultorio-profile-pet-switch">
+          ${ownerPatients
+            .map(
+              (item) => `
+                <button
+                  class="consultorio-profile-pet-switch__item${item.id === patient?.id ? " is-active" : ""}"
+                  type="button"
+                  data-patient-select="${escapeHtml(item.id)}"
+                >
+                  <strong>${escapeHtml(item.name || "Mascota")}</strong>
+                  <span>${escapeHtml(item.species || "Paciente")}${item.breed ? ` / ${escapeHtml(item.breed)}` : ""}</span>
+                </button>
+              `
+            )
+            .join("")}
+        </div>
+      </article>
+    </div>
+
+    <article class="consultorio-profile-shell consultorio-profile-patient-sheet">
+      <div class="consultorio-profile-patient-sheet__header">
+        <div class="consultorio-profile-patient-sheet__identity">
+          <span class="consultorio-profile-avatar">${escapeHtml(getPatientInitials(patient))}</span>
+          <div>
+            <span class="consultorio-profile-shell__eyebrow">Datos generales</span>
+            <h4>${escapeHtml(patient?.name || "Paciente")}</h4>
+            <p>${escapeHtml(profileConfig?.label || "Historia clinica")}</p>
+          </div>
+        </div>
+        <div class="consultorio-profile-patient-sheet__chips">
+          <span class="consultorio-profile-chip">${escapeHtml(patient?.species || "Sin especie")}</span>
+          <span class="consultorio-profile-chip">${escapeHtml(patient?.sex || "Sin genero")}</span>
+          <span class="consultorio-profile-chip">${escapeHtml(
+            patient?.reproductive_status || "Sin estado reproductivo"
+          )}</span>
+        </div>
+      </div>
+      <dl class="consultorio-profile-facts">
+        ${patientFacts
+          .map(
+            ([label, value]) => `
+              <div>
+                <dt>${escapeHtml(label)}</dt>
+                <dd>${escapeHtml(value)}</dd>
+              </div>
+            `
+          )
+          .join("")}
+      </dl>
+    </article>
+  `;
+}
+
+function buildConsultorioProfileTimelineMarkup(profileConfig, timelineItems) {
+  return `
+    <article class="consultorio-profile-shell consultorio-profile-timeline-shell">
+      <div class="consultorio-profile-timeline-shell__header">
+        <div>
+          <span class="consultorio-profile-shell__eyebrow">Expediente</span>
+          <h4>${escapeHtml(profileConfig?.label || "Historia clinica")}</h4>
+        </div>
+        <span class="consultorio-profile-chip">${timelineItems.length} registros</span>
+      </div>
+      ${
+        timelineItems.length
+          ? `
+            <div class="consultorio-profile-timeline">
+              ${timelineItems
+                .map(
+                  (item) => `
+                    <article class="consultorio-profile-timeline__item">
+                      <div class="consultorio-profile-timeline__rail">
+                        <span class="consultorio-profile-timeline__dot"></span>
+                      </div>
+                      <div class="consultorio-profile-timeline__content">
+                        <header>
+                          <div>
+                            <strong>${escapeHtml(item.title)}</strong>
+                            <span>${escapeHtml(item.typeLabel)} | ${escapeHtml(formatDateTime(item.at))}</span>
+                          </div>
+                          <span class="${escapeHtml(item.tone)}">${escapeHtml(item.typeLabel)}</span>
+                        </header>
+                        <div class="consultorio-profile-timeline__details">
+                          ${item.lines.map((line) => `<p>${escapeHtml(line)}</p>`).join("")}
+                        </div>
+                      </div>
+                    </article>
+                  `
+                )
+                .join("")}
+            </div>
+          `
+          : emptyState("Este paciente aun no tiene registros en esta seccion.")
+      }
+    </article>
+  `;
+}
+
+function buildConsultorioConsultationsWorkspace(patient, profileConfig) {
+  const consultations = getConsultorioScopedConsultations(profileConfig?.consultationTypes || null);
+  const currentRecord = getConsultorioPrimaryRecord();
+  const rows = consultations.length
+    ? `
+      <div class="table-wrapper consultorio-consultations-table-wrapper">
+        <table class="data-table consultorio-consultations-table">
+          <thead>
+            <tr>
+              <th>Opc.</th>
+              <th>Fecha</th>
+              <th>Motivo</th>
+              <th>Examen</th>
+              <th>Diagnostico</th>
+              <th>Imagenes/Fotos/Adjuntos</th>
+              <th>Usuario</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${consultations
+              .map(
+                (consultation) => `
+                  <tr>
+                    <td>
+                      <div class="table-actions consultorio-consultations-table__actions">
+                        <button
+                          class="ghost-button"
+                          type="button"
+                          data-edit-patient-consultation="${escapeHtml(consultation.id)}"
+                        >
+                          Editar
+                        </button>
+                      </div>
+                    </td>
+                    <td>${escapeHtml(formatDateTime(consultation.consultation_at))}</td>
+                    <td>${escapeHtml(consultation.title || "Consulta")}</td>
+                    <td>${escapeHtml(getConsultorioConsultationExamLabel(consultation))}</td>
+                    <td>${escapeHtml(getConsultorioConsultationDiagnosisLabel(consultation))}</td>
+                    <td>${escapeHtml(truncate(consultation.attachments_summary || "-", 88))}</td>
+                    <td>${escapeHtml(consultation.professional_name || "Sin usuario")}</td>
+                  </tr>
+                `
+              )
+              .join("")}
+          </tbody>
+        </table>
+      </div>
+    `
+    : emptyState("Este paciente aun no tiene consultas registradas.");
+  return `
+    <article class="consultorio-profile-shell consultorio-consultations-shell">
+      <div class="consultorio-profile-table-toolbar">
+        <div>
+          <span class="consultorio-profile-shell__eyebrow">Consultas</span>
+          <h4>Consultas de ${escapeHtml(patient?.name || "Paciente")}</h4>
+          <p class="meta-copy">
+            ${
+              currentRecord
+                ? `Historia asociada: ${escapeHtml(formatDateTime(currentRecord.opened_at))}`
+                : "Debes crear una historia clinica antes de registrar consultas."
+            }
+          </p>
+        </div>
+        <div class="form-actions">
+          <button
+            class="primary-button"
+            type="button"
+            data-open-patient-consultation-modal="true"
+            ${currentRecord ? "" : "disabled"}
+          >
+            Registrar consulta
+          </button>
+        </div>
+      </div>
+      ${rows}
+    </article>
+  `;
+}
+
 function renderConsultorioPatientProfile() {
   if (!elements.consultorioPatientProfilePanel) {
     return;
@@ -2463,134 +2783,21 @@ function renderConsultorioPatientProfile() {
     } | Tutor: ${ownerLabel} | Seccion activa: ${profileConfig?.label || "Historia clinica"}`;
   }
   if (elements.consultorioPatientProfileSummary) {
+    const overviewMarkup = buildConsultorioProfileOverviewMarkup({
+      owner,
+      patient,
+      ownerPatients,
+      patientFacts,
+      profileConfig,
+    });
+    const contentMarkup =
+      profileConfig?.value === "consultations"
+        ? buildConsultorioConsultationsWorkspace(patient, profileConfig)
+        : buildConsultorioProfileTimelineMarkup(profileConfig, timelineItems);
     elements.consultorioPatientProfileSummary.innerHTML = `
       <div class="consultorio-profile-workspace">
-        <div class="consultorio-profile-strip">
-          <article class="consultorio-profile-shell consultorio-profile-owner-card">
-            <header>
-              <span class="consultorio-profile-shell__eyebrow">Propietario</span>
-              <h4>${escapeHtml(owner?.full_name || patient?.owner_name || "Sin propietario")}</h4>
-            </header>
-            <dl class="consultorio-profile-owner-data">
-              <div>
-                <dt>Identificacion</dt>
-                <dd>${escapeHtml(
-                  owner
-                    ? [owner.identification_type, owner.identification_number].filter(Boolean).join(" ")
-                    : "Sin dato"
-                )}</dd>
-              </div>
-              <div>
-                <dt>Telefonos</dt>
-                <dd>${escapeHtml([owner?.phone, owner?.alternate_phone].filter(Boolean).join(" / ") || "Sin dato")}</dd>
-              </div>
-              <div>
-                <dt>Correo</dt>
-                <dd>${escapeHtml(owner?.email || "Sin dato")}</dd>
-              </div>
-              <div>
-                <dt>Direccion</dt>
-                <dd>${escapeHtml(owner?.address || "Sin dato")}</dd>
-              </div>
-            </dl>
-          </article>
-
-          <article class="consultorio-profile-shell consultorio-profile-pets-card">
-            <header>
-              <span class="consultorio-profile-shell__eyebrow">Mascotas</span>
-              <h4>Mascotas del propietario</h4>
-            </header>
-            <div class="consultorio-profile-pet-switch">
-              ${ownerPatients
-                .map(
-                  (item) => `
-                    <button
-                      class="consultorio-profile-pet-switch__item${item.id === patient?.id ? " is-active" : ""}"
-                      type="button"
-                      data-patient-select="${escapeHtml(item.id)}"
-                    >
-                      <strong>${escapeHtml(item.name || "Mascota")}</strong>
-                      <span>${escapeHtml(item.species || "Paciente")}${item.breed ? ` / ${escapeHtml(item.breed)}` : ""}</span>
-                    </button>
-                  `
-                )
-                .join("")}
-            </div>
-          </article>
-        </div>
-
-        <article class="consultorio-profile-shell consultorio-profile-patient-sheet">
-          <div class="consultorio-profile-patient-sheet__header">
-            <div class="consultorio-profile-patient-sheet__identity">
-              <span class="consultorio-profile-avatar">${escapeHtml(getPatientInitials(patient))}</span>
-              <div>
-                <span class="consultorio-profile-shell__eyebrow">Datos generales</span>
-                <h4>${escapeHtml(patient?.name || "Paciente")}</h4>
-                <p>${escapeHtml(profileConfig?.label || "Historia clinica")}</p>
-              </div>
-            </div>
-            <div class="consultorio-profile-patient-sheet__chips">
-              <span class="consultorio-profile-chip">${escapeHtml(patient?.species || "Sin especie")}</span>
-              <span class="consultorio-profile-chip">${escapeHtml(patient?.sex || "Sin genero")}</span>
-              <span class="consultorio-profile-chip">${escapeHtml(
-                patient?.reproductive_status || "Sin estado reproductivo"
-              )}</span>
-            </div>
-          </div>
-          <dl class="consultorio-profile-facts">
-            ${patientFacts
-              .map(
-                ([label, value]) => `
-                  <div>
-                    <dt>${escapeHtml(label)}</dt>
-                    <dd>${escapeHtml(value)}</dd>
-                  </div>
-                `
-              )
-              .join("")}
-          </dl>
-        </article>
-
-        <article class="consultorio-profile-shell consultorio-profile-timeline-shell">
-          <div class="consultorio-profile-timeline-shell__header">
-            <div>
-              <span class="consultorio-profile-shell__eyebrow">Expediente</span>
-              <h4>${escapeHtml(profileConfig?.label || "Historia clinica")}</h4>
-            </div>
-            <span class="consultorio-profile-chip">${timelineItems.length} registros</span>
-          </div>
-          ${
-            timelineItems.length
-              ? `
-                <div class="consultorio-profile-timeline">
-                  ${timelineItems
-                    .map(
-                      (item) => `
-                        <article class="consultorio-profile-timeline__item">
-                          <div class="consultorio-profile-timeline__rail">
-                            <span class="consultorio-profile-timeline__dot"></span>
-                          </div>
-                          <div class="consultorio-profile-timeline__content">
-                            <header>
-                              <div>
-                                <strong>${escapeHtml(item.title)}</strong>
-                                <span>${escapeHtml(item.typeLabel)} | ${escapeHtml(formatDateTime(item.at))}</span>
-                              </div>
-                              <span class="${escapeHtml(item.tone)}">${escapeHtml(item.typeLabel)}</span>
-                            </header>
-                            <div class="consultorio-profile-timeline__details">
-                              ${item.lines.map((line) => `<p>${escapeHtml(line)}</p>`).join("")}
-                            </div>
-                          </div>
-                        </article>
-                      `
-                    )
-                    .join("")}
-                </div>
-              `
-              : emptyState("Este paciente aun no tiene registros en esta seccion.")
-          }
-        </article>
+        ${overviewMarkup}
+        ${contentMarkup}
       </div>
     `;
   }
@@ -3819,6 +4026,14 @@ function getPatientById(patientId) {
   return (state.patients || []).find((patient) => patient.id === patientId) || null;
 }
 
+function getRecordById(recordId) {
+  return (state.records || []).find((record) => record.id === recordId) || null;
+}
+
+function getConsultationById(consultationId) {
+  return (state.consultations || []).find((consultation) => consultation.id === consultationId) || null;
+}
+
 function buildOwnerLabel(owner) {
   const parts = [owner.full_name];
   if (owner.identification_number) {
@@ -4819,6 +5034,154 @@ function closeOwnerModal(options = {}) {
   }
 }
 
+function normalizeDateFieldValue(value) {
+  if (!value) {
+    return "";
+  }
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}/.test(value)) {
+    return value.slice(0, 10);
+  }
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return "";
+  }
+  return toIsoDate(parsed);
+}
+
+function ensurePatientConsultationReasonOption(value) {
+  if (!elements.patientConsultationReasonSelect || !value) {
+    return;
+  }
+  const normalized = String(value).trim();
+  if (!normalized) {
+    return;
+  }
+  const exists = Array.from(elements.patientConsultationReasonSelect.options).some(
+    (option) => option.value === normalized
+  );
+  if (!exists) {
+    const dynamicOption = document.createElement("option");
+    dynamicOption.value = normalized;
+    dynamicOption.textContent = normalized;
+    elements.patientConsultationReasonSelect.appendChild(dynamicOption);
+  }
+}
+
+function setPatientConsultationAttachments(lines = []) {
+  const items = (Array.isArray(lines) ? lines : [])
+    .map((item) => String(item || "").trim())
+    .filter(Boolean);
+  if (elements.patientConsultationAttachmentsValue) {
+    elements.patientConsultationAttachmentsValue.value = items.join("\n");
+  }
+  if (elements.patientConsultationAttachmentsList) {
+    elements.patientConsultationAttachmentsList.innerHTML = items.length
+      ? items
+          .map(
+            (item, index) => `
+              <span class="consultorio-consultation-attachment">
+                ${escapeHtml(item)}
+                <button
+                  class="ghost-button"
+                  type="button"
+                  data-remove-patient-consultation-attachment="${escapeHtml(String(index))}"
+                >
+                  Quitar
+                </button>
+              </span>
+            `
+          )
+          .join("")
+      : '<p class="meta-copy">Sin adjuntos agregados.</p>';
+  }
+}
+
+function getPatientConsultationAttachmentLines() {
+  return String(elements.patientConsultationAttachmentsValue?.value || "")
+    .split(/\r?\n+/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function closePatientConsultationModal() {
+  if (!elements.patientConsultationModal) {
+    return;
+  }
+  elements.patientConsultationModal.classList.add("is-hidden");
+  elements.patientConsultationModal.setAttribute("aria-hidden", "true");
+}
+
+function openPatientConsultationModal(consultation = null) {
+  if (!elements.patientConsultationModal || !elements.patientConsultationForm) {
+    return;
+  }
+  const patient = getConsultorioPatient();
+  if (!patient) {
+    showStatus("Selecciona una mascota para registrar la consulta.", "info");
+    return;
+  }
+  const record = consultation ? getRecordById(consultation.record_id) : getConsultorioPrimaryRecord();
+  if (!record) {
+    showStatus(
+      "Primero debes registrar una historia clinica para poder guardar consultas.",
+      "info"
+    );
+    return;
+  }
+  const owner = getConsultorioOwner();
+  const form = elements.patientConsultationForm;
+  form.reset();
+  const details = parseConsultorioConsultationDetails(consultation);
+  form.elements.id.value = consultation?.id || "";
+  form.elements.record_id.value = record.id || "";
+  form.elements.consultation_type.value = "Consulta";
+  form.elements.professional_name.value =
+    consultation?.professional_name || getDefaultConsultorioProfessionalName();
+  form.elements.professional_license.value =
+    consultation?.professional_license || getDefaultConsultorioProfessionalLicense();
+  form.elements.consultation_at.value = toInputDateTime(
+    consultation?.consultation_at || new Date().toISOString()
+  );
+  ensurePatientConsultationReasonOption(consultation?.title || "Consulta general");
+  form.elements.title.value = consultation?.title || "Consulta general";
+  form.elements.subjective.value = details.subjective || "";
+  form.elements.objective.value = details.objective || "";
+  form.elements.interpretation.value = details.interpretation || "";
+  form.elements.therapeutic_plan.value = details.therapeuticPlan || "";
+  form.elements.diagnostic_plan.value = details.diagnosticPlan || "";
+  form.elements.next_control.value = normalizeDateFieldValue(details.nextControl);
+  form.elements.exam_general.value = details.examGeneral || "";
+  form.elements.exam_special.value = details.examSpecial || "";
+  if (elements.patientConsultationAttachmentInput) {
+    elements.patientConsultationAttachmentInput.value = "";
+  }
+  setPatientConsultationAttachments(
+    String(consultation?.attachments_summary || "")
+      .split(/\r?\n+/)
+      .map((item) => item.trim())
+      .filter(Boolean)
+  );
+  if (elements.patientConsultationModalTitle) {
+    elements.patientConsultationModalTitle.textContent = `${
+      consultation ? "Editar consulta" : "Registro de consulta"
+    } - ${patient.name || "Paciente"}`;
+  }
+  if (elements.patientConsultationModalSubtitle) {
+    elements.patientConsultationModalSubtitle.textContent = `${
+      patient.species || "Paciente"
+    }${patient.breed ? ` / ${patient.breed}` : ""} | Tutor: ${
+      owner?.full_name || patient.owner_name || "Sin propietario"
+    }`;
+  }
+  if (elements.patientConsultationRecordLabel) {
+    elements.patientConsultationRecordLabel.textContent = `Historia asociada: ${formatDateTime(
+      record.opened_at
+    )}`;
+  }
+  elements.patientConsultationModal.classList.remove("is-hidden");
+  elements.patientConsultationModal.setAttribute("aria-hidden", "false");
+}
+
 function openUserModal(user = null) {
   if (!elements.userModal || !elements.userForm) {
     return;
@@ -5444,6 +5807,42 @@ async function handleConsultationSubmit(event) {
   setActiveSection("consultorio");
 }
 
+async function handlePatientConsultationSubmit(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const payload = serializeForm(form);
+  payload.consultation_type = "Consulta";
+  payload.summary = buildConsultorioStructuredText([
+    ["Subjetivo", payload.subjective],
+    ["Objetivo", payload.objective],
+    ["Examen general", payload.exam_general],
+    ["Examen especial", payload.exam_special],
+  ]);
+  payload.indications = buildConsultorioStructuredText([
+    ["Interpretacion", payload.interpretation],
+    ["Plan terapeutico", payload.therapeutic_plan],
+    ["Plan diagnostico", payload.diagnostic_plan],
+    ["Proximo control", payload.next_control],
+  ]);
+  payload.attachments_summary = String(payload.attachments_summary || "").trim();
+  payload.document_reference = "";
+  payload.referred_to = "";
+  payload.consent_required = false;
+  payload.consent_id = "";
+  payload.professional_name = payload.professional_name || getDefaultConsultorioProfessionalName();
+  payload.professional_license =
+    payload.professional_license || getDefaultConsultorioProfessionalLicense();
+  await api.saveConsultation(payload);
+  closePatientConsultationModal();
+  await refreshData({
+    sections: ["consultations", "records"],
+    message: payload.id ? "Consulta actualizada." : "Consulta registrada.",
+  });
+  consultorioPatientProfileOpen = true;
+  consultorioProfileView = "consultations";
+  setActiveSection(CONSULTORIO_PATIENT_PROFILE_SECTION_ID);
+}
+
 async function handleEvolutionSubmit(event) {
   event.preventDefault();
   await api.saveEvolution(serializeForm(event.currentTarget));
@@ -5734,13 +6133,21 @@ function bindNavigation() {
   });
   window.addEventListener("keydown", (event) => {
     if (event.key === "Escape") {
+      const consultationModalOpen = Boolean(
+        elements.patientConsultationModal &&
+          !elements.patientConsultationModal.classList.contains("is-hidden")
+      );
       closeNavDropdowns();
       closeAppointmentModal();
       closeAvailabilityModal();
       closeAgendaAppointmentsModal();
+      closePatientConsultationModal();
       closeUserModal();
       closeOwnerModal();
       closeLoginModal();
+      if (consultationModalOpen) {
+        return;
+      }
       if (consultorioPatientProfileOpen) {
         closeConsultorioPatientProfile();
       }
@@ -5915,6 +6322,19 @@ function bindForms() {
   }
   if (elements.consultorioPatientProfileSummary) {
     elements.consultorioPatientProfileSummary.addEventListener("click", (event) => {
+      const openConsultationButton = event.target.closest("[data-open-patient-consultation-modal]");
+      if (openConsultationButton) {
+        openPatientConsultationModal();
+        return;
+      }
+      const editConsultationButton = event.target.closest("[data-edit-patient-consultation]");
+      if (editConsultationButton) {
+        const consultation = getConsultationById(editConsultationButton.dataset.editPatientConsultation || "");
+        if (consultation) {
+          openPatientConsultationModal(consultation);
+        }
+        return;
+      }
       const patientButton = event.target.closest("[data-patient-select]");
       if (!patientButton) {
         return;
@@ -5925,6 +6345,50 @@ function bindForms() {
       }
       openConsultorioPatientProfile(patient);
     });
+  }
+  if (elements.closePatientConsultationModalButton) {
+    elements.closePatientConsultationModalButton.addEventListener("click", closePatientConsultationModal);
+  }
+  if (elements.cancelPatientConsultationButton) {
+    elements.cancelPatientConsultationButton.addEventListener("click", closePatientConsultationModal);
+  }
+  if (elements.patientConsultationModal) {
+    elements.patientConsultationModal.addEventListener("click", (event) => {
+      if (event.target.dataset.closePatientConsultationModal) {
+        closePatientConsultationModal();
+      }
+    });
+  }
+  if (elements.patientConsultationAttachmentAddButton) {
+    elements.patientConsultationAttachmentAddButton.addEventListener("click", () => {
+      const nextValue = String(elements.patientConsultationAttachmentInput?.value || "").trim();
+      if (!nextValue) {
+        return;
+      }
+      setPatientConsultationAttachments([...getPatientConsultationAttachmentLines(), nextValue]);
+      if (elements.patientConsultationAttachmentInput) {
+        elements.patientConsultationAttachmentInput.value = "";
+        elements.patientConsultationAttachmentInput.focus();
+      }
+    });
+  }
+  if (elements.patientConsultationAttachmentsList) {
+    elements.patientConsultationAttachmentsList.addEventListener("click", (event) => {
+      const removeButton = event.target.closest("[data-remove-patient-consultation-attachment]");
+      if (!removeButton) {
+        return;
+      }
+      const index = Number(removeButton.dataset.removePatientConsultationAttachment);
+      const items = getPatientConsultationAttachmentLines();
+      items.splice(index, 1);
+      setPatientConsultationAttachments(items);
+    });
+  }
+  if (elements.patientConsultationForm) {
+    elements.patientConsultationForm.addEventListener(
+      "submit",
+      wrapAsync(handlePatientConsultationSubmit)
+    );
   }
   if (elements.consultorioPatientProfileNav) {
     elements.consultorioPatientProfileNav.addEventListener("click", (event) => {
