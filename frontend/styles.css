@@ -1434,6 +1434,11 @@ button:active {
   min-width: 0;
 }
 
+.consultorio-consultation-exam-grid--special {
+  grid-template-columns: minmax(280px, 360px);
+  justify-content: start;
+}
+
 .consultorio-consultation-form__footer {
   padding: 12px 0 0;
   border-top: 1px solid #e3e8f2;
@@ -2969,6 +2974,10 @@ body.auth-locked .page-shell > :not(#loginModal) {
   .consultorio-consultation-exam-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .consultorio-consultation-exam-grid--special {
+    grid-template-columns: minmax(260px, 1fr);
+  }
 }
 
 @media (max-width: 780px) {
@@ -3047,6 +3056,10 @@ body.auth-locked .page-shell > :not(#loginModal) {
   }
 
   .consultorio-consultation-exam-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .consultorio-consultation-exam-grid--special {
     grid-template-columns: 1fr;
   }
 

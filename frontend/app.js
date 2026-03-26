@@ -2315,6 +2315,29 @@ const CONSULTORIO_EXAM_GENERAL_LABELS = CONSULTORIO_EXAM_GENERAL_FIELDS.reduce((
   return acc;
 }, {});
 
+const CONSULTORIO_EXAM_SPECIAL_FIELDS = [
+  ["Actitud", "exam_special_attitude"],
+  ["Hidratacion", "exam_special_hydration"],
+  ["Estado nutricional", "exam_special_nutritional_status"],
+  ["Ganglios linfaticos", "exam_special_lymph_nodes"],
+  ["Mucosas", "exam_special_mucosa"],
+  ["Sistema cardiovascular", "exam_special_cardiovascular"],
+  ["Sistema respiratorio", "exam_special_respiratory"],
+  ["Sistema digestivo", "exam_special_digestive"],
+  ["Sistema urinario", "exam_special_urinary"],
+  ["Sistema reproductivo", "exam_special_reproductive"],
+  ["Sistema musculoesqueletico", "exam_special_musculoskeletal"],
+  ["Sistema nervioso", "exam_special_nervous"],
+  ["Piel y anexos", "exam_special_skin_appendages"],
+  ["Ojos", "exam_special_eyes"],
+  ["Oidos", "exam_special_ears"],
+];
+
+const CONSULTORIO_EXAM_SPECIAL_LABELS = CONSULTORIO_EXAM_SPECIAL_FIELDS.reduce((acc, [label, key]) => {
+  acc[label.toLowerCase()] = key;
+  return acc;
+}, {});
+
 function normalizeConsultorioSummaryValue(value) {
   return String(value || "")
     .trim()
@@ -2328,6 +2351,16 @@ function buildConsultorioExamGeneralSummary(payload = {}) {
     normalizeConsultorioSummaryValue(payload[key]),
   ])
     .filter(([, value]) => value)
+    .map(([label, value]) => `${label}: ${value}`)
+    .join("; ");
+}
+
+function buildConsultorioExamSpecialSummary(payload = {}) {
+  return CONSULTORIO_EXAM_SPECIAL_FIELDS.map(([label, key]) => [
+    label,
+    normalizeConsultorioSummaryValue(payload[key]),
+  ])
+    .filter(([, value]) => value && value !== "No evaluado")
     .map(([label, value]) => `${label}: ${value}`)
     .join("; ");
 }
@@ -2361,6 +2394,33 @@ function parseConsultorioExamGeneralSummary(value) {
   if (!matchedAny) {
     result.exam_general_observations = rawValue;
   }
+  return result;
+}
+
+function parseConsultorioExamSpecialSummary(value) {
+  const result = Object.fromEntries(
+    CONSULTORIO_EXAM_SPECIAL_FIELDS.map(([, key]) => [key, "No evaluado"])
+  );
+  const rawValue = String(value || "").trim();
+  if (!rawValue) {
+    return result;
+  }
+  rawValue
+    .split(/\s*;\s*/)
+    .map((segment) => segment.trim())
+    .filter(Boolean)
+    .forEach((segment) => {
+      const separator = segment.indexOf(":");
+      if (separator === -1) {
+        return;
+      }
+      const rawLabel = segment.slice(0, separator).trim().toLowerCase();
+      const mappedKey = CONSULTORIO_EXAM_SPECIAL_LABELS[rawLabel];
+      if (!mappedKey) {
+        return;
+      }
+      result[mappedKey] = segment.slice(separator + 1).trim() || "No evaluado";
+    });
   return result;
 }
 
@@ -2406,12 +2466,14 @@ function parseConsultorioConsultationDetails(consultation) {
     "proximo control": "nextControl",
   });
   const examGeneral = parseConsultorioExamGeneralSummary(summary.examGeneral || "");
+  const examSpecial = parseConsultorioExamSpecialSummary(summary.examSpecial || "");
   return {
     subjective: summary.subjective || "",
     objective: summary.objective || "",
     examGeneral: examGeneral,
     examGeneralSummary: summary.examGeneral || "",
-    examSpecial: summary.examSpecial || "",
+    examSpecial: examSpecial,
+    examSpecialSummary: summary.examSpecial || "",
     interpretation: indications.interpretation || "",
     therapeuticPlan: indications.therapeuticPlan || "",
     diagnosticPlan: indications.diagnosticPlan || "",
@@ -5414,7 +5476,11 @@ function openPatientConsultationModal(consultation = null) {
       form.elements[fieldName].value = fieldValue || "";
     }
   });
-  form.elements.exam_special.value = details.examSpecial || "";
+  Object.entries(details.examSpecial || {}).forEach(([fieldName, fieldValue]) => {
+    if (form.elements[fieldName]) {
+      form.elements[fieldName].value = fieldValue || "No evaluado";
+    }
+  });
   if (elements.patientConsultationAttachmentInput) {
     elements.patientConsultationAttachmentInput.value = "";
   }
@@ -6086,12 +6152,13 @@ async function handlePatientConsultationSubmit(event) {
     throw new Error("No se encontro la mascota seleccionada.");
   }
   const examGeneralSummary = buildConsultorioExamGeneralSummary(payload);
+  const examSpecialSummary = buildConsultorioExamSpecialSummary(payload);
   payload.consultation_type = "Consulta";
   payload.summary = buildConsultorioStructuredText([
     ["Subjetivo", payload.subjective],
     ["Objetivo", payload.objective],
     ["Examen general", examGeneralSummary],
-    ["Examen especial", payload.exam_special],
+    ["Examen especial", examSpecialSummary],
   ]);
   payload.indications = buildConsultorioStructuredText([
     ["Interpretacion", payload.interpretation],
