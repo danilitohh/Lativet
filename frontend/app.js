@@ -6763,7 +6763,12 @@ async function handlePatientConsultationSubmit(event) {
     : `${entityLabel} registrada.`;
   const reminder = consultation?.control_reminder;
   if (reminder?.scheduled) {
-    statusMessage += ` Recordatorio de control programado para ${formatDateTime(
+    const reminderLabel =
+      reminder.label ||
+      (isVaccinationConsultationType(payload.consultation_type)
+        ? "vacunacion"
+        : "control");
+    statusMessage += ` Recordatorio de ${reminderLabel} programado para ${formatDateTime(
       reminder.scheduled_for
     )}.`;
     if (Array.isArray(reminder.warnings) && reminder.warnings.length) {

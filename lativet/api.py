@@ -367,6 +367,7 @@ class LativetService:
         reminder = self._db.get_control_reminder_for_consultation(consultation_id)
         if not reminder:
             return {"scheduled": False}
+        reminder_kind, reminder_label = self._resolve_control_reminder_kind(reminder)
         settings = self._db.get_settings()
         warnings: list[str] = []
         if not settings.get("smtp_enabled"):
@@ -384,10 +385,18 @@ class LativetService:
             "scheduled": True,
             "scheduled_for": reminder.get("scheduled_for"),
             "status": reminder.get("status") or "pending",
+            "kind": reminder_kind,
+            "label": reminder_label,
             "owner_email": owner_email,
             "ready_to_send": not warnings,
             "warnings": warnings,
         }
+
+    def _resolve_control_reminder_kind(self, reminder: dict | None) -> tuple[str, str]:
+        consultation_type = str((reminder or {}).get("consultation_type") or "").strip()
+        if consultation_type == "Vacunacion":
+            return "vaccination", "vacunacion"
+        return "control", "control"
 
     def _send_control_reminder_email(self, reminder: dict) -> dict:
         settings = self._db.get_settings()
@@ -413,19 +422,30 @@ class LativetService:
         owner_name = reminder.get("owner_name") or "propietario"
         control_date = reminder.get("scheduled_for") or ""
         consultation_title = reminder.get("consultation_title") or "control veterinario"
+        reminder_kind, _ = self._resolve_control_reminder_kind(reminder)
         try:
             control_date_label = date.fromisoformat(control_date).strftime("%d/%m/%Y")
         except ValueError:
             control_date_label = control_date
 
-        subject = f"{clinic_name} - Recordatorio de control para {patient_name}"
-        body = (
-            f"Hola {owner_name},\n\n"
-            f"Te recordamos que {patient_name} tiene control programado para el {control_date_label}.\n"
-            f"Motivo registrado: {consultation_title}.\n\n"
-            "Si necesitas reprogramar o confirmar la asistencia, comunicate con la clinica.\n\n"
-            "Este correo fue generado automaticamente por Lativet.\n"
-        )
+        if reminder_kind == "vaccination":
+            subject = f"{clinic_name} - Recordatorio de vacunacion para {patient_name}"
+            body = (
+                f"Hola {owner_name},\n\n"
+                f"Te recordamos que {patient_name} tiene vacunacion programada para el {control_date_label}.\n"
+                f"Vacuna registrada: {consultation_title}.\n\n"
+                "Si necesitas reprogramar o confirmar la asistencia, comunicate con la clinica.\n\n"
+                "Este correo fue generado automaticamente por Lativet.\n"
+            )
+        else:
+            subject = f"{clinic_name} - Recordatorio de control para {patient_name}"
+            body = (
+                f"Hola {owner_name},\n\n"
+                f"Te recordamos que {patient_name} tiene control programado para el {control_date_label}.\n"
+                f"Motivo registrado: {consultation_title}.\n\n"
+                "Si necesitas reprogramar o confirmar la asistencia, comunicate con la clinica.\n\n"
+                "Este correo fue generado automaticamente por Lativet.\n"
+            )
 
         config = SmtpConfig(
             host=host,
@@ -469,6 +489,7 @@ class LativetService:
                 "patient_name": reminder.get("patient_name"),
                 "owner_email": reminder.get("owner_email"),
                 "scheduled_for": reminder.get("scheduled_for"),
+                "kind": self._resolve_control_reminder_kind(reminder)[0],
             }
             if delivery.get("sent"):
                 self._db.mark_control_reminder_sent(reminder["id"])

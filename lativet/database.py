@@ -903,7 +903,8 @@ class Database:
         row = self.connection.execute(
             """
             SELECT cr.*, o.full_name AS owner_name, o.email AS owner_email,
-                   p.name AS patient_name, c.title AS consultation_title
+                   p.name AS patient_name, c.title AS consultation_title,
+                   c.consultation_type AS consultation_type
             FROM control_reminders cr
             JOIN owners o ON o.id = cr.owner_id
             JOIN patients p ON p.id = cr.patient_id
@@ -919,7 +920,8 @@ class Database:
         rows = self.connection.execute(
             """
             SELECT cr.*, o.full_name AS owner_name, o.email AS owner_email,
-                   p.name AS patient_name, c.title AS consultation_title
+                   p.name AS patient_name, c.title AS consultation_title,
+                   c.consultation_type AS consultation_type
             FROM control_reminders cr
             JOIN owners o ON o.id = cr.owner_id
             JOIN patients p ON p.id = cr.patient_id
