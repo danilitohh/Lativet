@@ -1142,6 +1142,7 @@ function cacheElements() {
     "patientConsultationClinicalFields",
     "patientVaccinationFields",
     "patientFormulaFields",
+    "patientDewormingFields",
     "patientFormulaDateInput",
     "patientFormulaDiagnosisInput",
     "patientFormulaObservationsInput",
@@ -1152,6 +1153,17 @@ function cacheElements() {
     "patientVaccinationCustomNameInput",
     "patientVaccinationCustomButton",
     "patientVaccinationNextDateInput",
+    "patientDewormingDateInput",
+    "patientDewormingPreviousDateInput",
+    "patientDewormingTypeSelect",
+    "patientDewormingProductInput",
+    "patientDewormingDoseInput",
+    "patientDewormingNextDateInput",
+    "patientDewormingNotesInput",
+    "patientDewormingAttachmentFileInput",
+    "patientDewormingAttachmentFileButton",
+    "patientDewormingAttachmentsList",
+    "patientDewormingAttachmentsValue",
     "patientConsultationReasonSelect",
     "patientConsultationRecordLabel",
     "patientConsultationAttachmentFileInput",
@@ -2265,6 +2277,10 @@ function isFormulaConsultationType(consultationType) {
   return String(consultationType || "").trim() === "Formula";
 }
 
+function isDewormingConsultationType(consultationType) {
+  return String(consultationType || "").trim() === "Desparasitacion";
+}
+
 function isConsultorioPatientsViewActive() {
   return getActiveSectionId() === "consultorio" && getSubsectionOption("consultorio")?.value === "patients";
 }
@@ -2591,6 +2607,29 @@ function parseConsultorioVaccinationDetails(consultation) {
   };
 }
 
+function parseConsultorioDewormingDetails(consultation) {
+  const summary = parseConsultorioStructuredText(consultation?.summary || "", {
+    tipo: "type",
+    producto: "product",
+    dosis: "dose",
+    observaciones: "observations",
+  });
+  const indications = parseConsultorioStructuredText(consultation?.indications || "", {
+    "ultima desparasitacion": "lastDeworming",
+    "proximo control": "nextControl",
+  });
+  const genericDetails = parseConsultorioConsultationDetails(consultation);
+  return {
+    dewormingDate: normalizeDateFieldValue(consultation?.consultation_at),
+    lastDeworming: normalizeDateFieldValue(indications.lastDeworming || ""),
+    type: summary.type || "",
+    product: summary.product || consultation?.title || "",
+    dose: summary.dose || "",
+    observations: summary.observations || genericDetails.subjective || "",
+    nextControl: normalizeDateFieldValue(indications.nextControl || genericDetails.nextControl || ""),
+  };
+}
+
 function createConsultorioFormulaMedication(item = {}) {
   return {
     name: String(item.name || "").trim(),
@@ -2691,6 +2730,22 @@ function buildConsultorioVaccinationIndications(payload) {
   return buildConsultorioStructuredText([
     ["Proxima vacunacion", payload.vaccination_next_control],
     ["Proximo control", payload.next_control],
+  ]);
+}
+
+function buildConsultorioDewormingSummary(payload) {
+  return buildConsultorioStructuredText([
+    ["Tipo", payload.deworming_type],
+    ["Producto", payload.deworming_product],
+    ["Dosis", payload.deworming_dose],
+    ["Observaciones", payload.deworming_notes],
+  ]);
+}
+
+function buildConsultorioDewormingIndications(payload) {
+  return buildConsultorioStructuredText([
+    ["Ultima desparasitacion", payload.deworming_last_date],
+    ["Proximo control", payload.deworming_next_control],
   ]);
 }
 
@@ -3403,14 +3458,12 @@ function buildConsultorioDewormingWorkspace(patient, profileConfig) {
           <tbody>
             ${dewormingEntries
               .map((consultation) => {
-                const details = parseConsultorioConsultationDetails(consultation);
+                const details = parseConsultorioDewormingDetails(consultation);
                 const detailLabel = truncate(
                   [
-                    details.therapeuticPlan ? `Tratamiento: ${details.therapeuticPlan}` : "",
-                    details.interpretation ? `Diagnostico: ${details.interpretation}` : "",
-                    !details.therapeuticPlan && !details.interpretation && consultation.summary
-                      ? consultation.summary
-                      : "",
+                    details.type ? `Tipo: ${details.type}` : "",
+                    details.dose ? `Dosis: ${details.dose}` : "",
+                    details.observations ? details.observations : "",
                   ]
                     .filter(Boolean)
                     .join(" | ") || "Sin detalle registrado.",
@@ -3430,7 +3483,7 @@ function buildConsultorioDewormingWorkspace(patient, profileConfig) {
                       </div>
                     </td>
                     <td>${escapeHtml(formatDateTime(consultation.consultation_at))}</td>
-                    <td>${escapeHtml(consultation.title || "Desparasitacion")}</td>
+                    <td>${escapeHtml(details.product || consultation.title || "Desparasitacion")}</td>
                     <td>${escapeHtml(detailLabel)}</td>
                     <td>${escapeHtml(formatDateTime(details.nextControl || ""))}</td>
                     <td>${escapeHtml(consultation.professional_name || "Sin usuario")}</td>
@@ -6149,15 +6202,15 @@ async function addPatientConsultationAttachmentImages(fileList) {
   setPatientConsultationAttachments(currentItems);
 }
 
-function setPatientConsultationAttachments(items = []) {
+function renderConsultorioAttachmentFieldState(valueElement, listElement, items = []) {
   const normalizedItems = (Array.isArray(items) ? items : [])
     .map((item) => normalizeConsultorioAttachmentItem(item))
     .filter(Boolean);
-  if (elements.patientConsultationAttachmentsValue) {
-    elements.patientConsultationAttachmentsValue.value = serializeConsultorioAttachments(normalizedItems);
+  if (valueElement) {
+    valueElement.value = serializeConsultorioAttachments(normalizedItems);
   }
-  if (elements.patientConsultationAttachmentsList) {
-    elements.patientConsultationAttachmentsList.innerHTML = normalizedItems.length
+  if (listElement) {
+    listElement.innerHTML = normalizedItems.length
       ? normalizedItems
           .map(
             (item, index) => `
@@ -6205,8 +6258,44 @@ function setPatientConsultationAttachments(items = []) {
   }
 }
 
+function getConsultorioAttachmentFieldItems(valueElement) {
+  return parseConsultorioAttachments(valueElement?.value || "");
+}
+
+function setPatientConsultationAttachments(items = []) {
+  renderConsultorioAttachmentFieldState(
+    elements.patientConsultationAttachmentsValue,
+    elements.patientConsultationAttachmentsList,
+    items
+  );
+}
+
 function getPatientConsultationAttachments() {
-  return parseConsultorioAttachments(elements.patientConsultationAttachmentsValue?.value || "");
+  return getConsultorioAttachmentFieldItems(elements.patientConsultationAttachmentsValue);
+}
+
+async function addPatientDewormingAttachmentImages(fileList) {
+  const files = Array.from(fileList || []);
+  if (!files.length) {
+    return;
+  }
+  const currentItems = getPatientDewormingAttachments();
+  for (const file of files) {
+    currentItems.push(await buildConsultorioImageAttachment(file));
+  }
+  setPatientDewormingAttachments(currentItems);
+}
+
+function setPatientDewormingAttachments(items = []) {
+  renderConsultorioAttachmentFieldState(
+    elements.patientDewormingAttachmentsValue,
+    elements.patientDewormingAttachmentsList,
+    items
+  );
+}
+
+function getPatientDewormingAttachments() {
+  return getConsultorioAttachmentFieldItems(elements.patientDewormingAttachmentsValue);
 }
 
 function closePatientConsultationModal() {
@@ -6384,12 +6473,14 @@ function openPatientConsultationModal(consultation = null) {
     "Consulta";
   const isVaccinationMode = isVaccinationConsultationType(defaultConsultationType);
   const isFormulaMode = isFormulaConsultationType(defaultConsultationType);
+  const isDewormingMode = isDewormingConsultationType(defaultConsultationType);
   const defaultTitle =
     consultation?.title || getConsultorioProfileDefaultConsultationTitle(profileConfig);
   form.reset();
   const details = parseConsultorioConsultationDetails(consultation);
   const vaccinationDetails = parseConsultorioVaccinationDetails(consultation);
   const formulaDetails = parseConsultorioFormulaDetails(consultation);
+  const dewormingDetails = parseConsultorioDewormingDetails(consultation);
   form.elements.id.value = consultation?.id || "";
   form.elements.record_id.value = record?.id || "";
   form.elements.consultation_type.value = defaultConsultationType;
@@ -6437,6 +6528,28 @@ function openPatientConsultationModal(consultation = null) {
     form.elements.formula_observations.value = formulaDetails.observations || "";
   }
   renderPatientFormulaMedications(formulaDetails.medications);
+  if (form.elements.deworming_date) {
+    form.elements.deworming_date.value =
+      dewormingDetails.dewormingDate || normalizeDateFieldValue(new Date().toISOString());
+  }
+  if (form.elements.deworming_last_date) {
+    form.elements.deworming_last_date.value = dewormingDetails.lastDeworming || "";
+  }
+  if (form.elements.deworming_type) {
+    form.elements.deworming_type.value = dewormingDetails.type || "";
+  }
+  if (form.elements.deworming_product) {
+    form.elements.deworming_product.value = dewormingDetails.product || "";
+  }
+  if (form.elements.deworming_dose) {
+    form.elements.deworming_dose.value = dewormingDetails.dose || "";
+  }
+  if (form.elements.deworming_notes) {
+    form.elements.deworming_notes.value = dewormingDetails.observations || "";
+  }
+  if (form.elements.deworming_next_control) {
+    form.elements.deworming_next_control.value = dewormingDetails.nextControl || "";
+  }
   setPatientVaccinationNameValue(vaccinationDetails.name || defaultTitle);
   Object.entries(details.examGeneral || {}).forEach(([fieldName, fieldValue]) => {
     if (form.elements[fieldName]) {
@@ -6451,7 +6564,11 @@ function openPatientConsultationModal(consultation = null) {
   if (elements.patientConsultationAttachmentFileInput) {
     elements.patientConsultationAttachmentFileInput.value = "";
   }
+  if (elements.patientDewormingAttachmentFileInput) {
+    elements.patientDewormingAttachmentFileInput.value = "";
+  }
   setPatientConsultationAttachments(parseConsultorioAttachments(consultation?.attachments_summary || ""));
+  setPatientDewormingAttachments(parseConsultorioAttachments(consultation?.attachments_summary || ""));
   if (elements.patientConsultationModalTitle) {
     const entityLabel = getConsultorioProfileModalEntityLabel(defaultConsultationType);
     elements.patientConsultationModalTitle.textContent = `${
@@ -6463,7 +6580,10 @@ function openPatientConsultationModal(consultation = null) {
     elements.patientConsultationModalSubtitle.classList.add("is-hidden");
   }
   if (elements.patientConsultationModalBadge) {
-    const badgeText = isVaccinationMode || isFormulaMode ? formatConsultorioWeightBadge(patient) : "";
+    const badgeText =
+      isVaccinationMode || isFormulaMode || isDewormingMode
+        ? formatConsultorioWeightBadge(patient)
+        : "";
     elements.patientConsultationModalBadge.textContent = badgeText;
     elements.patientConsultationModalBadge.classList.toggle("is-hidden", !badgeText);
   }
@@ -6473,29 +6593,39 @@ function openPatientConsultationModal(consultation = null) {
   if (elements.patientFormulaFields) {
     elements.patientFormulaFields.classList.toggle("is-hidden", !isFormulaMode);
   }
+  if (elements.patientDewormingFields) {
+    elements.patientDewormingFields.classList.toggle("is-hidden", !isDewormingMode);
+  }
   if (elements.patientConsultationClinicalFields) {
     elements.patientConsultationClinicalFields.classList.toggle(
       "is-hidden",
-      isVaccinationMode || isFormulaMode
+      isVaccinationMode || isFormulaMode || isDewormingMode
     );
   }
   const modalCard = elements.patientConsultationModal.querySelector(".modal-card");
   modalCard?.classList.toggle("consultorio-consultation-modal--vaccination", isVaccinationMode);
   modalCard?.classList.toggle("consultorio-consultation-modal--formula", isFormulaMode);
+  modalCard?.classList.toggle("consultorio-consultation-modal--deworming", isDewormingMode);
   if (elements.closePatientConsultationModalButton) {
     elements.closePatientConsultationModalButton.innerHTML = "&times;";
   }
   if (elements.patientConsultationRecordLabel) {
-    elements.patientConsultationRecordLabel.textContent = isVaccinationMode || isFormulaMode
+    elements.patientConsultationRecordLabel.textContent = isVaccinationMode || isFormulaMode || isDewormingMode
       ? ""
       : record
         ? `Historia clinica vinculada: ${record.id}`
         : "La historia clinica se creara automaticamente al guardar esta consulta.";
-    elements.patientConsultationRecordLabel.classList.toggle("is-hidden", isVaccinationMode || isFormulaMode);
+    elements.patientConsultationRecordLabel.classList.toggle(
+      "is-hidden",
+      isVaccinationMode || isFormulaMode || isDewormingMode
+    );
   }
   form
     .querySelector(".consultorio-consultation-form__footer")
-    ?.classList.toggle("consultorio-consultation-form__footer--align-end", isVaccinationMode || isFormulaMode);
+    ?.classList.toggle(
+      "consultorio-consultation-form__footer--align-end",
+      isVaccinationMode || isFormulaMode || isDewormingMode
+    );
   elements.patientConsultationModal.classList.remove("is-hidden");
   elements.patientConsultationModal.setAttribute("aria-hidden", "false");
   document.body?.classList.add("modal-open");
@@ -6504,6 +6634,8 @@ function openPatientConsultationModal(consultation = null) {
     form.elements.formula_date.focus();
   } else if (isVaccinationMode && form.elements.vaccination_date) {
     form.elements.vaccination_date.focus();
+  } else if (isDewormingMode && form.elements.deworming_date) {
+    form.elements.deworming_date.focus();
   } else {
     form.elements.consultation_at.focus();
   }
@@ -7176,6 +7308,22 @@ async function handlePatientConsultationSubmit(event) {
       observations: String(payload.formula_observations || "").trim(),
       medications: formulaMedications,
     });
+  } else if (isDewormingConsultationType(payload.consultation_type)) {
+    if (!payload.deworming_date) {
+      throw new Error("Selecciona la fecha de desparasitacion.");
+    }
+    if (!String(payload.deworming_product || "").trim()) {
+      throw new Error("Escribe el producto de la desparasitacion.");
+    }
+    payload.title = String(payload.deworming_product || "").trim();
+    payload.consultation_at = `${payload.deworming_date}T12:00`;
+    payload.next_control = payload.deworming_next_control || "";
+    payload.summary = buildConsultorioDewormingSummary(payload);
+    payload.indications = buildConsultorioDewormingIndications(payload);
+    payload.attachments_summary = serializeConsultorioAttachments(
+      getPatientDewormingAttachments()
+    );
+    payload.document_reference = "";
   } else if (isVaccinationConsultationType(payload.consultation_type)) {
     const vaccinationName = getPatientVaccinationNameValue(form);
     if (!payload.vaccination_date) {
@@ -7807,6 +7955,33 @@ function bindForms() {
       const items = getPatientConsultationAttachments();
       items.splice(index, 1);
       setPatientConsultationAttachments(items);
+    });
+  }
+  if (elements.patientDewormingAttachmentFileButton && elements.patientDewormingAttachmentFileInput) {
+    elements.patientDewormingAttachmentFileButton.addEventListener("click", () => {
+      elements.patientDewormingAttachmentFileInput.click();
+    });
+    elements.patientDewormingAttachmentFileInput.addEventListener(
+      "change",
+      wrapAsync(async (event) => {
+        try {
+          await addPatientDewormingAttachmentImages(event.currentTarget.files);
+        } finally {
+          event.currentTarget.value = "";
+        }
+      })
+    );
+  }
+  if (elements.patientDewormingAttachmentsList) {
+    elements.patientDewormingAttachmentsList.addEventListener("click", (event) => {
+      const removeButton = event.target.closest("[data-remove-patient-consultation-attachment]");
+      if (!removeButton) {
+        return;
+      }
+      const index = Number(removeButton.dataset.removePatientConsultationAttachment);
+      const items = getPatientDewormingAttachments();
+      items.splice(index, 1);
+      setPatientDewormingAttachments(items);
     });
   }
   if (elements.patientVaccinationCustomButton && elements.patientVaccinationNameSelect) {

@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Lativet Web</title>
-    <link rel="stylesheet" href="/styles.css?v=20260326-17" />
+    <link rel="stylesheet" href="/styles.css?v=20260326-18" />
   </head>
   <body>
     <div class="page-shell">
@@ -1386,6 +1386,83 @@
             </label>
           </div>
 
+          <div id="patientDewormingFields" class="consultorio-deworming-fields is-hidden">
+            <div class="consultorio-deworming-fields__top">
+              <label class="consultorio-consultation-form__field">
+                <span>Fecha desparasitacion</span>
+                <input id="patientDewormingDateInput" name="deworming_date" type="date" />
+              </label>
+              <div class="consultorio-deworming-fields__last">
+                <label class="consultorio-consultation-form__field">
+                  <span>Ultima desparasitacion</span>
+                  <input id="patientDewormingPreviousDateInput" name="deworming_last_date" type="date" />
+                </label>
+                <div class="consultorio-deworming-fields__note">
+                  En la historia clinica se ordenara por la fecha de radicacion del registro, no por la fecha establecida.
+                </div>
+              </div>
+              <label class="consultorio-consultation-form__field">
+                <span>Tipo</span>
+                <select id="patientDewormingTypeSelect" name="deworming_type">
+                  <option value="">Seleccione una opcion</option>
+                  <option value="Interna">Interna</option>
+                  <option value="Externa">Externa</option>
+                  <option value="Interna y externa">Interna y externa</option>
+                  <option value="Oral">Oral</option>
+                  <option value="Topica">Topica</option>
+                  <option value="Inyectable">Inyectable</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="consultorio-deworming-fields__row">
+              <label class="consultorio-consultation-form__field">
+                <span>Producto</span>
+                <input id="patientDewormingProductInput" name="deworming_product" type="text" placeholder="Producto" />
+              </label>
+              <label class="consultorio-consultation-form__field">
+                <span>Dosis</span>
+                <input id="patientDewormingDoseInput" name="deworming_dose" type="text" placeholder="Dosis" />
+              </label>
+              <label class="consultorio-consultation-form__field">
+                <span>Proximo control</span>
+                <input id="patientDewormingNextDateInput" name="deworming_next_control" type="date" />
+              </label>
+            </div>
+
+            <div class="consultorio-consultation-form__field consultorio-deworming-fields__attachments">
+              <span>Adjunto</span>
+              <div class="consultorio-consultation-form__attachment-row">
+                <input
+                  id="patientDewormingAttachmentFileInput"
+                  class="is-hidden"
+                  type="file"
+                  accept="image/*"
+                  multiple
+                />
+                <button
+                  id="patientDewormingAttachmentFileButton"
+                  class="consultorio-consultation-form__add consultorio-consultation-form__add--file"
+                  type="button"
+                >
+                  Seleccionar
+                </button>
+              </div>
+              <div id="patientDewormingAttachmentsList" class="consultorio-consultation-attachments"></div>
+              <textarea id="patientDewormingAttachmentsValue" name="deworming_attachments_summary" class="is-hidden"></textarea>
+            </div>
+
+            <label class="full consultorio-consultation-form__field">
+              <span>Observaciones</span>
+              <textarea
+                id="patientDewormingNotesInput"
+                name="deworming_notes"
+                rows="4"
+                placeholder="Observaciones"
+              ></textarea>
+            </label>
+          </div>
+
           <div id="patientConsultationClinicalFields" class="consultorio-consultation-mode consultorio-consultation-mode--clinical">
             <label class="consultorio-consultation-form__field">
               <span>Fecha consulta</span>
@@ -1706,6 +1783,6 @@
     </div>
   </div>
 
-  <script src="/app.js?v=20260326-17"></script>
+  <script src="/app.js?v=20260326-18"></script>
 </body>
 </html>
