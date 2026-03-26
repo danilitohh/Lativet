@@ -2259,6 +2259,36 @@ function getConsultorioPrimaryRecord() {
     .sort((left, right) => String(right.opened_at || "").localeCompare(String(left.opened_at || "")))[0] || null;
 }
 
+function buildConsultorioDraftRecordPayload(patient, consultationPayload = {}) {
+  const consultationAt = consultationPayload.consultation_at || new Date().toISOString();
+  return {
+    patient_id: patient.id,
+    opened_at: consultationAt,
+    reason_for_consultation: consultationPayload.title || "Consulta general",
+    anamnesis: consultationPayload.subjective || "",
+    physical_exam_summary: buildConsultorioStructuredText([
+      ["Objetivo", consultationPayload.objective],
+      ["Examen general", consultationPayload.exam_general],
+      ["Examen especial", consultationPayload.exam_special],
+    ]),
+    presumptive_diagnosis: consultationPayload.interpretation || "",
+    procedures_plan: buildConsultorioStructuredText([
+      ["Plan terapeutico", consultationPayload.therapeutic_plan],
+      ["Plan diagnostico", consultationPayload.diagnostic_plan],
+    ]),
+    recommendations: consultationPayload.next_control
+      ? `Proximo control: ${consultationPayload.next_control}`
+      : "",
+    attachments_summary: String(consultationPayload.attachments_summary || "").trim(),
+    consent_required: false,
+    consent_summary: "",
+    professional_name:
+      consultationPayload.professional_name || getDefaultConsultorioProfessionalName(),
+    professional_license:
+      consultationPayload.professional_license || getDefaultConsultorioProfessionalLicense(),
+  };
+}
+
 function buildConsultorioStructuredText(entries) {
   return entries
     .map(([label, value]) => [label, String(value || "").trim()])
@@ -2709,7 +2739,6 @@ function buildConsultorioProfileTimelineMarkup(profileConfig, timelineItems) {
 
 function buildConsultorioConsultationsWorkspace(patient, profileConfig) {
   const consultations = getConsultorioScopedConsultations(profileConfig?.consultationTypes || null);
-  const currentRecord = getConsultorioPrimaryRecord();
   const rows = consultations.length
     ? `
       <div class="table-wrapper consultorio-consultations-table-wrapper">
@@ -2762,18 +2791,13 @@ function buildConsultorioConsultationsWorkspace(patient, profileConfig) {
         <div>
           <span class="consultorio-profile-shell__eyebrow">Consultas</span>
           <h4>Consultas de ${escapeHtml(patient?.name || "Paciente")}</h4>
-          ${
-            currentRecord
-              ? ""
-              : '<p class="meta-copy">Debes crear una historia clinica antes de registrar consultas.</p>'
-          }
+          <p class="meta-copy">Registra, edita y consulta el historial de atenciones de esta mascota.</p>
         </div>
         <div class="form-actions">
           <button
             class="primary-button"
             type="button"
             data-open-patient-consultation-modal="true"
-            ${currentRecord ? "" : "disabled"}
           >
             Registrar consulta
           </button>
@@ -5278,10 +5302,10 @@ function openPatientConsultationModal(consultation = null) {
     return;
   }
   const record = consultation ? getRecordById(consultation.record_id) : getConsultorioPrimaryRecord();
-  if (!record) {
+  if (consultation && !record) {
     showStatus(
-      "Primero debes registrar una historia clinica para poder guardar consultas.",
-      "info"
+      "No se encontro la historia clinica asociada a esta consulta.",
+      "error"
     );
     return;
   }
@@ -5289,7 +5313,7 @@ function openPatientConsultationModal(consultation = null) {
   form.reset();
   const details = parseConsultorioConsultationDetails(consultation);
   form.elements.id.value = consultation?.id || "";
-  form.elements.record_id.value = record.id || "";
+  form.elements.record_id.value = record?.id || "";
   form.elements.consultation_type.value = "Consulta";
   form.elements.professional_name.value =
     consultation?.professional_name || getDefaultConsultorioProfessionalName();
@@ -5330,7 +5354,9 @@ function openPatientConsultationModal(consultation = null) {
     elements.closePatientConsultationModalButton.innerHTML = "&times;";
   }
   if (elements.patientConsultationRecordLabel) {
-    elements.patientConsultationRecordLabel.textContent = "";
+    elements.patientConsultationRecordLabel.textContent = record
+      ? `Historia clinica vinculada: ${record.id}`
+      : "La historia clinica se creara automaticamente al guardar esta consulta.";
   }
   elements.patientConsultationModal.classList.remove("is-hidden");
   elements.patientConsultationModal.setAttribute("aria-hidden", "false");
@@ -5972,6 +5998,10 @@ async function handlePatientConsultationSubmit(event) {
   event.preventDefault();
   const form = event.currentTarget;
   const payload = serializeForm(form);
+  const patient = getConsultorioPatient();
+  if (!patient) {
+    throw new Error("No se encontro la mascota seleccionada.");
+  }
   payload.consultation_type = "Consulta";
   payload.summary = buildConsultorioStructuredText([
     ["Subjetivo", payload.subjective],
@@ -5993,6 +6023,14 @@ async function handlePatientConsultationSubmit(event) {
   payload.professional_name = payload.professional_name || getDefaultConsultorioProfessionalName();
   payload.professional_license =
     payload.professional_license || getDefaultConsultorioProfessionalLicense();
+  if (!payload.record_id) {
+    const createdRecord = await api.saveRecord(
+      buildConsultorioDraftRecordPayload(patient, payload),
+      false
+    );
+    payload.record_id = createdRecord?.id || "";
+    form.elements.record_id.value = payload.record_id;
+  }
   await api.saveConsultation(payload);
   closePatientConsultationModal();
   await refreshData({
