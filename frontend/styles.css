@@ -16,8 +16,8 @@
   --warning: #b66a11;
   --danger: #c44653;
   --shadow: 0 22px 60px rgba(13, 34, 47, 0.12);
-  --radius: 28px;
-  --radius-sm: 18px;
+  --radius: 22px;
+  --radius-sm: 14px;
   --font-head: "Sora", sans-serif;
   --font-body: "Plus Jakarta Sans", sans-serif;
 }
@@ -34,7 +34,7 @@ body {
   margin: 0;
   min-height: 100vh;
   color: var(--text);
-  font: 13px/1.42 var(--font-body);
+  font: 12px/1.36 var(--font-body);
   background:
     radial-gradient(circle at 12% 12%, rgba(15, 118, 110, 0.16), transparent 34%),
     radial-gradient(circle at 82% 18%, rgba(244, 162, 97, 0.14), transparent 26%),
@@ -72,13 +72,13 @@ button:active {
   width: 100%;
   max-width: none;
   margin: 0;
-  padding: 14px 14px 26px;
+  padding: 10px 10px 18px;
 }
 
 .page-topbar {
   position: relative;
   display: grid;
-  gap: 12px;
+  gap: 8px;
   padding-bottom: 0;
   background: transparent;
   backdrop-filter: none;
@@ -111,36 +111,36 @@ button:active {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 14px;
-  padding: 11px 14px;
+  gap: 10px;
+  padding: 8px 10px;
 }
 
 .brand-lockup {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
 .brand-logo {
-  width: 38px;
-  height: 38px;
+  width: 30px;
+  height: 30px;
   object-fit: contain;
-  border-radius: 12px;
+  border-radius: 10px;
   background: rgba(255, 255, 255, 0.8);
-  padding: 4px;
+  padding: 3px;
 }
 
 .header-copy {
-  margin: 4px 0 0;
+  margin: 2px 0 0;
   color: var(--muted);
-  max-width: 460px;
-  font-size: 0.86rem;
+  max-width: 420px;
+  font-size: 0.78rem;
 }
 
 .eyebrow {
-  margin: 0 0 4px;
+  margin: 0 0 2px;
   color: var(--muted);
-  font-size: 0.62rem;
+  font-size: 0.56rem;
   letter-spacing: 0.16em;
   text-transform: uppercase;
 }
@@ -153,7 +153,7 @@ button:active {
 }
 
 .site-header h1 {
-  font-size: 1.15rem;
+  font-size: 1rem;
 }
 
 .header-nav,
@@ -164,13 +164,13 @@ button:active {
 .item-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
 }
 
 .header-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   position: relative;
 }
 
@@ -184,12 +184,12 @@ button:active {
 .ghost-button,
 .secondary-button,
 .inline-link {
-  padding: 5px 10px;
+  padding: 4px 8px;
   border-radius: 999px;
   color: var(--brand);
   background: rgba(255, 255, 255, 0.76);
   box-shadow: none;
-  font-size: 0.74rem;
+  font-size: 0.68rem;
 }
 
 .ghost-button--danger {
@@ -204,12 +204,12 @@ button:active {
 }
 
 .primary-button {
-  padding: 5px 11px;
+  padding: 4px 9px;
   border-radius: 999px;
   color: #fff;
   background: linear-gradient(135deg, var(--brand), #14907f);
   box-shadow: 0 14px 34px rgba(15, 118, 110, 0.28);
-  font-size: 0.74rem;
+  font-size: 0.68rem;
 }
 
 .secondary-button {
@@ -217,12 +217,12 @@ button:active {
 }
 
 .notify-badge {
-  margin-left: 8px;
-  padding: 2px 8px;
+  margin-left: 6px;
+  padding: 1px 6px;
   border-radius: 999px;
   background: rgba(212, 29, 53, 0.14);
   color: #b91c1c;
-  font-size: 0.72rem;
+  font-size: 0.62rem;
   font-weight: 600;
 }
 
@@ -233,12 +233,12 @@ button:active {
 .notifications-panel {
   width: min(520px, 100%);
   max-height: 520px;
-  margin: 8px 0 12px auto;
+  margin: 6px 0 8px auto;
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 12px;
+  gap: 6px;
+  padding: 9px;
   border: 1px solid var(--stroke);
   border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.98);
@@ -251,7 +251,7 @@ button:active {
 
 .notifications-list {
   display: grid;
-  gap: 8px;
+  gap: 6px;
   max-height: 320px;
   overflow: auto;
 }
@@ -259,18 +259,18 @@ button:active {
 .notification-item {
   border: 1px solid rgba(11, 39, 49, 0.08);
   border-radius: 14px;
-  padding: 8px 10px;
+  padding: 6px 8px;
   background: rgba(255, 255, 255, 0.9);
 }
 
 .notification-item strong {
   display: block;
-  font-size: 0.78rem;
+  font-size: 0.72rem;
 }
 
 .notification-item p {
-  margin: 4px 0 0;
-  font-size: 0.78rem;
+  margin: 3px 0 0;
+  font-size: 0.72rem;
   color: var(--muted);
 }
 
@@ -291,9 +291,9 @@ button:active {
 .hero-panel {
   display: grid;
   grid-template-columns: minmax(0, 1.5fr) minmax(280px, 0.9fr);
-  gap: 14px;
-  margin-top: 12px;
-  padding: 18px;
+  gap: 10px;
+  margin-top: 8px;
+  padding: 12px;
   background:
     radial-gradient(circle at 82% 12%, rgba(244, 162, 97, 0.18), transparent 28%),
     linear-gradient(135deg, rgba(15, 118, 110, 0.12), rgba(255, 255, 255, 0.92));
@@ -301,37 +301,37 @@ button:active {
 
 .hero-copy h2 {
   max-width: 760px;
-  font-size: clamp(1.45rem, 2.2vw, 2.4rem);
+  font-size: clamp(1.2rem, 1.8vw, 1.85rem);
   line-height: 1.08;
 }
 
 .hero-text {
   max-width: 680px;
-  margin: 10px 0 0;
+  margin: 6px 0 0;
   color: var(--muted);
-  font-size: 0.86rem;
+  font-size: 0.78rem;
 }
 
 .hero-chips {
-  margin-top: 12px;
+  margin-top: 8px;
 }
 
 .hero-chips span {
-  padding: 6px 10px;
+  padding: 4px 8px;
   border-radius: 999px;
   color: var(--brand-strong);
   background: rgba(255, 255, 255, 0.68);
-  font-size: 0.76rem;
+  font-size: 0.68rem;
 }
 
 .hero-aside {
   display: grid;
-  gap: 10px;
+  gap: 8px;
 }
 
 .hero-aside-card {
-  padding: 12px 14px;
-  border-radius: 18px;
+  padding: 10px 12px;
+  border-radius: 14px;
   background: rgba(255, 255, 255, 0.78);
   border: 1px solid rgba(15, 118, 110, 0.1);
 }
@@ -349,20 +349,20 @@ button:active {
 .compliance-note,
 .roadmap-list p {
   color: var(--muted);
-  font-size: 0.78rem;
+  font-size: 0.7rem;
 }
 
 .hero-aside-card strong,
 .metric-card strong {
   display: block;
-  margin-top: 5px;
-  font: 700 1.28rem/1 var(--font-head);
+  margin-top: 4px;
+  font: 700 1.05rem/1 var(--font-head);
 }
 
 .status-banner {
-  margin-top: 10px;
-  padding: 11px 13px;
-  font-size: 0.82rem;
+  margin-top: 8px;
+  padding: 8px 10px;
+  font-size: 0.74rem;
 }
 
 .status-banner a {
@@ -384,7 +384,7 @@ button:active {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-start;
-  gap: 8px;
+  gap: 6px;
   margin-top: 0;
   position: relative;
   top: auto;
@@ -396,8 +396,8 @@ button:active {
 
 .switcher-item {
   position: relative;
-  flex: 1 1 132px;
-  min-width: 132px;
+  flex: 1 1 118px;
+  min-width: 118px;
 }
 
 .switcher-item.is-open {
@@ -409,8 +409,8 @@ button:active {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 9px 12px;
+  gap: 6px;
+  padding: 7px 10px;
   border: 1px solid rgba(150, 176, 223, 0.36);
   border-radius: 999px;
   background:
@@ -420,7 +420,7 @@ button:active {
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  font-size: 0.74rem;
+  font-size: 0.68rem;
   box-shadow:
     0 10px 24px rgba(63, 86, 128, 0.08),
     inset 0 1px 0 rgba(255, 255, 255, 0.96);
@@ -439,7 +439,7 @@ button:active {
 }
 
 .switcher-caret {
-  font-size: 0.68rem;
+  font-size: 0.6rem;
   opacity: 0.78;
   transition: transform 160ms ease;
 }
@@ -450,12 +450,12 @@ button:active {
 
 .switcher-dropdown {
   position: absolute;
-  top: calc(100% + 6px);
+  top: calc(100% + 4px);
   left: 0;
   display: none;
   min-width: 100%;
   z-index: 45;
-  padding: 8px;
+  padding: 6px;
   border: 1px solid var(--stroke);
   border-radius: 22px;
   background: rgba(255, 255, 255, 0.96);
@@ -465,19 +465,19 @@ button:active {
 
 .switcher-item.is-open .switcher-dropdown {
   display: grid;
-  gap: 6px;
+  gap: 4px;
 }
 
 .switcher-dropdown-item {
   width: 100%;
-  padding: 9px 10px;
-  border-radius: 12px;
+  padding: 7px 8px;
+  border-radius: 10px;
   background: rgba(231, 239, 255, 0.64);
   color: #35507f;
   font-weight: 600;
   text-align: left;
   box-shadow: none;
-  font-size: 0.76rem;
+  font-size: 0.68rem;
 }
 
 .switcher-dropdown-item.is-selected {
@@ -486,19 +486,19 @@ button:active {
 }
 
 .workspace-nav {
-  margin-top: 10px;
-  padding: 8px;
+  margin-top: 8px;
+  padding: 6px;
 }
 
 .workspace {
-  margin-top: 12px;
+  margin-top: 8px;
   display: grid;
-  gap: 12px;
+  gap: 10px;
 }
 
 .workspace-section {
   display: none;
-  gap: 12px;
+  gap: 10px;
 }
 
 .workspace-section.is-visible {
@@ -512,7 +512,7 @@ button:active {
 .three-column-grid,
 .menu-strip {
   display: grid;
-  gap: 12px;
+  gap: 10px;
 }
 
 .stats-grid {
@@ -532,11 +532,11 @@ button:active {
 }
 
 .metric-card {
-  padding: 12px;
+  padding: 10px;
 }
 
 .metric-card strong {
-  font-size: 1.22rem;
+  font-size: 1rem;
 }
 
 .overview-grid,
@@ -549,7 +549,7 @@ button:active {
 }
 
 .panel-card {
-  padding: 15px;
+  padding: 12px;
 }
 
 .panel-card--action {
@@ -563,7 +563,7 @@ button:active {
 .button-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .panel-card--action .meta-copy--cta {
@@ -575,28 +575,28 @@ button:active {
   display: flex;
   align-items: end;
   justify-content: space-between;
-  gap: 12px;
-  padding: 6px 2px 2px;
+  gap: 8px;
+  padding: 4px 1px 1px;
 }
 
 .section-hero h2 {
   margin: 0;
   font-family: var(--font-head);
-  font-size: clamp(1.2rem, 1.7vw, 1.7rem);
+  font-size: clamp(1rem, 1.35vw, 1.35rem);
 }
 
 .section-copy {
   max-width: 760px;
-  margin: 6px 0 0;
+  margin: 4px 0 0;
   color: var(--muted);
-  font-size: 0.86rem;
+  font-size: 0.78rem;
 }
 
 .section-badges {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 8px;
+  gap: 4px;
+  margin-top: 6px;
 }
 
 .menu-strip {
@@ -613,7 +613,7 @@ button:active {
 
 .panel-stack {
   display: grid;
-  gap: 12px;
+  gap: 10px;
 }
 
 .consultorio-owners-flow {
@@ -621,7 +621,7 @@ button:active {
 }
 
 .owners-table-wrapper {
-  border-radius: 18px;
+  border-radius: 14px;
 }
 
 .owners-table td {
@@ -639,7 +639,7 @@ button:active {
 .owner-table-name {
   display: flex;
   align-items: flex-start;
-  gap: 8px;
+  gap: 6px;
 }
 
 .owner-table-name > div,
@@ -653,12 +653,12 @@ button:active {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
-  border-radius: 10px;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
   background: linear-gradient(145deg, rgba(62, 99, 255, 0.88), rgba(17, 182, 199, 0.78));
   color: #fff;
-  font-size: 0.72rem;
+  font-size: 0.64rem;
   font-weight: 700;
   flex: 0 0 auto;
 }
@@ -672,23 +672,23 @@ button:active {
 .owner-table-phone span,
 .owner-last-activity span {
   color: var(--muted);
-  font-size: 0.74rem;
+  font-size: 0.68rem;
 }
 
 .owner-pets-list {
   display: grid;
-  gap: 6px;
+  gap: 4px;
 }
 
 .owner-pet-chip {
   display: inline-flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 8px;
+  gap: 6px;
   width: 100%;
-  padding: 7px 9px;
+  padding: 5px 7px;
   border: 1px solid rgba(11, 39, 49, 0.08);
-  border-radius: 12px;
+  border-radius: 10px;
   background: rgba(247, 250, 255, 0.92);
   color: var(--ink);
   font: inherit;
@@ -697,13 +697,13 @@ button:active {
 }
 
 .owner-pet-chip strong {
-  font-size: 0.76rem;
+  font-size: 0.7rem;
 }
 
 .owner-pet-chip span,
 .owner-pets-empty {
   color: var(--muted);
-  font-size: 0.72rem;
+  font-size: 0.64rem;
 }
 
 .owner-table-actions {
