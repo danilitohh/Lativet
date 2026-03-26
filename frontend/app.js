@@ -97,6 +97,13 @@ const CONSULTORIO_PROFILE_VIEWS = [
     dataRequirements: ["owners", "patients", "records"],
   },
   {
+    value: "consultations",
+    label: "Consultas",
+    panels: ["consultorioConsultationFormPanel", "consultorioConsultationsPanel"],
+    dataRequirements: ["owners", "patients", "records", "consultations"],
+    formConsultationType: "",
+  },
+  {
     value: "vacunacion",
     label: "Vacunas",
     panels: ["consultorioConsultationFormPanel", "consultorioConsultationsPanel"],
@@ -1245,8 +1252,12 @@ function syncConsultorioSubsection(option) {
   }
   const profileConfig =
     option.value === "patients" && consultorioPatientId ? getConsultorioProfileViewConfig() : null;
-  if (profileConfig?.formConsultationType && elements.consultationTypeSelect) {
-    elements.consultationTypeSelect.value = profileConfig.formConsultationType;
+  if (
+    profileConfig &&
+    Object.prototype.hasOwnProperty.call(profileConfig, "formConsultationType") &&
+    elements.consultationTypeSelect
+  ) {
+    elements.consultationTypeSelect.value = profileConfig.formConsultationType || "";
   }
 }
 
