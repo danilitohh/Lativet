@@ -1329,10 +1329,6 @@ button:active {
   flex: 1 1 auto;
 }
 
-.consultorio-consultation-form__attachment-row--secondary {
-  justify-content: flex-start;
-}
-
 .consultorio-consultation-form__add--file {
   white-space: nowrap;
 }

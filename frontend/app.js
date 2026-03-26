@@ -1139,8 +1139,6 @@ function cacheElements() {
     "patientConsultationForm",
     "patientConsultationReasonSelect",
     "patientConsultationRecordLabel",
-    "patientConsultationAttachmentInput",
-    "patientConsultationAttachmentAddButton",
     "patientConsultationAttachmentFileInput",
     "patientConsultationAttachmentFileButton",
     "patientConsultationAttachmentsList",
@@ -5734,9 +5732,6 @@ function openPatientConsultationModal(consultation = null) {
       form.elements[fieldName].value = fieldValue || "No evaluado";
     }
   });
-  if (elements.patientConsultationAttachmentInput) {
-    elements.patientConsultationAttachmentInput.value = "";
-  }
   if (elements.patientConsultationAttachmentFileInput) {
     elements.patientConsultationAttachmentFileInput.value = "";
   }
@@ -6959,25 +6954,6 @@ function bindForms() {
     elements.patientConsultationModal.addEventListener("click", (event) => {
       if (event.target.dataset.closePatientConsultationModal) {
         closePatientConsultationModal();
-      }
-    });
-  }
-  if (elements.patientConsultationAttachmentAddButton) {
-    elements.patientConsultationAttachmentAddButton.addEventListener("click", () => {
-      const nextValue = String(elements.patientConsultationAttachmentInput?.value || "").trim();
-      if (!nextValue) {
-        return;
-      }
-      setPatientConsultationAttachments([
-        ...getPatientConsultationAttachments(),
-        {
-          kind: "text",
-          value: nextValue,
-        },
-      ]);
-      if (elements.patientConsultationAttachmentInput) {
-        elements.patientConsultationAttachmentInput.value = "";
-        elements.patientConsultationAttachmentInput.focus();
       }
     });
   }
