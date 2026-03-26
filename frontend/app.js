@@ -2611,13 +2611,11 @@ function buildConsultorioConsultationsWorkspace(patient, profileConfig) {
         <div>
           <span class="consultorio-profile-shell__eyebrow">Consultas</span>
           <h4>Consultas de ${escapeHtml(patient?.name || "Paciente")}</h4>
-          <p class="meta-copy">
-            ${
-              currentRecord
-                ? `Historia asociada: ${escapeHtml(formatDateTime(currentRecord.opened_at))}`
-                : "Debes crear una historia clinica antes de registrar consultas."
-            }
-          </p>
+          ${
+            currentRecord
+              ? ""
+              : '<p class="meta-copy">Debes crear una historia clinica antes de registrar consultas.</p>'
+          }
         </div>
         <div class="form-actions">
           <button
@@ -2783,13 +2781,16 @@ function renderConsultorioPatientProfile() {
     } | Tutor: ${ownerLabel} | Seccion activa: ${profileConfig?.label || "Historia clinica"}`;
   }
   if (elements.consultorioPatientProfileSummary) {
-    const overviewMarkup = buildConsultorioProfileOverviewMarkup({
-      owner,
-      patient,
-      ownerPatients,
-      patientFacts,
-      profileConfig,
-    });
+    const showOverview = profileConfig?.value !== "consultations";
+    const overviewMarkup = showOverview
+      ? buildConsultorioProfileOverviewMarkup({
+          owner,
+          patient,
+          ownerPatients,
+          patientFacts,
+          profileConfig,
+        })
+      : "";
     const contentMarkup =
       profileConfig?.value === "consultations"
         ? buildConsultorioConsultationsWorkspace(patient, profileConfig)
