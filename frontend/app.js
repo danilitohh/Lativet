@@ -77,10 +77,12 @@ const ownersFilters = { query: "", petQuery: "" };
 const consultorioPatientsFilters = { query: "" };
 const authState = { requiresLogin: false, authenticated: false, currentUser: null };
 const AUTH_SESSION_KEY = "lativet_auth_session";
+const APP_VIEW_STATE_KEY = "lativet_app_view_v1";
 const BOOTSTRAP_CACHE_KEY = "lativet_bootstrap_v3";
 const BOOTSTRAP_CACHE_TTL_MS = 5 * 60 * 1000;
 let bootstrapFullRequested = false;
 let bootstrapReadyForSectionLoads = false;
+let appViewPersistenceEnabled = false;
 const BOOTSTRAP_CORE_SECTIONS = ["settings"];
 const BOOTSTRAP_BACKGROUND_GROUPS = [
   ["owners", "patients"],
@@ -919,6 +921,153 @@ function clearBootstrapCache(userIdOverride) {
   } catch (error) {
     // ignore cache cleanup errors
   }
+}
+
+function getAppViewStateKey(userIdOverride) {
+  const userId = userIdOverride || authState.currentUser?.id || "anon";
+  return `${APP_VIEW_STATE_KEY}_${userId}`;
+}
+
+function getDefaultSubsectionValue(sectionId) {
+  return sectionSubsections[sectionId]?.options?.[0]?.value || "";
+}
+
+function normalizeSubsectionValue(sectionId, value) {
+  const options = sectionSubsections[sectionId]?.options || [];
+  if (!options.length) {
+    return "";
+  }
+  return options.some((option) => option.value === value) ? value : options[0].value || "";
+}
+
+function getAppViewSnapshot() {
+  const subsections = {};
+  Object.keys(sectionSubsections).forEach((sectionId) => {
+    subsections[sectionId] = normalizeSubsectionValue(sectionId, activeSubsections[sectionId]);
+  });
+  return {
+    activeSectionId,
+    activeSubsections: subsections,
+    consultorioOwnerId,
+    consultorioPatientId,
+    consultorioProfileView,
+    consultorioPatientProfileOpen,
+    agendaSelectedDate: toIsoDate(agendaSelectedDate) || toIsoDate(new Date()),
+    agendaViewDate: toIsoDate(agendaViewDate) || toIsoDate(new Date()),
+    agendaViewMode,
+  };
+}
+
+function saveAppViewState() {
+  if (!appViewPersistenceEnabled) {
+    return;
+  }
+  if (authState.requiresLogin && !authState.currentUser) {
+    return;
+  }
+  try {
+    sessionStorage.setItem(getAppViewStateKey(), JSON.stringify(getAppViewSnapshot()));
+  } catch (error) {
+    // ignore storage write errors
+  }
+}
+
+function clearAppViewState(userIdOverride) {
+  try {
+    sessionStorage.removeItem(getAppViewStateKey(userIdOverride));
+  } catch (error) {
+    // ignore storage cleanup errors
+  }
+}
+
+function restoreAppViewState() {
+  if (authState.requiresLogin && !authState.currentUser) {
+    return false;
+  }
+  try {
+    const raw = sessionStorage.getItem(getAppViewStateKey());
+    if (!raw) {
+      return false;
+    }
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") {
+      clearAppViewState();
+      return false;
+    }
+    Object.keys(sectionSubsections).forEach((sectionId) => {
+      activeSubsections[sectionId] = normalizeSubsectionValue(
+        sectionId,
+        parsed.activeSubsections?.[sectionId]
+      );
+    });
+    consultorioOwnerId =
+      typeof parsed.consultorioOwnerId === "string" ? parsed.consultorioOwnerId : "";
+    consultorioPatientId =
+      typeof parsed.consultorioPatientId === "string" ? parsed.consultorioPatientId : "";
+    consultorioProfileView = CONSULTORIO_PROFILE_VIEW_MAP[parsed.consultorioProfileView]
+      ? parsed.consultorioProfileView
+      : "records";
+    consultorioPatientProfileOpen = Boolean(
+      parsed.consultorioPatientProfileOpen && consultorioPatientId
+    );
+    agendaSelectedDate = toIsoDate(parsed.agendaSelectedDate) || toIsoDate(new Date());
+    agendaViewDate = parseIsoDate(
+      toIsoDate(parsed.agendaViewDate) || agendaSelectedDate || toIsoDate(new Date())
+    );
+    if (AGENDA_VIEW_MODES.includes(parsed.agendaViewMode)) {
+      agendaViewMode = parsed.agendaViewMode;
+      try {
+        localStorage.setItem(AGENDA_VIEW_STORAGE_KEY, agendaViewMode);
+      } catch (error) {
+        // ignore storage errors
+      }
+    }
+    const validSections = new Set([
+      ...Object.keys(SECTION_DATA_REQUIREMENTS),
+      CONSULTORIO_PATIENT_PROFILE_SECTION_ID,
+    ]);
+    let targetSectionId =
+      typeof parsed.activeSectionId === "string" && validSections.has(parsed.activeSectionId)
+        ? parsed.activeSectionId
+        : "dashboard";
+    if (
+      targetSectionId === CONSULTORIO_PATIENT_PROFILE_SECTION_ID &&
+      !consultorioPatientProfileOpen
+    ) {
+      targetSectionId = "consultorio";
+    }
+    const allowed = getAllowedSections();
+    const navSectionId = getNavSectionId(targetSectionId);
+    if (allowed.size && !allowed.has(navSectionId)) {
+      targetSectionId =
+        permissionOptions.find((option) => allowed.has(option.key))?.key || "dashboard";
+    }
+    setActiveSection(targetSectionId);
+    return true;
+  } catch (error) {
+    clearAppViewState();
+    return false;
+  }
+}
+
+function restoreOrDefaultAppView() {
+  appViewPersistenceEnabled = false;
+  const restored = restoreAppViewState();
+  if (!restored) {
+    Object.keys(sectionSubsections).forEach((sectionId) => {
+      activeSubsections[sectionId] = normalizeSubsectionValue(
+        sectionId,
+        activeSubsections[sectionId] || getDefaultSubsectionValue(sectionId)
+      );
+    });
+    consultorioOwnerId = "";
+    consultorioPatientId = "";
+    consultorioProfileView = "records";
+    consultorioPatientProfileOpen = false;
+    setActiveSection("dashboard");
+  }
+  appViewPersistenceEnabled = true;
+  saveAppViewState();
 }
 
 function cacheElements() {
@@ -2041,10 +2190,12 @@ function isConsultorioPatientProfileActive() {
 }
 
 function syncConsultorioSelectionState() {
-  if (consultorioOwnerId && !getConsultorioOwner()) {
+  const ownersLoaded = loadedBootstrapSections.has("owners");
+  const patientsLoaded = loadedBootstrapSections.has("patients");
+  if (consultorioOwnerId && ownersLoaded && !getConsultorioOwner()) {
     consultorioOwnerId = "";
   }
-  if (consultorioPatientId && !getConsultorioPatient()) {
+  if (consultorioPatientId && patientsLoaded && !getConsultorioPatient()) {
     consultorioPatientId = "";
     consultorioPatientProfileOpen = false;
   }
@@ -2814,7 +2965,9 @@ function renderConsultorioOwnerDetail() {
   }
   const owner = getConsultorioOwner();
   if (!owner) {
-    consultorioOwnerId = "";
+    if (loadedBootstrapSections.has("owners")) {
+      consultorioOwnerId = "";
+    }
     elements.consultorioOwnerDetailPanel.classList.add("is-hidden");
     elements.consultorioOwnersPanel.classList.remove("is-hidden");
     if (elements.consultorioOwnerName) {
@@ -3072,6 +3225,7 @@ function renderAvailability() {
   renderAgendaMonth();
   renderAgendaView();
   renderGoogleCalendarStatus();
+  saveAppViewState();
 }
 
 function renderAgendaMonth() {
@@ -4402,6 +4556,7 @@ function renderAll() {
   applySettingsForm();
   renderCompliance();
   renderSection(getActiveSectionId());
+  saveAppViewState();
 }
 
 function markBootstrapSectionsLoaded(sections) {
@@ -5689,6 +5844,7 @@ async function handleLoginSubmit(event) {
     authState.authenticated = true;
     setAuthUI(true);
     closeLoginModal();
+    restoreOrDefaultAppView();
     await startDataLoad();
   } catch (error) {
     if (elements.loginError) {
@@ -5704,10 +5860,13 @@ async function handleLogout() {
   } catch (error) {
     // ignore
   }
+  appViewPersistenceEnabled = false;
   clearBootstrapCache(authState.currentUser?.id);
+  clearAppViewState(authState.currentUser?.id);
   consultorioOwnerId = "";
   consultorioPatientId = "";
   consultorioProfileView = "records";
+  consultorioPatientProfileOpen = false;
   sessionStorage.removeItem(AUTH_SESSION_KEY);
   authState.currentUser = null;
   authState.authenticated = false;
@@ -6743,7 +6902,6 @@ async function initApp() {
   bindNavigation();
   bindNavDropdowns();
   bindForms();
-  setActiveSection("dashboard");
   setDateTimeDefaults();
   try {
     const status = await api.authStatus();
@@ -6772,6 +6930,7 @@ async function initApp() {
     openLoginModal(true);
     return;
   }
+  restoreOrDefaultAppView();
   await startDataLoad();
 }
 
