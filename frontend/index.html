@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Lativet Web</title>
-    <link rel="stylesheet" href="/styles.css?v=20260326-13" />
+    <link rel="stylesheet" href="/styles.css?v=20260326-14" />
   </head>
   <body>
     <div class="page-shell">
@@ -1268,8 +1268,11 @@
         <div class="panel-heading consultorio-consultation-modal__header">
           <div class="consultorio-consultation-modal__heading">
             <span class="consultorio-consultation-modal__heading-icon" aria-hidden="true"></span>
-            <h3 id="patientConsultationModalTitle" class="consultorio-consultation-modal__title">Registro de Consulta</h3>
-            <p id="patientConsultationModalSubtitle" class="meta-copy is-hidden"></p>
+            <div class="consultorio-consultation-modal__heading-copy">
+              <h3 id="patientConsultationModalTitle" class="consultorio-consultation-modal__title">Registro de Consulta</h3>
+              <p id="patientConsultationModalSubtitle" class="meta-copy is-hidden"></p>
+            </div>
+            <span id="patientConsultationModalBadge" class="consultorio-consultation-modal__badge is-hidden"></span>
           </div>
           <button
             id="closePatientConsultationModalButton"
@@ -1289,77 +1292,126 @@
           <input type="hidden" name="consent_id" value="" />
           <input type="hidden" name="consent_required" value="false" />
 
-          <label class="consultorio-consultation-form__field">
-            <span>Fecha consulta</span>
-            <input name="consultation_at" type="datetime-local" required />
-          </label>
-          <label class="consultorio-consultation-form__field">
-            <span>Motivo</span>
-            <select id="patientConsultationReasonSelect" name="title" required>
-              <option value="">Selecciona una opcion</option>
-              <option>Consulta general</option>
-              <option>Control</option>
-              <option>Revaloracion</option>
-              <option>Urgencia</option>
-              <option>Gastrointestinal</option>
-              <option>Respiratorio</option>
-              <option>Dermatologico</option>
-              <option>Otro</option>
-            </select>
-          </label>
-
-          <label class="consultorio-consultation-form__field">
-            <span>S: Subjetivo (Anamnesis)</span>
-            <textarea name="subjective" rows="2" placeholder="Subjetivo: Motivo"></textarea>
-          </label>
-          <label class="consultorio-consultation-form__field">
-            <span>O: Objetivo (Detalles del examen)</span>
-            <textarea name="objective" rows="2" placeholder="Objetivo: Detalles del examen, listado de problemas"></textarea>
-          </label>
-          <label class="full consultorio-consultation-form__field consultorio-consultation-form__field--full">
-            <span>I: Interpretacion (Diagnostico presuntivo/final)</span>
-            <textarea name="interpretation" rows="2" placeholder="Interpretacion: diagnostico presuntivo, diferencial y final"></textarea>
-          </label>
-
-          <label class="consultorio-consultation-form__field">
-            <span>P: Plan terapeutico</span>
-            <textarea name="therapeutic_plan" rows="2" placeholder="Plan terapeutico y tratamiento"></textarea>
-          </label>
-          <label class="consultorio-consultation-form__field">
-            <span>P: Plan diagnostico</span>
-            <textarea name="diagnostic_plan" rows="2" placeholder="Plan diagnostico"></textarea>
-          </label>
-
-          <label class="consultorio-consultation-form__field">
-            <span>Proximo control</span>
-            <input name="next_control" type="date" />
-          </label>
-          <div class="consultorio-consultation-form__field consultorio-consultation-form__attachments">
-            <span>Imagenes/Fotos/Adjuntos</span>
-            <div class="consultorio-consultation-form__attachment-row">
-              <input
-                id="patientConsultationAttachmentFileInput"
-                class="is-hidden"
-                type="file"
-                accept="image/*"
-                multiple
-              />
-              <button
-                id="patientConsultationAttachmentFileButton"
-                class="consultorio-consultation-form__add consultorio-consultation-form__add--file"
-                type="button"
-              >
-                Adjuntar archivo
-              </button>
-              <span class="consultorio-consultation-form__attachment-hint">JPG, PNG o WEBP. Se mostrara como miniatura.</span>
+          <div id="patientVaccinationFields" class="consultorio-vaccination-fields is-hidden">
+            <label class="consultorio-consultation-form__field consultorio-vaccination-fields__date">
+              <span>Fecha vacunacion</span>
+              <input id="patientVaccinationDateInput" name="vaccination_date" type="date" />
+            </label>
+            <div class="consultorio-vaccination-fields__row">
+              <div class="consultorio-consultation-form__field consultorio-vaccination-field consultorio-vaccination-field--name">
+                <div class="consultorio-vaccination-field__label-row">
+                  <span>Vacuna</span>
+                  <button id="patientVaccinationCustomButton" class="inline-link consultorio-vaccination-field__link" type="button">
+                    + Registrar vacuna
+                  </button>
+                </div>
+                <select id="patientVaccinationNameSelect" name="vaccination_name">
+                  <option value="">Selecciona una vacuna</option>
+                  <option value="Rabia">Rabia</option>
+                  <option value="Triple felina">Triple felina</option>
+                  <option value="Leucemia felina">Leucemia felina</option>
+                  <option value="Quintuple canina">Quintuple canina</option>
+                  <option value="Sextuple canina">Sextuple canina</option>
+                  <option value="Parvovirus">Parvovirus</option>
+                  <option value="Moquillo">Moquillo</option>
+                  <option value="Bordetella">Bordetella</option>
+                  <option value="Leptospira">Leptospira</option>
+                  <option value="Giardia">Giardia</option>
+                  <option value="__custom__">Otra vacuna</option>
+                </select>
+                <input id="patientVaccinationCustomNameInput" class="is-hidden" name="vaccination_name_custom" type="text" placeholder="Nombre de la vacuna" />
+              </div>
+              <label class="consultorio-consultation-form__field">
+                <span>Laboratorio</span>
+                <input name="vaccination_lab" type="text" placeholder="Laboratorio" />
+              </label>
+              <label class="consultorio-consultation-form__field">
+                <span>Lote</span>
+                <input name="vaccination_lot" type="text" placeholder="Lote" />
+              </label>
             </div>
-            <div id="patientConsultationAttachmentsList" class="consultorio-consultation-attachments"></div>
-            <textarea id="patientConsultationAttachmentsValue" name="attachments_summary" class="is-hidden"></textarea>
+            <label class="consultorio-consultation-form__field">
+              <span>Observaciones</span>
+              <textarea name="vaccination_notes" rows="4" placeholder="Observaciones"></textarea>
+            </label>
+            <label class="consultorio-consultation-form__field consultorio-vaccination-fields__next">
+              <span>Proxima vacunacion</span>
+              <input id="patientVaccinationNextDateInput" name="vaccination_next_control" type="date" />
+            </label>
           </div>
 
-          <details class="consultorio-consultation-section full">
-            <summary>Examen fisico general</summary>
-            <div class="consultorio-consultation-exam-grid">
+          <div id="patientConsultationClinicalFields" class="consultorio-consultation-mode consultorio-consultation-mode--clinical">
+            <label class="consultorio-consultation-form__field">
+              <span>Fecha consulta</span>
+              <input name="consultation_at" type="datetime-local" required />
+            </label>
+            <label class="consultorio-consultation-form__field">
+              <span>Motivo</span>
+              <select id="patientConsultationReasonSelect" name="title" required>
+                <option value="">Selecciona una opcion</option>
+                <option>Consulta general</option>
+                <option>Control</option>
+                <option>Revaloracion</option>
+                <option>Urgencia</option>
+                <option>Gastrointestinal</option>
+                <option>Respiratorio</option>
+                <option>Dermatologico</option>
+                <option>Otro</option>
+              </select>
+            </label>
+
+            <label class="consultorio-consultation-form__field">
+              <span>S: Subjetivo (Anamnesis)</span>
+              <textarea name="subjective" rows="2" placeholder="Subjetivo: Motivo"></textarea>
+            </label>
+            <label class="consultorio-consultation-form__field">
+              <span>O: Objetivo (Detalles del examen)</span>
+              <textarea name="objective" rows="2" placeholder="Objetivo: Detalles del examen, listado de problemas"></textarea>
+            </label>
+            <label class="full consultorio-consultation-form__field consultorio-consultation-form__field--full">
+              <span>I: Interpretacion (Diagnostico presuntivo/final)</span>
+              <textarea name="interpretation" rows="2" placeholder="Interpretacion: diagnostico presuntivo, diferencial y final"></textarea>
+            </label>
+
+            <label class="consultorio-consultation-form__field">
+              <span>P: Plan terapeutico</span>
+              <textarea name="therapeutic_plan" rows="2" placeholder="Plan terapeutico y tratamiento"></textarea>
+            </label>
+            <label class="consultorio-consultation-form__field">
+              <span>P: Plan diagnostico</span>
+              <textarea name="diagnostic_plan" rows="2" placeholder="Plan diagnostico"></textarea>
+            </label>
+
+            <label class="consultorio-consultation-form__field">
+              <span>Proximo control</span>
+              <input name="next_control" type="date" />
+            </label>
+            <div class="consultorio-consultation-form__field consultorio-consultation-form__attachments">
+              <span>Imagenes/Fotos/Adjuntos</span>
+              <div class="consultorio-consultation-form__attachment-row">
+                <input
+                  id="patientConsultationAttachmentFileInput"
+                  class="is-hidden"
+                  type="file"
+                  accept="image/*"
+                  multiple
+                />
+                <button
+                  id="patientConsultationAttachmentFileButton"
+                  class="consultorio-consultation-form__add consultorio-consultation-form__add--file"
+                  type="button"
+                >
+                  Adjuntar archivo
+                </button>
+                <span class="consultorio-consultation-form__attachment-hint">JPG, PNG o WEBP. Se mostrara como miniatura.</span>
+              </div>
+              <div id="patientConsultationAttachmentsList" class="consultorio-consultation-attachments"></div>
+              <textarea id="patientConsultationAttachmentsValue" name="attachments_summary" class="is-hidden"></textarea>
+            </div>
+
+            <details class="consultorio-consultation-section full">
+              <summary>Examen fisico general</summary>
+              <div class="consultorio-consultation-exam-grid">
               <label class="consultorio-consultation-form__field">
                 <span>Temperatura</span>
                 <input name="exam_general_temperature" type="text" placeholder="Temperatura" />
@@ -1569,8 +1621,9 @@
                   <option value="Anormal">Anormal</option>
                 </select>
               </label>
-            </div>
-          </details>
+              </div>
+            </details>
+          </div>
 
           <div class="full consultorio-consultation-form__footer">
             <p id="patientConsultationRecordLabel" class="meta-copy"></p>
@@ -1607,6 +1660,6 @@
     </div>
   </div>
 
-  <script src="/app.js?v=20260326-10"></script>
+  <script src="/app.js?v=20260326-11"></script>
 </body>
 </html>

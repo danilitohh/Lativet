@@ -1266,6 +1266,12 @@ button:active {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-wrap: wrap;
+}
+
+.consultorio-consultation-modal__heading-copy {
+  display: grid;
+  gap: 2px;
 }
 
 .consultorio-consultation-modal__heading-icon {
@@ -1307,6 +1313,20 @@ button:active {
   color: #4455aa;
 }
 
+.consultorio-consultation-modal__badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 6px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: rgba(255, 196, 84, 0.18);
+  color: #d18a00;
+  font-size: 0.66rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
 .consultorio-consultation-modal__close {
   width: 28px;
   height: 28px;
@@ -1323,6 +1343,55 @@ button:active {
   padding: 11px 10px 8px;
   margin-top: 0;
   gap: 10px 12px;
+}
+
+.consultorio-consultation-mode--clinical {
+  display: contents;
+}
+
+.consultorio-vaccination-fields {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 12px;
+}
+
+.consultorio-vaccination-fields__date,
+.consultorio-vaccination-fields__next {
+  max-width: 280px;
+}
+
+.consultorio-vaccination-fields__row {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) minmax(160px, 0.55fr) minmax(160px, 0.55fr);
+  gap: 12px;
+  align-items: end;
+}
+
+.consultorio-vaccination-field {
+  display: grid;
+  gap: 5px;
+}
+
+.consultorio-vaccination-field__label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.consultorio-vaccination-field__link {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #6d78cf;
+  font-size: 0.67rem;
+  box-shadow: none;
+}
+
+.consultorio-vaccination-field__link:hover {
+  transform: none;
+  text-decoration: underline;
 }
 
 .consultorio-consultation-form__field {
@@ -1360,6 +1429,10 @@ button:active {
   resize: vertical;
 }
 
+.consultorio-vaccination-fields textarea {
+  min-height: 72px;
+}
+
 .consultorio-consultation-form input::placeholder,
 .consultorio-consultation-form textarea::placeholder {
   color: #a2abbf;
@@ -1390,6 +1463,10 @@ button:active {
 .consultorio-consultation-form__attachment-hint {
   color: #8b96ad;
   font-size: 0.72rem;
+}
+
+.consultorio-consultation-modal--vaccination {
+  width: min(980px, 100%);
 }
 
 .consultorio-consultation-form__add,
@@ -1609,6 +1686,10 @@ button:active {
 .consultorio-consultation-form__footer {
   padding: 8px 0 0;
   border-top: 1px solid #e3e8f2;
+}
+
+.consultorio-consultation-form__footer--align-end {
+  justify-content: flex-end;
 }
 
 .consultorio-consultation-form__cancel {
@@ -3231,6 +3312,15 @@ body.auth-locked .page-shell > :not(#loginModal) {
 
   .consultorio-consultation-exam-grid--special {
     grid-template-columns: 1fr;
+  }
+
+  .consultorio-vaccination-fields__row {
+    grid-template-columns: 1fr;
+  }
+
+  .consultorio-vaccination-fields__date,
+  .consultorio-vaccination-fields__next {
+    max-width: none;
   }
 
   .consultorio-profile-table-toolbar,
