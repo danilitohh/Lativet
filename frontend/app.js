@@ -6169,9 +6169,9 @@ function renderPatientFormulaMedications(items = []) {
   if (!elements.patientFormulaMedicationsList) {
     return;
   }
-  const normalizedItems = (Array.isArray(items) ? items : [])
-    .map((item) => createConsultorioFormulaMedication(item))
-    .filter((item) => hasConsultorioFormulaMedicationContent(item));
+  const normalizedItems = (Array.isArray(items) ? items : []).map((item) =>
+    createConsultorioFormulaMedication(item)
+  );
   const rows = normalizedItems.length ? normalizedItems : [createConsultorioFormulaMedication()];
   elements.patientFormulaMedicationsList.innerHTML = rows
     .map(
@@ -6233,11 +6233,11 @@ function renderPatientFormulaMedications(items = []) {
     .join("");
 }
 
-function getPatientFormulaMedications() {
+function getPatientFormulaMedications({ includeEmpty = false } = {}) {
   if (!elements.patientFormulaMedicationsList) {
     return [];
   }
-  return Array.from(
+  const medications = Array.from(
     elements.patientFormulaMedicationsList.querySelectorAll("[data-formula-medication-item]")
   )
     .map((item) =>
@@ -6248,8 +6248,10 @@ function getPatientFormulaMedications() {
         quantity: item.querySelector('[data-formula-medication-field="quantity"]')?.value || "1",
         dosage: item.querySelector('[data-formula-medication-field="dosage"]')?.value || "",
       })
-    )
-    .filter((item) => hasConsultorioFormulaMedicationContent(item));
+    );
+  return includeEmpty
+    ? medications
+    : medications.filter((item) => hasConsultorioFormulaMedicationContent(item));
 }
 
 function openPatientConsultationModal(consultation = null) {
@@ -7713,7 +7715,7 @@ function bindForms() {
   }
   if (elements.patientFormulaAddMedicationButton) {
     elements.patientFormulaAddMedicationButton.addEventListener("click", () => {
-      const items = getPatientFormulaMedications();
+      const items = getPatientFormulaMedications({ includeEmpty: true });
       items.push(createConsultorioFormulaMedication());
       renderPatientFormulaMedications(items);
       elements.patientFormulaMedicationsList
@@ -7728,7 +7730,7 @@ function bindForms() {
         return;
       }
       const index = Number(removeButton.dataset.removePatientFormulaMedication);
-      const items = getPatientFormulaMedications();
+      const items = getPatientFormulaMedications({ includeEmpty: true });
       items.splice(index, 1);
       renderPatientFormulaMedications(items);
     });
