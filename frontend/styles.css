@@ -1194,7 +1194,8 @@ button:active {
   font-size: 1.05rem;
 }
 
-.consultorio-vaccinations-shell {
+.consultorio-vaccinations-shell,
+.consultorio-formulas-shell {
   min-height: 340px;
 }
 

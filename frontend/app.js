@@ -2188,7 +2188,7 @@ function getConsultorioProfileViewConfig() {
 }
 
 function isConsultorioWorkspaceOnlyView(profileConfig) {
-  return ["consultations", "vacunacion"].includes(profileConfig?.value || "");
+  return ["consultations", "vacunacion", "formula"].includes(profileConfig?.value || "");
 }
 
 function getConsultorioProfileDefaultConsultationTitle(profileConfig) {
@@ -2604,6 +2604,16 @@ function getConsultorioConsultationDiagnosisLabel(consultation) {
     details.therapeuticPlan ||
     truncate(consultation?.indications || "Sin diagnostico registrado", 88)
   );
+}
+
+function getConsultorioFormulaDiagnosisLabel(consultation) {
+  const details = parseConsultorioConsultationDetails(consultation);
+  return details.interpretation || truncate(consultation?.indications || "Sin diagnostico registrado", 96);
+}
+
+function getConsultorioFormulaMedicationLabel(consultation) {
+  const details = parseConsultorioConsultationDetails(consultation);
+  return details.therapeuticPlan || truncate(consultation?.summary || "Sin medicamentos registrados", 112);
 }
 
 function getDefaultConsultorioProfessionalName() {
@@ -3157,6 +3167,86 @@ function buildConsultorioVaccinationsWorkspace(patient, profileConfig) {
   `;
 }
 
+function buildConsultorioFormulasWorkspace(patient, profileConfig) {
+  const formulas = getConsultorioScopedConsultations(profileConfig?.consultationTypes || null);
+  const content = formulas.length
+    ? `
+      <div class="table-wrapper consultorio-consultations-table-wrapper consultorio-formulas-table-wrapper">
+        <table class="data-table consultorio-consultations-table consultorio-formulas-table">
+          <thead>
+            <tr>
+              <th>Opc.</th>
+              <th>Fecha formula</th>
+              <th>Diagnostico presuntivo y/o final</th>
+              <th>Medicamentos</th>
+              <th>Usuario</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${formulas
+              .map(
+                (consultation) => `
+                  <tr>
+                    <td>
+                      <div class="table-actions consultorio-consultations-table__actions">
+                        <button
+                          class="ghost-button"
+                          type="button"
+                          data-edit-patient-consultation="${escapeHtml(consultation.id)}"
+                        >
+                          Editar
+                        </button>
+                      </div>
+                    </td>
+                    <td>${escapeHtml(normalizeDateFieldValue(consultation.consultation_at) || "Sin fecha")}</td>
+                    <td>${escapeHtml(getConsultorioFormulaDiagnosisLabel(consultation))}</td>
+                    <td>${escapeHtml(getConsultorioFormulaMedicationLabel(consultation))}</td>
+                    <td>${escapeHtml(consultation.professional_name || "Sin usuario")}</td>
+                  </tr>
+                `
+              )
+              .join("")}
+          </tbody>
+        </table>
+      </div>
+    `
+    : `
+      <div class="consultorio-module-empty consultorio-module-empty--formulas">
+        <span class="consultorio-module-empty__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+            <path d="M6.5 17A2.5 2.5 0 0 0 4 14.5V4.5A2.5 2.5 0 0 1 6.5 2H20v15"></path>
+            <path d="M8 7h8"></path>
+            <path d="M8 11h8"></path>
+            <path d="M8 15h5"></path>
+          </svg>
+        </span>
+        <strong>No hay formulas medicas registradas</strong>
+      </div>
+    `;
+  return `
+    <article class="consultorio-profile-shell consultorio-formulas-shell">
+      <div class="consultorio-profile-table-toolbar">
+        <div>
+          <span class="consultorio-profile-shell__eyebrow">Formulas medicas</span>
+          <h4>Formulas medicas de ${escapeHtml(patient?.name || "Paciente")}</h4>
+        </div>
+        <div class="form-actions">
+          <button
+            class="primary-button"
+            type="button"
+            data-open-patient-consultation-modal="true"
+            data-consultation-profile-view="formula"
+          >
+            Registrar formula medica
+          </button>
+        </div>
+      </div>
+      ${content}
+    </article>
+  `;
+}
+
 function renderConsultorioPatientProfile() {
   if (!elements.consultorioPatientProfilePanel) {
     return;
@@ -3320,6 +3410,8 @@ function renderConsultorioPatientProfile() {
         ? buildConsultorioConsultationsWorkspace(patient, profileConfig)
         : profileConfig?.value === "vacunacion"
         ? buildConsultorioVaccinationsWorkspace(patient, profileConfig)
+        : profileConfig?.value === "formula"
+        ? buildConsultorioFormulasWorkspace(patient, profileConfig)
         : buildConsultorioProfileTimelineMarkup(profileConfig, timelineItems);
     elements.consultorioPatientProfileSummary.innerHTML = `
       <div class="consultorio-profile-workspace">
