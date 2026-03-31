@@ -2018,6 +2018,28 @@ class Database:
     def list_consultations(self) -> list[dict]:
         return self._list_consultation_details(limit=300)
 
+    def delete_consultation(self, consultation_id: str) -> dict:
+        consultation = self._fetch_consultation_detail(consultation_id)
+        with self._tx():
+            deleted = self.connection.execute(
+                "DELETE FROM clinical_consultations WHERE id = ?",
+                (consultation_id,),
+            )
+            if not deleted.rowcount:
+                raise ValidationError("La consulta seleccionada no existe.")
+            self.connection.execute(
+                "DELETE FROM control_reminders WHERE consultation_id = ?",
+                (consultation_id,),
+            )
+            self._record_audit(
+                "clinical_consultation",
+                consultation_id,
+                "delete",
+                consultation.get("professional_name") or "consultorio",
+                {"id": consultation_id, "status": "deleted"},
+            )
+        return consultation
+
     def save_availability_rule(self, payload: dict) -> dict:
         data = validate_availability_rule(payload)
         rule_id = data["id"] or uuid.uuid4().hex

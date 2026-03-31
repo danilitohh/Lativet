@@ -318,6 +318,10 @@ def create_app(base_dir: Path | None = None, data_dir: Path | None = None) -> Fl
     def save_consultation():
         return respond(service.save_consultation(payload()))
 
+    @app.delete("/api/consultations/<consultation_id>")
+    def delete_consultation(consultation_id: str):
+        return respond(service.delete_consultation(consultation_id))
+
     @app.get("/api/jobs/control-reminders")
     def run_control_reminders_job():
         if init_service() is None:

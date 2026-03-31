@@ -353,6 +353,10 @@ class LativetService:
         )
         return consultation
 
+    @safe_api_call
+    def delete_consultation(self, consultation_id: str) -> dict:
+        return self._db.delete_consultation(consultation_id)
+
     def _current_local_date(self) -> tuple[str, str]:
         settings = self._db.get_settings()
         timezone_name = settings.get("agenda_timezone") or "America/Bogota"

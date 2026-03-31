@@ -506,6 +506,69 @@ class DatabaseSmokeTests(unittest.TestCase):
             self.db.get_control_reminder_for_consultation(consultation["id"])
         )
 
+    def test_delete_consultation_removes_record_and_reminder(self) -> None:
+        owner = self.db.save_owner(
+            {
+                "full_name": "Carlos Pardo",
+                "identification_type": "CC",
+                "identification_number": "445566",
+                "phone": "3001122334",
+                "email": "carlos@example.com",
+                "address": "Calle 9",
+            }
+        )
+        patient = self.db.save_patient(
+            {
+                "owner_id": owner["id"],
+                "name": "Nala",
+                "species": "Felino",
+                "breed": "Mestizo",
+                "sex": "Hembra",
+                "age_years": "3",
+                "weight_kg": "4.1",
+                "reproductive_status": "Esterilizada",
+                "notes": "Paciente tranquila.",
+            }
+        )
+        record = self.db.save_clinical_record(
+            {
+                "patient_id": patient["id"],
+                "opened_at": "2026-03-26T08:00",
+                "reason_for_consultation": "Seguimiento",
+                "anamnesis": "Sin cambios recientes.",
+                "physical_exam_summary": "Estable.",
+                "presumptive_diagnosis": "Control",
+                "procedures_plan": "Observacion.",
+                "recommendations": "Continuar manejo.",
+                "professional_name": "Dra. Gomez",
+                "professional_license": "MV-220",
+            },
+            finalize=False,
+        )
+        consultation = self.db.save_consultation(
+            {
+                "record_id": record["id"],
+                "consultation_at": "2026-03-26T09:00",
+                "consultation_type": "Documento",
+                "title": "Orden de laboratorio",
+                "summary": "Motivo de la orden: Control.",
+                "indications": "Solicitudes: Hemograma",
+                "next_control": "2026-04-02",
+                "professional_name": "Dra. Gomez",
+                "professional_license": "MV-220",
+            }
+        )
+
+        deleted = self.db.delete_consultation(consultation["id"])
+
+        self.assertEqual(deleted["id"], consultation["id"])
+        self.assertEqual(self.db.list_consultations(), [])
+        self.assertIsNone(
+            self.db.get_control_reminder_for_consultation(consultation["id"])
+        )
+        with self.assertRaises(ValidationError):
+            self.db.delete_consultation(consultation["id"])
+
     def test_vaccination_next_control_creates_vaccination_reminder(self) -> None:
         owner = self.db.save_owner(
             {

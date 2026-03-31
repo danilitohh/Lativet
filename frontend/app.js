@@ -903,6 +903,8 @@ const api = {
     }),
   saveConsultation: (payload) =>
     apiRequest("/api/consultations", { method: "POST", body: JSON.stringify(payload) }),
+  deleteConsultation: (consultationId) =>
+    apiRequest(`/api/consultations/${consultationId}`, { method: "DELETE" }),
   saveEvolution: (payload) =>
     apiRequest("/api/evolutions", { method: "POST", body: JSON.stringify(payload) }),
   saveConsent: (payload) =>
@@ -2956,6 +2958,33 @@ function buildConsultorioOrderItemsPreview(items = []) {
     .join(" | ");
 }
 
+function buildConsultorioOrderItemsMarkup(items = []) {
+  return (Array.isArray(items) ? items : [])
+    .filter((item) => hasConsultorioOrderItemContent(item))
+    .map((item) => {
+      const normalized = createConsultorioOrderItem(item);
+      const name = getConsultorioOrderItemDisplayName(normalized) || "Orden";
+      const metadata = [
+        normalized.type ? `Tipo: ${normalized.type}` : "",
+        normalized.quantity ? `Cantidad: ${normalized.quantity}` : "",
+        normalized.priority ? `Prioridad: ${normalized.priority}` : "",
+        normalized.notes ? `Notas: ${normalized.notes}` : "",
+        normalized.generateRequest ? "Genera solicitud" : "",
+      ].filter(Boolean);
+      return `
+        <li>
+          <strong>${escapeHtml(name)}</strong>
+          ${
+            metadata.length
+              ? `<div>${escapeHtml(metadata.join(" | "))}</div>`
+              : ""
+          }
+        </li>
+      `;
+    })
+    .join("");
+}
+
 function parseConsultorioOrderDetails(consultation) {
   const summary = parseConsultorioStructuredText(consultation?.summary || "", {
     "motivo de la orden": "reason",
@@ -3032,6 +3061,47 @@ function buildConsultorioOrderIndications(_payload, items = []) {
     ["Solicitudes", requestsPreview],
     ["Notas", notesPreview],
   ]);
+}
+
+function buildConsultorioOrderActionMenuMarkup(consultation) {
+  const orderId = escapeHtml(consultation.id);
+  return `
+    <div class="consultorio-order-actions" data-order-actions>
+      <button
+        class="ghost-button consultorio-order-actions__icon"
+        type="button"
+        data-edit-patient-consultation="${orderId}"
+        aria-label="Editar orden"
+        title="Editar orden"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 20h9"></path>
+          <path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4Z"></path>
+        </svg>
+      </button>
+      <button
+        class="ghost-button consultorio-order-actions__icon"
+        type="button"
+        data-order-actions-toggle="${orderId}"
+        aria-label="Más opciones"
+        aria-expanded="false"
+        title="Más opciones"
+      >
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <circle cx="12" cy="5" r="1.8"></circle>
+          <circle cx="12" cy="12" r="1.8"></circle>
+          <circle cx="12" cy="19" r="1.8"></circle>
+        </svg>
+      </button>
+      <div class="consultorio-order-actions__menu is-hidden" data-order-actions-menu="${orderId}">
+        <button type="button" data-order-action="view" data-order-id="${orderId}">Ver</button>
+        <button type="button" data-order-action="print" data-order-id="${orderId}">Impresión</button>
+        <button type="button" data-order-action="email" data-order-id="${orderId}">Enviar por email</button>
+        <button type="button" data-order-action="followup" data-order-id="${orderId}">Seguimientos</button>
+        <button type="button" data-order-action="delete" data-order-id="${orderId}">Eliminar</button>
+      </div>
+    </div>
+  `;
 }
 
 function createConsultorioFormulaMedication(item = {}) {
@@ -4181,7 +4251,7 @@ function buildConsultorioOrdersWorkspace(patient, profileConfig) {
   const orders = getConsultorioScopedConsultations(profileConfig?.consultationTypes || null);
   const content = orders.length
     ? `
-      <div class="table-wrapper consultorio-consultations-table-wrapper">
+      <div class="table-wrapper consultorio-consultations-table-wrapper consultorio-orders-table-wrapper">
         <table class="data-table consultorio-consultations-table">
           <thead>
             <tr>
@@ -4208,15 +4278,7 @@ function buildConsultorioOrdersWorkspace(patient, profileConfig) {
                 return `
                   <tr>
                     <td>
-                      <div class="table-actions consultorio-consultations-table__actions">
-                        <button
-                          class="ghost-button"
-                          type="button"
-                          data-edit-patient-consultation="${escapeHtml(consultation.id)}"
-                        >
-                          Editar
-                        </button>
-                      </div>
+                      ${buildConsultorioOrderActionMenuMarkup(consultation)}
                     </td>
                     <td>${escapeHtml(formatDateTime(consultation.consultation_at))}</td>
                     <td>${escapeHtml(truncate(orderPreview, 120))}</td>
@@ -7351,6 +7413,156 @@ function getPatientOrderItems({ includeEmpty = false } = {}) {
   return rows.filter((item) => hasConsultorioOrderItemContent(item));
 }
 
+function closeConsultorioOrderActionMenus() {
+  elements.consultorioPatientProfileSummary
+    ?.querySelectorAll("[data-order-actions-menu]")
+    .forEach((menu) => menu.classList.add("is-hidden"));
+  elements.consultorioPatientProfileSummary
+    ?.querySelectorAll("[data-order-actions-toggle]")
+    .forEach((button) => button.setAttribute("aria-expanded", "false"));
+}
+
+function toggleConsultorioOrderActionMenu(orderId) {
+  if (!orderId || !elements.consultorioPatientProfileSummary) {
+    return;
+  }
+  const menu = elements.consultorioPatientProfileSummary.querySelector(
+    `[data-order-actions-menu="${orderId}"]`
+  );
+  const button = elements.consultorioPatientProfileSummary.querySelector(
+    `[data-order-actions-toggle="${orderId}"]`
+  );
+  if (!menu || !button) {
+    return;
+  }
+  const willOpen = menu.classList.contains("is-hidden");
+  closeConsultorioOrderActionMenus();
+  menu.classList.toggle("is-hidden", !willOpen);
+  button.setAttribute("aria-expanded", willOpen ? "true" : "false");
+}
+
+function openConsultorioOrderPrintView(consultation) {
+  const patient = getPatientById(consultation?.patient_id || "") || getConsultorioPatient();
+  const owner = getOwnerById(consultation?.owner_id || patient?.owner_id || "");
+  const orderDetails = parseConsultorioOrderDetails(consultation);
+  const printWindow = window.open("", "_blank", "noopener,noreferrer,width=860,height=720");
+  if (!printWindow) {
+    showStatus("El navegador bloqueó la ventana de impresión.", "error");
+    return;
+  }
+  const itemsMarkup =
+    buildConsultorioOrderItemsMarkup(orderDetails.items) || "<li>Sin items registrados.</li>";
+  printWindow.document.write(`
+    <html>
+      <head>
+        <title>Orden ${escapeHtml(patient?.name || "Paciente")}</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 28px; color: #24324a; }
+          h1 { margin: 0 0 8px; font-size: 24px; }
+          h2 { margin: 22px 0 10px; font-size: 16px; }
+          p { margin: 4px 0; line-height: 1.5; }
+          ul { margin: 10px 0 0; padding-left: 18px; }
+          li { margin-bottom: 10px; }
+          li div { margin-top: 3px; color: #5a667d; font-size: 13px; }
+          .meta { color: #5a667d; font-size: 13px; }
+          .card { margin-top: 18px; padding-top: 18px; border-top: 1px solid #d7deea; }
+        </style>
+      </head>
+      <body>
+        <h1>Orden</h1>
+        <p class="meta">Paciente: ${escapeHtml(patient?.name || consultation?.patient_name || "Paciente")}</p>
+        <p class="meta">Propietario: ${escapeHtml(owner?.full_name || consultation?.owner_name || "Sin propietario")}</p>
+        <p class="meta">Fecha: ${escapeHtml(formatDateTime(consultation?.consultation_at || ""))}</p>
+        <p class="meta">Usuario: ${escapeHtml(consultation?.professional_name || "Sin usuario")}</p>
+        <div class="card">
+          <h2>Ordenes</h2>
+          <ul>${itemsMarkup}</ul>
+        </div>
+        <div class="card">
+          <h2>Motivo de la orden</h2>
+          <p>${escapeHtml(orderDetails.reason || "Sin motivo registrado.")}</p>
+        </div>
+      </body>
+    </html>
+  `);
+  printWindow.document.close();
+  printWindow.focus();
+  printWindow.print();
+}
+
+function openConsultorioOrderEmailDraft(consultation) {
+  const patient = getPatientById(consultation?.patient_id || "") || getConsultorioPatient();
+  const owner = getOwnerById(consultation?.owner_id || patient?.owner_id || "");
+  if (!owner?.email) {
+    showStatus("El propietario no tiene correo registrado para enviar esta orden.", "error");
+    return;
+  }
+  const orderDetails = parseConsultorioOrderDetails(consultation);
+  const itemsText =
+    (Array.isArray(orderDetails.items) ? orderDetails.items : [])
+      .filter((item) => hasConsultorioOrderItemContent(item))
+      .map((item, index) => `${index + 1}. ${buildConsultorioOrderItemLabel(item)}`)
+      .join("\n") || "Sin items registrados.";
+  const subject = `Orden para ${patient?.name || consultation?.patient_name || "Paciente"}`;
+  const body = [
+    `Hola ${owner.full_name || ""},`,
+    "",
+    `Te compartimos la orden registrada para ${patient?.name || consultation?.patient_name || "tu mascota"}.`,
+    "",
+    `Fecha: ${formatDateTime(consultation?.consultation_at || "")}`,
+    `Veterinario: ${consultation?.professional_name || "Sin usuario"}`,
+    "",
+    "Ordenes:",
+    itemsText,
+    "",
+    `Motivo de la orden: ${orderDetails.reason || "Sin motivo registrado."}`,
+  ].join("\n");
+  window.location.href = `mailto:${encodeURIComponent(owner.email)}?subject=${encodeURIComponent(
+    subject
+  )}&body=${encodeURIComponent(body)}`;
+}
+
+async function handleConsultorioOrderAction(action, consultationId) {
+  const consultation = getConsultationById(consultationId || "");
+  if (!consultation) {
+    showStatus("No se encontro la orden seleccionada.", "error");
+    return;
+  }
+  closeConsultorioOrderActionMenus();
+  if (action === "view") {
+    openPatientConsultationModal(consultation);
+    return;
+  }
+  if (action === "print") {
+    openConsultorioOrderPrintView(consultation);
+    return;
+  }
+  if (action === "email") {
+    openConsultorioOrderEmailDraft(consultation);
+    return;
+  }
+  if (action === "followup") {
+    consultorioProfileView = "seguimiento";
+    renderConsultorioPatientProfile();
+    showStatus("Vista de seguimientos abierta para esta mascota.", "info");
+    return;
+  }
+  if (action === "delete") {
+    const confirmed = window.confirm("¿Eliminar esta orden? Esta accion no se puede deshacer.");
+    if (!confirmed) {
+      return;
+    }
+    await api.deleteConsultation(consultation.id);
+    await refreshData({
+      sections: ["consultations", "records"],
+      message: "Orden eliminada.",
+    });
+    consultorioPatientProfileOpen = true;
+    consultorioProfileView = "orders";
+    setActiveSection(CONSULTORIO_PATIENT_PROFILE_SECTION_ID);
+  }
+}
+
 function renderPatientFormulaMedications(items = []) {
   if (!elements.patientFormulaMedicationsList) {
     return;
@@ -9169,7 +9381,10 @@ function bindForms() {
     elements.patientsList.addEventListener("click", wrapAsync(handlePatientsListClick));
   }
   if (elements.consultorioPatientProfileSummary) {
-    elements.consultorioPatientProfileSummary.addEventListener("click", (event) => {
+    elements.consultorioPatientProfileSummary.addEventListener("click", wrapAsync(async (event) => {
+      if (!event.target.closest("[data-order-actions]")) {
+        closeConsultorioOrderActionMenus();
+      }
       const openConsultationButton = event.target.closest("[data-open-patient-consultation-modal]");
       if (openConsultationButton) {
         const targetProfileView =
@@ -9180,10 +9395,24 @@ function bindForms() {
         openPatientConsultationModal();
         return;
       }
+      const orderActionsToggle = event.target.closest("[data-order-actions-toggle]");
+      if (orderActionsToggle) {
+        toggleConsultorioOrderActionMenu(orderActionsToggle.dataset.orderActionsToggle || "");
+        return;
+      }
+      const orderActionButton = event.target.closest("[data-order-action]");
+      if (orderActionButton) {
+        await handleConsultorioOrderAction(
+          orderActionButton.dataset.orderAction || "",
+          orderActionButton.dataset.orderId || ""
+        );
+        return;
+      }
       const editConsultationButton = event.target.closest("[data-edit-patient-consultation]");
       if (editConsultationButton) {
         const consultation = getConsultationById(editConsultationButton.dataset.editPatientConsultation || "");
         if (consultation) {
+          closeConsultorioOrderActionMenus();
           openPatientConsultationModal(consultation);
         }
         return;
@@ -9197,7 +9426,7 @@ function bindForms() {
         return;
       }
       openConsultorioPatientProfile(patient);
-    });
+    }));
   }
   if (elements.closePatientConsultationModalButton) {
     elements.closePatientConsultationModalButton.addEventListener("click", closePatientConsultationModal);
