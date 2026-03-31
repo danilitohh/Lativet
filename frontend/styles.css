@@ -1437,6 +1437,12 @@ button:active {
   gap: 16px;
 }
 
+.consultorio-order-fields {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 14px;
+}
+
 .consultorio-hospamb-fields__top {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1459,6 +1465,173 @@ button:active {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
+}
+
+.consultorio-order-fields__top {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.34fr);
+  gap: 14px;
+}
+
+.consultorio-order-fields__date {
+  max-width: 220px;
+}
+
+.consultorio-order-builder {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid rgba(162, 236, 228, 0.88);
+  border-radius: 6px;
+  background: linear-gradient(180deg, rgba(252, 255, 255, 0.98), rgba(248, 253, 252, 0.96));
+}
+
+.consultorio-order-builder__list {
+  display: grid;
+  gap: 12px;
+}
+
+.consultorio-order-builder__footer {
+  display: flex;
+  justify-content: center;
+  padding-top: 8px;
+  border-top: 1px solid rgba(224, 232, 244, 0.95);
+}
+
+.consultorio-order-builder__add {
+  min-height: 32px;
+  padding: 6px 12px;
+  border: 0;
+  background: transparent;
+  color: #7c8df3;
+  font-size: 0.76rem;
+  font-weight: 600;
+  box-shadow: none;
+}
+
+.consultorio-order-builder__add:hover {
+  transform: none;
+  text-decoration: underline;
+}
+
+.consultorio-order-item {
+  display: grid;
+  gap: 12px;
+  padding: 12px 14px 14px;
+  border: 1px solid #edf1f7;
+  border-radius: 6px;
+  background: #fff;
+  box-shadow: 0 10px 22px rgba(34, 52, 91, 0.06);
+}
+
+.consultorio-order-item__header,
+.consultorio-order-item__actions,
+.consultorio-order-item__title {
+  display: flex;
+  align-items: center;
+}
+
+.consultorio-order-item__header {
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.consultorio-order-item__title {
+  gap: 8px;
+  color: #5670f0;
+}
+
+.consultorio-order-item__title strong {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #5163dd;
+}
+
+.consultorio-order-item__icon {
+  width: 14px;
+  height: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.consultorio-order-item__icon svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.consultorio-order-item__actions {
+  gap: 12px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.consultorio-order-item__toggle {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #7d88b1;
+  font-size: 0.68rem;
+  font-weight: 500;
+}
+
+.consultorio-order-item__toggle input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.consultorio-order-item__switch {
+  position: relative;
+  width: 24px;
+  height: 14px;
+  border-radius: 999px;
+  background: #e5e9f2;
+  transition: background 160ms ease;
+}
+
+.consultorio-order-item__switch::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(20, 36, 68, 0.16);
+  transition: transform 160ms ease;
+}
+
+.consultorio-order-item__toggle input:checked + .consultorio-order-item__switch {
+  background: #31cabf;
+}
+
+.consultorio-order-item__toggle input:checked + .consultorio-order-item__switch::after {
+  transform: translateX(10px);
+}
+
+.consultorio-order-item__remove {
+  padding: 0;
+  color: #8da0f3;
+  font-size: 0.68rem;
+}
+
+.consultorio-order-item__remove:hover {
+  transform: none;
+  text-decoration: underline;
+}
+
+.consultorio-order-item__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1.45fr) minmax(84px, 0.35fr) minmax(0, 1fr);
+  gap: 12px;
+}
+
+.consultorio-order-item__quantity input {
+  text-align: center;
 }
 
 .consultorio-hospamb-fields__link {
@@ -2102,6 +2275,149 @@ button:active {
   padding: 6px 12px;
   border-radius: 4px;
   font-size: 0.76rem;
+}
+
+.consultorio-consultation-modal--orders {
+  width: min(820px, 100%);
+  max-height: min(88vh, 760px);
+  border-radius: 6px;
+  border: 1px solid #d9deec;
+  background: #fff;
+  box-shadow: 0 26px 62px rgba(12, 20, 36, 0.22);
+}
+
+#patientConsultationModal.modal-shell--orders {
+  padding: 22px 24px;
+}
+
+.consultorio-consultation-modal--orders .consultorio-consultation-modal__header {
+  margin-bottom: 0;
+  padding: 12px 14px 11px;
+  border-bottom: 1px solid #e4e8f4;
+}
+
+.consultorio-consultation-modal--orders .consultorio-consultation-modal__heading {
+  gap: 8px;
+}
+
+.consultorio-consultation-modal--orders .consultorio-consultation-modal__heading-icon {
+  width: 16px;
+  height: 16px;
+  color: #5c6cf0;
+}
+
+.consultorio-consultation-modal--orders .consultorio-consultation-modal__title {
+  font-size: 0.9rem;
+  color: #4a4f69;
+}
+
+.consultorio-consultation-modal--orders .consultorio-consultation-modal__close {
+  width: 28px;
+  height: 28px;
+  color: #c4c8d5;
+  font-size: 1.5rem;
+}
+
+.consultorio-consultation-modal--orders .consultorio-consultation-form {
+  padding: 14px 14px 16px;
+  gap: 14px;
+}
+
+.consultorio-consultation-modal--orders .consultorio-consultation-form__field {
+  gap: 6px;
+}
+
+.consultorio-consultation-modal--orders .consultorio-consultation-form__field > span,
+.consultorio-consultation-modal--orders .consultorio-order-item__toggle > span:first-child {
+  font-size: 0.7rem;
+  color: #6671b2;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.consultorio-consultation-modal--orders .consultorio-consultation-form input,
+.consultorio-consultation-modal--orders .consultorio-consultation-form select,
+.consultorio-consultation-modal--orders .consultorio-consultation-form textarea {
+  border-color: #d9dff0;
+  border-radius: 4px;
+  padding: 8px 10px;
+  font-size: 0.78rem;
+  line-height: 1.25;
+  color: #5a6071;
+}
+
+.consultorio-consultation-modal--orders .consultorio-consultation-form input,
+.consultorio-consultation-modal--orders .consultorio-consultation-form select {
+  min-height: 34px;
+}
+
+.consultorio-consultation-modal--orders .consultorio-consultation-form textarea {
+  min-height: 72px;
+  resize: vertical;
+}
+
+.consultorio-consultation-modal--orders #patientOrderReasonInput {
+  min-height: 72px;
+}
+
+.consultorio-consultation-modal--orders .consultorio-consultation-form input::placeholder,
+.consultorio-consultation-modal--orders .consultorio-consultation-form textarea::placeholder {
+  color: #7c8296;
+}
+
+.consultorio-consultation-modal--orders .consultorio-consultation-form input:focus,
+.consultorio-consultation-modal--orders .consultorio-consultation-form select:focus,
+.consultorio-consultation-modal--orders .consultorio-consultation-form textarea:focus {
+  outline: none;
+  border-color: rgba(90, 103, 232, 0.36);
+  box-shadow: 0 0 0 2px rgba(90, 103, 232, 0.08);
+}
+
+.consultorio-consultation-modal--orders .consultorio-consultation-form__footer {
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid #e4e8f4;
+}
+
+.consultorio-consultation-modal--orders .consultorio-consultation-form__cancel,
+.consultorio-consultation-modal--orders .consultorio-consultation-form__submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 7px 12px;
+  border-radius: 4px;
+  font-size: 0.76rem;
+}
+
+.consultorio-consultation-modal--orders .consultorio-consultation-form__cancel {
+  border: 1px solid #d9dff0;
+  background: #fff;
+  color: #5b6478;
+}
+
+.consultorio-consultation-modal--orders .consultorio-consultation-form__submit {
+  border: 1px solid #5a67e8;
+  background: #5a67e8;
+  color: #fff;
+}
+
+.consultorio-consultation-modal--orders .consultorio-consultation-form__submit-icon {
+  width: 12px;
+  height: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+.consultorio-consultation-modal--orders .consultorio-consultation-form__submit-icon svg {
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 
 .consultorio-consultation-form__add,
@@ -4012,12 +4328,40 @@ body.auth-locked .page-shell > :not(#loginModal) {
     padding-inline: 12px;
   }
 
+  .consultorio-consultation-modal--orders .consultorio-consultation-modal__header,
+  .consultorio-consultation-modal--orders .consultorio-consultation-form {
+    padding-inline: 12px;
+  }
+
   #patientConsultationModal.modal-shell--hospamb {
     padding: 18px;
   }
 
   #patientConsultationModal.modal-shell--procedure {
     padding: 16px;
+  }
+
+  #patientConsultationModal.modal-shell--orders {
+    padding: 16px;
+  }
+
+  .consultorio-order-fields__top,
+  .consultorio-order-item__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .consultorio-order-fields__date {
+    max-width: none;
+  }
+
+  .consultorio-order-item__header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .consultorio-order-item__actions {
+    width: 100%;
+    justify-content: space-between;
   }
 
   .hero-copy h2 {

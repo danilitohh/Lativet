@@ -1680,6 +1680,38 @@
             </div>
           </div>
 
+          <div id="patientOrderFields" class="consultorio-order-fields is-hidden">
+            <div class="consultorio-order-fields__top">
+              <label class="consultorio-consultation-form__field consultorio-order-fields__date">
+                <span>Fecha</span>
+                <input id="patientOrderDateInput" name="order_date" type="date" />
+              </label>
+            </div>
+
+            <section class="consultorio-order-builder">
+              <div id="patientOrderItemsList" class="consultorio-order-builder__list"></div>
+              <div class="consultorio-order-builder__footer">
+                <button
+                  id="patientOrderAddButton"
+                  class="consultorio-order-builder__add"
+                  type="button"
+                >
+                  + Agregar orden
+                </button>
+              </div>
+            </section>
+
+            <label class="full consultorio-consultation-form__field">
+              <span>Motivo de la orden</span>
+              <textarea
+                id="patientOrderReasonInput"
+                name="order_reason"
+                rows="4"
+                placeholder="Motivo de la orden"
+              ></textarea>
+            </label>
+          </div>
+
           <div id="patientConsultationClinicalFields" class="consultorio-consultation-mode consultorio-consultation-mode--clinical">
             <label class="consultorio-consultation-form__field">
               <span>Fecha consulta</span>

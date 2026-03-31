@@ -283,6 +283,52 @@ const consultationTypes = [
 ];
 const CONSULTORIO_VACCINATION_CUSTOM_OPTION = "__custom__";
 const CONSULTORIO_PROCEDURE_CUSTOM_OPTION = "__custom__";
+const CONSULTORIO_ORDER_ITEM_CUSTOM_OPTION = "__custom__";
+const CONSULTORIO_ORDER_TYPE_OPTIONS = [
+  "Examen de laboratorio",
+  "Imagen diagnostica",
+  "Remision",
+  "Medicamento",
+  "Hospitalizacion",
+  "Otro",
+];
+const CONSULTORIO_ORDER_CATALOG = {
+  "Examen de laboratorio": [
+    "Hemograma",
+    "Quimica sanguinea",
+    "Uroanalisis",
+    "Coprologico",
+    "Perfil prequirurgico",
+  ],
+  "Imagen diagnostica": [
+    "Radiografia",
+    "Ecografia",
+    "Ecocardiograma",
+    "Tomografia",
+    "Resonancia magnetica",
+  ],
+  Remision: [
+    "Medicina interna",
+    "Cirugia",
+    "Oncologia",
+    "Dermatologia",
+    "Neurologia",
+  ],
+  Medicamento: [
+    "Antibiotico",
+    "Antiinflamatorio",
+    "Analgesico",
+    "Fluidoterapia",
+    "Suplemento",
+  ],
+  Hospitalizacion: [
+    "Observacion",
+    "Hospitalizacion 24 horas",
+    "Hospital de dia",
+    "Cuidados intensivos",
+  ],
+  Otro: ["Otra orden"],
+};
 const consentTemplates = {
   Cirugia: {
     risks:
@@ -1194,6 +1240,11 @@ function cacheElements() {
     "patientProcedureAttachmentFileButton",
     "patientProcedureAttachmentsList",
     "patientProcedureAttachmentsValue",
+    "patientOrderFields",
+    "patientOrderDateInput",
+    "patientOrderItemsList",
+    "patientOrderAddButton",
+    "patientOrderReasonInput",
     "patientConsultationReasonSelect",
     "patientConsultationRecordLabel",
     "patientConsultationAttachmentFileInput",
@@ -2813,6 +2864,176 @@ function parseConsultorioProcedureDetails(consultation) {
   };
 }
 
+function getConsultorioOrderCatalogOptions(type) {
+  const normalizedType = String(type || "").trim();
+  const options = Array.isArray(CONSULTORIO_ORDER_CATALOG[normalizedType])
+    ? CONSULTORIO_ORDER_CATALOG[normalizedType]
+    : [];
+  return options
+    .map((label) => ({ value: label, label }))
+    .concat({ value: CONSULTORIO_ORDER_ITEM_CUSTOM_OPTION, label: "Otra orden" });
+}
+
+function getConsultorioOrderItemDisplayName(item = {}) {
+  const selectedItem = String(item.item || item.name || "").trim();
+  const customItem = String(item.itemCustom || "").trim();
+  if (selectedItem === CONSULTORIO_ORDER_ITEM_CUSTOM_OPTION) {
+    return customItem;
+  }
+  return customItem || selectedItem;
+}
+
+function createConsultorioOrderItem(item = {}) {
+  const type = String(item.type || "").trim();
+  const catalogValues = getConsultorioOrderCatalogOptions(type).map((option) => option.value);
+  let selectedItem = String(item.item || item.name || "").trim();
+  let customItem = String(item.itemCustom || "").trim();
+  if (
+    selectedItem &&
+    selectedItem !== CONSULTORIO_ORDER_ITEM_CUSTOM_OPTION &&
+    !catalogValues.includes(selectedItem)
+  ) {
+    customItem = customItem || selectedItem;
+    selectedItem = CONSULTORIO_ORDER_ITEM_CUSTOM_OPTION;
+  }
+  if (!selectedItem && customItem) {
+    selectedItem = CONSULTORIO_ORDER_ITEM_CUSTOM_OPTION;
+  }
+  return {
+    type,
+    item: selectedItem,
+    itemCustom: customItem,
+    quantity: String(item.quantity || "1").trim() || "1",
+    priority: String(item.priority || "").trim(),
+    notes: String(item.notes || "").trim(),
+    generateRequest:
+      item.generateRequest === true ||
+      item.generateRequest === "true" ||
+      item.generate_request === true ||
+      item.generate_request === "true",
+  };
+}
+
+function hasConsultorioOrderItemContent(item = {}) {
+  const normalized = createConsultorioOrderItem(item);
+  return Boolean(
+    normalized.type ||
+      getConsultorioOrderItemDisplayName(normalized) ||
+      normalized.notes ||
+      normalized.priority ||
+      normalized.generateRequest ||
+      (normalized.quantity && normalized.quantity !== "1")
+  );
+}
+
+function buildConsultorioOrderItemLabel(item = {}) {
+  const normalized = createConsultorioOrderItem(item);
+  const type = String(normalized.type || "").trim();
+  const name = getConsultorioOrderItemDisplayName(normalized);
+  const quantity = String(normalized.quantity || "").trim();
+  const priority = String(normalized.priority || "").trim();
+  const parts = [];
+  if (type && name) {
+    parts.push(`${type}: ${name}`);
+  } else if (name) {
+    parts.push(name);
+  } else if (type) {
+    parts.push(type);
+  }
+  if (quantity) {
+    parts.push(`x${quantity}`);
+  }
+  if (priority) {
+    parts.push(`(${priority})`);
+  }
+  return parts.join(" ").trim();
+}
+
+function buildConsultorioOrderItemsPreview(items = []) {
+  return (Array.isArray(items) ? items : [])
+    .map((item) => buildConsultorioOrderItemLabel(item))
+    .filter(Boolean)
+    .join(" | ");
+}
+
+function parseConsultorioOrderDetails(consultation) {
+  const summary = parseConsultorioStructuredText(consultation?.summary || "", {
+    "motivo de la orden": "reason",
+    motivo: "reason",
+    ordenes: "itemsPreview",
+  });
+  const indications = parseConsultorioStructuredText(consultation?.indications || "", {
+    solicitudes: "requestsPreview",
+    notas: "notesPreview",
+    observaciones: "notesPreview",
+  });
+  let stored = null;
+  const rawReference = String(consultation?.document_reference || "").trim();
+  if (rawReference.startsWith("{")) {
+    try {
+      const parsed = JSON.parse(rawReference);
+      if (parsed && parsed.kind === "order") {
+        stored = parsed;
+      }
+    } catch (error) {
+      stored = null;
+    }
+  }
+  const inferredType = ["Examen de laboratorio", "Imagen diagnostica", "Remision"].includes(
+    consultation?.consultation_type
+  )
+    ? consultation.consultation_type
+    : "";
+  const fallbackItems = consultation?.title
+    ? [
+        createConsultorioOrderItem({
+          type: inferredType,
+          item: consultation.title,
+          notes: indications.notesPreview || "",
+          generateRequest: Boolean(inferredType),
+        }),
+      ]
+    : [createConsultorioOrderItem()];
+  return {
+    orderDate: normalizeDateFieldValue(consultation?.consultation_at),
+    reason: String(stored?.reason || "").trim() || summary.reason || "",
+    items:
+      Array.isArray(stored?.items) && stored.items.length
+        ? stored.items.map((item) => createConsultorioOrderItem(item))
+        : fallbackItems,
+  };
+}
+
+function buildConsultorioOrderSummary(payload, items = []) {
+  return buildConsultorioStructuredText([
+    ["Motivo de la orden", payload.order_reason],
+    ["Ordenes", buildConsultorioOrderItemsPreview(items)],
+  ]);
+}
+
+function buildConsultorioOrderIndications(_payload, items = []) {
+  const requestsPreview = items
+    .filter((item) => item.generateRequest)
+    .map((item) => buildConsultorioOrderItemLabel(item))
+    .filter(Boolean)
+    .join(" | ");
+  const notesPreview = items
+    .map((item) => {
+      const notes = String(item.notes || "").trim();
+      if (!notes) {
+        return "";
+      }
+      const label = buildConsultorioOrderItemLabel(item) || "Orden";
+      return `${label}: ${notes}`;
+    })
+    .filter(Boolean)
+    .join(" | ");
+  return buildConsultorioStructuredText([
+    ["Solicitudes", requestsPreview],
+    ["Notas", notesPreview],
+  ]);
+}
+
 function createConsultorioFormulaMedication(item = {}) {
   return {
     name: String(item.name || "").trim(),
@@ -3974,12 +4195,14 @@ function buildConsultorioOrdersWorkspace(patient, profileConfig) {
           <tbody>
             ${orders
               .map((consultation) => {
-                const details = parseConsultorioConsultationDetails(consultation);
+                const orderDetails = parseConsultorioOrderDetails(consultation);
+                const orderPreview =
+                  buildConsultorioOrderItemsPreview(orderDetails.items) ||
+                  consultation.title ||
+                  "Orden";
                 const detailLabel =
-                  consultation.document_reference ||
+                  orderDetails.reason ||
                   consultation.referred_to ||
-                  details.interpretation ||
-                  details.therapeuticPlan ||
                   consultation.summary ||
                   "Sin detalle";
                 return `
@@ -3996,7 +4219,7 @@ function buildConsultorioOrdersWorkspace(patient, profileConfig) {
                       </div>
                     </td>
                     <td>${escapeHtml(formatDateTime(consultation.consultation_at))}</td>
-                    <td>${escapeHtml(consultation.title || "Orden")}</td>
+                    <td>${escapeHtml(truncate(orderPreview, 120))}</td>
                     <td>${escapeHtml(truncate(detailLabel, 120))}</td>
                     <td>${escapeHtml(consultation.professional_name || "Sin usuario")}</td>
                   </tr>
@@ -6974,6 +7197,160 @@ function getPatientProcedureNameValue(form) {
   return selected;
 }
 
+function renderPatientOrderItems(items = []) {
+  if (!elements.patientOrderItemsList) {
+    return;
+  }
+  const normalizedItems = (Array.isArray(items) ? items : []).map((item) =>
+    createConsultorioOrderItem(item)
+  );
+  const rows = normalizedItems.length ? normalizedItems : [createConsultorioOrderItem()];
+  elements.patientOrderItemsList.innerHTML = rows
+    .map((item, index) => {
+      const orderName = getConsultorioOrderItemDisplayName(item);
+      const itemOptions = getConsultorioOrderCatalogOptions(item.type);
+      const showCustomField = item.item === CONSULTORIO_ORDER_ITEM_CUSTOM_OPTION || Boolean(item.itemCustom);
+      const itemSelectValue = showCustomField
+        ? CONSULTORIO_ORDER_ITEM_CUSTOM_OPTION
+        : String(item.item || "").trim();
+      return `
+        <article class="consultorio-order-item" data-order-item="${escapeHtml(String(index))}">
+          <div class="consultorio-order-item__header">
+            <div class="consultorio-order-item__title">
+              <span class="consultorio-order-item__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"></path>
+                  <path d="M14 2v5h5"></path>
+                  <path d="M12 18v-6"></path>
+                  <path d="M9 15h6"></path>
+                </svg>
+              </span>
+              <strong>${rows.length > 1 ? `Orden ${index + 1}` : "Orden"}</strong>
+            </div>
+            <div class="consultorio-order-item__actions">
+              <label class="consultorio-order-item__toggle">
+                <span>Generar solicitud</span>
+                <input
+                  type="checkbox"
+                  data-order-item-field="generate_request"
+                  ${item.generateRequest ? "checked" : ""}
+                />
+                <span class="consultorio-order-item__switch" aria-hidden="true"></span>
+              </label>
+              <button
+                class="inline-link consultorio-order-item__remove${rows.length === 1 ? " is-hidden" : ""}"
+                type="button"
+                data-remove-patient-order-item="${escapeHtml(String(index))}"
+              >
+                Eliminar
+              </button>
+            </div>
+          </div>
+
+          <div class="consultorio-order-item__grid">
+            <label class="consultorio-consultation-form__field">
+              <span>Tipo de orden</span>
+              <select data-order-item-field="type">
+                <option value="">Seleccione una opcion</option>
+                ${CONSULTORIO_ORDER_TYPE_OPTIONS.map(
+                  (option) =>
+                    `<option value="${escapeHtml(option)}"${
+                      option === item.type ? " selected" : ""
+                    }>${escapeHtml(option)}</option>`
+                ).join("")}
+              </select>
+            </label>
+
+            <label class="consultorio-consultation-form__field">
+              <span>Orden</span>
+              <select data-order-item-field="item">
+                <option value="">Seleccione una opcion</option>
+                ${itemOptions
+                  .map(
+                    (option) =>
+                      `<option value="${escapeHtml(option.value)}"${
+                        option.value === itemSelectValue ? " selected" : ""
+                      }>${escapeHtml(option.label)}</option>`
+                  )
+                  .join("")}
+              </select>
+            </label>
+
+            <label class="consultorio-consultation-form__field consultorio-order-item__quantity">
+              <span>Cantidad</span>
+              <input
+                data-order-item-field="quantity"
+                type="number"
+                min="1"
+                step="1"
+                value="${escapeHtml(String(item.quantity || "1"))}"
+              />
+            </label>
+
+            <label class="consultorio-consultation-form__field">
+              <span>Prioridad</span>
+              <select data-order-item-field="priority">
+                <option value="">Seleccione (opcional)</option>
+                ${["Baja", "Media", "Alta", "Urgente"]
+                  .map(
+                    (option) =>
+                      `<option value="${escapeHtml(option)}"${
+                        option === item.priority ? " selected" : ""
+                      }>${escapeHtml(option)}</option>`
+                  )
+                  .join("")}
+              </select>
+            </label>
+          </div>
+
+          <label class="consultorio-consultation-form__field consultorio-order-item__custom${
+            showCustomField ? "" : " is-hidden"
+          }">
+            <span>Orden personalizada</span>
+            <input
+              data-order-item-field="item_custom"
+              type="text"
+              value="${escapeHtml(item.itemCustom || (showCustomField ? orderName : ""))}"
+              placeholder="Describe la orden"
+            />
+          </label>
+
+          <label class="consultorio-consultation-form__field">
+            <span>Notas</span>
+            <input
+              data-order-item-field="notes"
+              type="text"
+              value="${escapeHtml(item.notes || "")}"
+              placeholder="Notas u observaciones"
+            />
+          </label>
+        </article>
+      `;
+    })
+    .join("");
+}
+
+function getPatientOrderItems({ includeEmpty = false } = {}) {
+  const rows = Array.from(
+    elements.patientOrderItemsList?.querySelectorAll("[data-order-item]") || []
+  ).map((row) =>
+    createConsultorioOrderItem({
+      type: row.querySelector('[data-order-item-field="type"]')?.value || "",
+      item: row.querySelector('[data-order-item-field="item"]')?.value || "",
+      itemCustom: row.querySelector('[data-order-item-field="item_custom"]')?.value || "",
+      quantity: row.querySelector('[data-order-item-field="quantity"]')?.value || "1",
+      priority: row.querySelector('[data-order-item-field="priority"]')?.value || "",
+      notes: row.querySelector('[data-order-item-field="notes"]')?.value || "",
+      generateRequest:
+        row.querySelector('[data-order-item-field="generate_request"]')?.checked || false,
+    })
+  );
+  if (includeEmpty) {
+    return rows;
+  }
+  return rows.filter((item) => hasConsultorioOrderItemContent(item));
+}
+
 function renderPatientFormulaMedications(items = []) {
   if (!elements.patientFormulaMedicationsList) {
     return;
@@ -7094,15 +7471,32 @@ function openPatientConsultationModal(consultation = null) {
     isProcedureConsultationType(defaultConsultationType) || profileConfig?.value === "cirugia";
   const isHospAmbMode =
     isHospAmbConsultationType(defaultConsultationType) || profileConfig?.value === "hospamb";
+  const isOrderMode =
+    (defaultConsultationType === "Documento" && profileConfig?.value === "orders") ||
+    false;
   const defaultTitle =
     consultation?.title || getConsultorioProfileDefaultConsultationTitle(profileConfig);
   form.reset();
+  form.dataset.consultationMode = isOrderMode
+    ? "orders"
+    : isProcedureMode
+    ? "procedure"
+    : isHospAmbMode
+    ? "hospamb"
+    : isVaccinationMode
+    ? "vaccination"
+    : isFormulaMode
+    ? "formula"
+    : isDewormingMode
+    ? "deworming"
+    : "clinical";
   const details = parseConsultorioConsultationDetails(consultation);
   const vaccinationDetails = parseConsultorioVaccinationDetails(consultation);
   const formulaDetails = parseConsultorioFormulaDetails(consultation);
   const dewormingDetails = parseConsultorioDewormingDetails(consultation);
   const procedureDetails = parseConsultorioProcedureDetails(consultation);
   const hospAmbDetails = parseConsultorioHospAmbDetails(consultation);
+  const orderDetails = parseConsultorioOrderDetails(consultation);
   form.elements.id.value = consultation?.id || "";
   form.elements.record_id.value = record?.id || "";
   form.elements.consultation_type.value = defaultConsultationType;
@@ -7167,6 +7561,14 @@ function openPatientConsultationModal(consultation = null) {
   if (form.elements.procedure_complications) {
     form.elements.procedure_complications.value = procedureDetails.complications || "";
   }
+  if (form.elements.order_date) {
+    form.elements.order_date.value =
+      orderDetails.orderDate || normalizeDateFieldValue(new Date().toISOString());
+  }
+  if (form.elements.order_reason) {
+    form.elements.order_reason.value = orderDetails.reason || "";
+  }
+  renderPatientOrderItems(orderDetails.items);
   if (form.elements.vaccination_date) {
     form.elements.vaccination_date.value =
       vaccinationDetails.vaccinationDate || normalizeDateFieldValue(new Date().toISOString());
@@ -7279,10 +7681,18 @@ function openPatientConsultationModal(consultation = null) {
   if (elements.patientProcedureFields) {
     elements.patientProcedureFields.classList.toggle("is-hidden", !isProcedureMode);
   }
+  if (elements.patientOrderFields) {
+    elements.patientOrderFields.classList.toggle("is-hidden", !isOrderMode);
+  }
   if (elements.patientConsultationClinicalFields) {
     elements.patientConsultationClinicalFields.classList.toggle(
       "is-hidden",
-      isVaccinationMode || isFormulaMode || isDewormingMode || isHospAmbMode || isProcedureMode
+      isVaccinationMode ||
+        isFormulaMode ||
+        isDewormingMode ||
+        isHospAmbMode ||
+        isProcedureMode ||
+        isOrderMode
     );
   }
   const modalCard = elements.patientConsultationModal.querySelector(".modal-card");
@@ -7309,15 +7719,27 @@ function openPatientConsultationModal(consultation = null) {
       <path d="M7 4h10a2 2 0 0 1 2 2v2H5V6a2 2 0 0 1 2-2Z"></path>
     </svg>
   `;
+  const orderModalIconSvg = `
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"></path>
+      <path d="M14 2v5h5"></path>
+      <path d="M9 12h6"></path>
+      <path d="M12 9v6"></path>
+    </svg>
+  `;
   elements.patientConsultationModal.classList.toggle("modal-shell--hospamb", isHospAmbMode);
   elements.patientConsultationModal.classList.toggle("modal-shell--procedure", isProcedureMode);
+  elements.patientConsultationModal.classList.toggle("modal-shell--orders", isOrderMode);
   modalCard?.classList.toggle("consultorio-consultation-modal--hospamb", isHospAmbMode);
   modalCard?.classList.toggle("consultorio-consultation-modal--procedure", isProcedureMode);
+  modalCard?.classList.toggle("consultorio-consultation-modal--orders", isOrderMode);
   modalCard?.classList.toggle("consultorio-consultation-modal--vaccination", isVaccinationMode);
   modalCard?.classList.toggle("consultorio-consultation-modal--formula", isFormulaMode);
   modalCard?.classList.toggle("consultorio-consultation-modal--deworming", isDewormingMode);
   if (elements.patientConsultationModalIcon) {
-    elements.patientConsultationModalIcon.innerHTML = isProcedureMode
+    elements.patientConsultationModalIcon.innerHTML = isOrderMode
+      ? orderModalIconSvg
+      : isProcedureMode
       ? procedureModalIconSvg
       : defaultModalIconSvg;
   }
@@ -7327,21 +7749,36 @@ function openPatientConsultationModal(consultation = null) {
   }
   if (elements.patientConsultationRecordLabel) {
     elements.patientConsultationRecordLabel.textContent =
-      isVaccinationMode || isFormulaMode || isDewormingMode || isHospAmbMode || isProcedureMode
+      isVaccinationMode ||
+      isFormulaMode ||
+      isDewormingMode ||
+      isHospAmbMode ||
+      isProcedureMode ||
+      isOrderMode
         ? ""
         : record
         ? `Historia clinica vinculada: ${record.id}`
         : "La historia clinica se creara automaticamente al guardar esta consulta.";
     elements.patientConsultationRecordLabel.classList.toggle(
       "is-hidden",
-      isVaccinationMode || isFormulaMode || isDewormingMode || isHospAmbMode || isProcedureMode
+      isVaccinationMode ||
+        isFormulaMode ||
+        isDewormingMode ||
+        isHospAmbMode ||
+        isProcedureMode ||
+        isOrderMode
     );
   }
   form
     .querySelector(".consultorio-consultation-form__footer")
     ?.classList.toggle(
       "consultorio-consultation-form__footer--align-end",
-      isVaccinationMode || isFormulaMode || isDewormingMode || isHospAmbMode || isProcedureMode
+      isVaccinationMode ||
+        isFormulaMode ||
+        isDewormingMode ||
+        isHospAmbMode ||
+        isProcedureMode ||
+        isOrderMode
     );
   elements.patientConsultationModal.classList.remove("is-hidden");
   elements.patientConsultationModal.setAttribute("aria-hidden", "false");
@@ -7357,6 +7794,8 @@ function openPatientConsultationModal(consultation = null) {
     form.elements.procedure_date.focus();
   } else if (isHospAmbMode && form.elements.hospamb_type) {
     form.elements.hospamb_type.focus();
+  } else if (isOrderMode && form.elements.order_date) {
+    form.elements.order_date.focus();
   } else {
     form.elements.consultation_at.focus();
   }
@@ -8001,11 +8440,59 @@ async function handlePatientConsultationSubmit(event) {
   }
   const examGeneralSummary = buildConsultorioExamGeneralSummary(payload);
   const examSpecialSummary = buildConsultorioExamSpecialSummary(payload);
+  const isOrderMode = form.dataset.consultationMode === "orders";
   payload.consultation_type =
     payload.consultation_type ||
     getConsultorioProfileViewConfig()?.formConsultationType ||
     "Consulta";
-  if (isHospAmbConsultationType(payload.consultation_type)) {
+  if (isOrderMode) {
+    const orderItems = getPatientOrderItems({ includeEmpty: true }).filter((item) =>
+      hasConsultorioOrderItemContent(item)
+    );
+    if (!payload.order_date) {
+      throw new Error("Selecciona la fecha de la orden.");
+    }
+    if (!orderItems.length) {
+      throw new Error("Agrega al menos una orden.");
+    }
+    const invalidItemIndex = orderItems.findIndex((item) => {
+      const quantity = Number(item.quantity || 1);
+      return (
+        !item.type ||
+        !getConsultorioOrderItemDisplayName(item) ||
+        Number.isNaN(quantity) ||
+        quantity < 1
+      );
+    });
+    if (invalidItemIndex !== -1) {
+      throw new Error(
+        `Completa tipo, orden y cantidad valida en la orden ${invalidItemIndex + 1}.`
+      );
+    }
+    if (!String(payload.order_reason || "").trim()) {
+      throw new Error("Escribe el motivo de la orden.");
+    }
+    payload.consultation_type = "Documento";
+    payload.title = getConsultorioOrderItemDisplayName(orderItems[0]) || "Orden";
+    payload.consultation_at = `${payload.order_date}T12:00`;
+    payload.next_control = "";
+    payload.summary = buildConsultorioOrderSummary(payload, orderItems);
+    payload.indications = buildConsultorioOrderIndications(payload, orderItems);
+    payload.attachments_summary = "";
+    payload.document_reference = JSON.stringify({
+      kind: "order",
+      reason: String(payload.order_reason || "").trim(),
+      items: orderItems.map((item) => ({
+        type: item.type,
+        item: item.item,
+        itemCustom: item.itemCustom,
+        quantity: item.quantity,
+        priority: item.priority,
+        notes: item.notes,
+        generateRequest: item.generateRequest,
+      })),
+    });
+  } else if (isHospAmbConsultationType(payload.consultation_type)) {
     const selectedType = String(payload.hospamb_type || payload.consultation_type || "").trim();
     const admissionAt = String(payload.hospamb_admission_at || payload.consultation_at || "").trim();
     const reason = String(payload.hospamb_reason || "").trim();
@@ -8170,7 +8657,9 @@ async function handlePatientConsultationSubmit(event) {
   }
   const consultation = await api.saveConsultation(payload);
   closePatientConsultationModal();
-  const entityLabel = getConsultorioProfileModalEntityLabel(payload.consultation_type);
+  const entityLabel = isOrderMode
+    ? "Orden"
+    : getConsultorioProfileModalEntityLabel(payload.consultation_type);
   let statusMessage = payload.id
     ? `${entityLabel} actualizada.`
     : `${entityLabel} registrada.`;
@@ -8774,6 +9263,65 @@ function bindForms() {
       const items = getPatientProcedureAttachments();
       items.splice(index, 1);
       setPatientProcedureAttachments(items);
+    });
+  }
+  if (elements.patientOrderAddButton) {
+    elements.patientOrderAddButton.addEventListener("click", () => {
+      const items = getPatientOrderItems({ includeEmpty: true });
+      items.push(createConsultorioOrderItem());
+      renderPatientOrderItems(items);
+      elements.patientOrderItemsList
+        ?.querySelector('[data-order-item]:last-child [data-order-item-field="type"]')
+        ?.focus();
+    });
+  }
+  if (elements.patientOrderItemsList) {
+    elements.patientOrderItemsList.addEventListener("click", (event) => {
+      const removeButton = event.target.closest("[data-remove-patient-order-item]");
+      if (!removeButton) {
+        return;
+      }
+      const index = Number(removeButton.dataset.removePatientOrderItem);
+      const items = getPatientOrderItems({ includeEmpty: true });
+      items.splice(index, 1);
+      renderPatientOrderItems(items);
+    });
+    elements.patientOrderItemsList.addEventListener("change", (event) => {
+      const field = event.target.closest("[data-order-item-field]");
+      if (!field) {
+        return;
+      }
+      const row = field.closest("[data-order-item]");
+      if (!row) {
+        return;
+      }
+      const index = Number(row.dataset.orderItem);
+      const items = getPatientOrderItems({ includeEmpty: true });
+      if (!items[index]) {
+        return;
+      }
+      if (field.dataset.orderItemField === "type") {
+        items[index].type = field.value || "";
+        items[index].item = "";
+        items[index].itemCustom = "";
+        renderPatientOrderItems(items);
+        elements.patientOrderItemsList
+          ?.querySelector(`[data-order-item="${index}"] [data-order-item-field="item"]`)
+          ?.focus();
+        return;
+      }
+      if (field.dataset.orderItemField === "item") {
+        items[index].item = field.value || "";
+        if (field.value !== CONSULTORIO_ORDER_ITEM_CUSTOM_OPTION) {
+          items[index].itemCustom = "";
+        }
+        renderPatientOrderItems(items);
+        if (field.value === CONSULTORIO_ORDER_ITEM_CUSTOM_OPTION) {
+          elements.patientOrderItemsList
+            ?.querySelector(`[data-order-item="${index}"] [data-order-item-field="item_custom"]`)
+            ?.focus();
+        }
+      }
     });
   }
   if (elements.patientConsultationAttachmentFileButton && elements.patientConsultationAttachmentFileInput) {
