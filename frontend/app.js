@@ -282,6 +282,7 @@ const consultationTypes = [
   "Remision",
 ];
 const CONSULTORIO_VACCINATION_CUSTOM_OPTION = "__custom__";
+const CONSULTORIO_PROCEDURE_CUSTOM_OPTION = "__custom__";
 const consentTemplates = {
   Cirugia: {
     risks:
@@ -1177,6 +1178,22 @@ function cacheElements() {
     "patientDewormingAttachmentFileButton",
     "patientDewormingAttachmentsList",
     "patientDewormingAttachmentsValue",
+    "patientProcedureFields",
+    "patientProcedureDateInput",
+    "patientProcedureNameSelect",
+    "patientProcedureCustomNameInput",
+    "patientProcedureRegisterTypeButton",
+    "patientProcedureDescriptionInput",
+    "patientProcedurePreanestheticInput",
+    "patientProcedureAnestheticInput",
+    "patientProcedureOtherMedicationsInput",
+    "patientProcedureTreatmentInput",
+    "patientProcedureObservationsInput",
+    "patientProcedureComplicationsInput",
+    "patientProcedureAttachmentFileInput",
+    "patientProcedureAttachmentFileButton",
+    "patientProcedureAttachmentsList",
+    "patientProcedureAttachmentsValue",
     "patientConsultationReasonSelect",
     "patientConsultationRecordLabel",
     "patientConsultationAttachmentFileInput",
@@ -2145,6 +2162,9 @@ function getConsultorioProfileTimelineItems(option = getConsultorioProfileViewCo
     const formulaDetails = isFormulaConsultationType(consultation.consultation_type)
       ? parseConsultorioFormulaDetails(consultation)
       : null;
+    const procedureDetails = isProcedureConsultationType(consultation.consultation_type)
+      ? parseConsultorioProcedureDetails(consultation)
+      : null;
     const hospAmbDetails = isHospAmbConsultationType(consultation.consultation_type)
       ? parseConsultorioHospAmbDetails(consultation)
       : null;
@@ -2168,6 +2188,20 @@ function getConsultorioProfileTimelineItems(option = getConsultorioProfileViewCo
               : "",
             formulaDetails?.observations
               ? `Observaciones: ${truncate(formulaDetails.observations, 180)}`
+              : "",
+          ].filter(Boolean)
+        : isProcedureConsultationType(consultation.consultation_type)
+        ? [
+            procedureDetails?.description
+              ? `Descripci\u00f3n: ${truncate(procedureDetails.description, 180)}`
+              : "",
+            procedureDetails?.treatment
+              ? `Tratamiento: ${truncate(procedureDetails.treatment, 180)}`
+              : "",
+            procedureDetails?.complications
+              ? `Complicaciones: ${truncate(procedureDetails.complications, 180)}`
+              : procedureDetails?.observations
+              ? `Observaciones: ${truncate(procedureDetails.observations, 180)}`
               : "",
           ].filter(Boolean)
         : isHospAmbConsultationType(consultation.consultation_type)
@@ -2318,6 +2352,10 @@ function isDewormingConsultationType(consultationType) {
 function isHospAmbConsultationType(consultationType) {
   const normalized = String(consultationType || "").trim();
   return normalized === "Hospitalizacion" || normalized === "Ambulatorio";
+}
+
+function isProcedureConsultationType(consultationType) {
+  return String(consultationType || "").trim() === "Cirugia / procedimiento";
 }
 
 function isConsultorioPatientsViewActive() {
@@ -2715,6 +2753,66 @@ function parseConsultorioHospAmbDetails(consultation) {
   };
 }
 
+function parseConsultorioProcedureDetails(consultation) {
+  const summary = parseConsultorioStructuredText(consultation?.summary || "", {
+    "descripci\u00f3n quir\u00fargica": "description",
+    "descripcion quirurgica": "description",
+    "preanest\u00e9sico": "preanesthetic",
+    preanestesico: "preanesthetic",
+    "anest\u00e9sico": "anesthetic",
+    anestesico: "anesthetic",
+    "otros medicamentos": "otherMedications",
+  });
+  const indications = parseConsultorioStructuredText(consultation?.indications || "", {
+    tratamiento: "treatment",
+    observaciones: "observations",
+    complicaciones: "complications",
+  });
+  const genericDetails = parseConsultorioConsultationDetails(consultation);
+  let stored = null;
+  const rawReference = String(consultation?.document_reference || "").trim();
+  if (rawReference.startsWith("{")) {
+    try {
+      const parsed = JSON.parse(rawReference);
+      if (parsed && parsed.kind === "procedure") {
+        stored = parsed;
+      }
+    } catch (error) {
+      stored = null;
+    }
+  }
+  return {
+    procedureDate: normalizeDateFieldValue(consultation?.consultation_at),
+    name: String(stored?.name || "").trim() || String(consultation?.title || "").trim(),
+    description:
+      String(stored?.description || "").trim() ||
+      summary.description ||
+      genericDetails.objective ||
+      genericDetails.subjective ||
+      "",
+    preanesthetic:
+      String(stored?.preanesthetic || "").trim() || summary.preanesthetic || "",
+    anesthetic: String(stored?.anesthetic || "").trim() || summary.anesthetic || "",
+    otherMedications:
+      String(stored?.otherMedications || "").trim() || summary.otherMedications || "",
+    treatment:
+      String(stored?.treatment || "").trim() ||
+      indications.treatment ||
+      genericDetails.therapeuticPlan ||
+      "",
+    observations:
+      String(stored?.observations || "").trim() ||
+      indications.observations ||
+      genericDetails.interpretation ||
+      "",
+    complications:
+      String(stored?.complications || "").trim() ||
+      indications.complications ||
+      genericDetails.diagnosticPlan ||
+      "",
+  };
+}
+
 function createConsultorioFormulaMedication(item = {}) {
   return {
     name: String(item.name || "").trim(),
@@ -2845,6 +2943,23 @@ function buildConsultorioHospAmbIndications(payload) {
   return buildConsultorioStructuredText([
     ["Motivo de salida", payload.hospamb_discharge_reason],
     ["Fecha de salida", payload.hospamb_discharge_at],
+  ]);
+}
+
+function buildConsultorioProcedureSummary(payload) {
+  return buildConsultorioStructuredText([
+    ["Descripci\u00f3n quir\u00fargica", payload.procedure_description],
+    ["Preanest\u00e9sico", payload.procedure_preanesthetic],
+    ["Anest\u00e9sico", payload.procedure_anesthetic],
+    ["Otros medicamentos", payload.procedure_other_medications],
+  ]);
+}
+
+function buildConsultorioProcedureIndications(payload) {
+  return buildConsultorioStructuredText([
+    ["Tratamiento", payload.procedure_treatment],
+    ["Observaciones", payload.procedure_observations],
+    ["Complicaciones", payload.procedure_complications],
   ]);
 }
 
@@ -3758,32 +3873,34 @@ function buildConsultorioProcedureWorkspace(patient, profileConfig) {
           <tbody>
             ${procedures
               .map(
-                (consultation) => `
-                  <tr>
-                    <td>
-                      <div class="table-actions consultorio-consultations-table__actions">
-                        <button
-                          class="ghost-button"
-                          type="button"
-                          data-edit-patient-consultation="${escapeHtml(consultation.id)}"
-                        >
-                          Editar
-                        </button>
-                      </div>
-                    </td>
-                    <td>${escapeHtml(formatDateTime(consultation.consultation_at))}</td>
-                    <td>${escapeHtml(consultation.title || "Cirug\u00eda / procedimiento")}</td>
-                    <td>${escapeHtml(
-                      truncate(
-                        consultation.summary ||
-                          getConsultorioConsultationDiagnosisLabel(consultation) ||
-                          "Sin resumen",
-                        120
-                      )
-                    )}</td>
-                    <td>${escapeHtml(consultation.professional_name || "Sin usuario")}</td>
-                  </tr>
-                `
+                (consultation) => {
+                  const details = parseConsultorioProcedureDetails(consultation);
+                  const summaryLabel =
+                    details.description ||
+                    details.treatment ||
+                    details.observations ||
+                    details.complications ||
+                    "Sin resumen";
+                  return `
+                    <tr>
+                      <td>
+                        <div class="table-actions consultorio-consultations-table__actions">
+                          <button
+                            class="ghost-button"
+                            type="button"
+                            data-edit-patient-consultation="${escapeHtml(consultation.id)}"
+                          >
+                            Editar
+                          </button>
+                        </div>
+                      </td>
+                      <td>${escapeHtml(formatDateTime(consultation.consultation_at))}</td>
+                      <td>${escapeHtml(consultation.title || "Cirug\u00eda / procedimiento")}</td>
+                      <td>${escapeHtml(truncate(summaryLabel, 120))}</td>
+                      <td>${escapeHtml(consultation.professional_name || "Sin usuario")}</td>
+                    </tr>
+                  `;
+                }
               )
               .join("")}
           </tbody>
@@ -6620,6 +6737,30 @@ function getPatientDewormingAttachments() {
   return getConsultorioAttachmentFieldItems(elements.patientDewormingAttachmentsValue);
 }
 
+async function addPatientProcedureAttachmentImages(fileList) {
+  const files = Array.from(fileList || []);
+  if (!files.length) {
+    return;
+  }
+  const currentItems = getPatientProcedureAttachments();
+  for (const file of files) {
+    currentItems.push(await buildConsultorioImageAttachment(file));
+  }
+  setPatientProcedureAttachments(currentItems);
+}
+
+function setPatientProcedureAttachments(items = []) {
+  renderConsultorioAttachmentFieldState(
+    elements.patientProcedureAttachmentsValue,
+    elements.patientProcedureAttachmentsList,
+    items
+  );
+}
+
+function getPatientProcedureAttachments() {
+  return getConsultorioAttachmentFieldItems(elements.patientProcedureAttachmentsValue);
+}
+
 function closePatientConsultationModal() {
   if (!elements.patientConsultationModal) {
     return;
@@ -6676,6 +6817,57 @@ function getPatientVaccinationNameValue(form) {
   const selected = String(form?.elements?.vaccination_name?.value || "").trim();
   if (selected === CONSULTORIO_VACCINATION_CUSTOM_OPTION) {
     return String(form?.elements?.vaccination_name_custom?.value || "").trim();
+  }
+  return selected;
+}
+
+function syncPatientProcedureCustomField() {
+  const showCustom =
+    elements.patientProcedureNameSelect?.value === CONSULTORIO_PROCEDURE_CUSTOM_OPTION;
+  elements.patientProcedureCustomNameInput?.classList.toggle("is-hidden", !showCustom);
+  if (!showCustom && elements.patientProcedureCustomNameInput) {
+    elements.patientProcedureCustomNameInput.value = "";
+  }
+}
+
+function setPatientProcedureNameValue(value) {
+  const normalized = String(value || "").trim();
+  if (!elements.patientProcedureNameSelect) {
+    return;
+  }
+  const matchesPredefined = Array.from(elements.patientProcedureNameSelect.options).some(
+    (option) =>
+      option.value &&
+      option.value !== CONSULTORIO_PROCEDURE_CUSTOM_OPTION &&
+      option.value === normalized
+  );
+  if (!normalized) {
+    elements.patientProcedureNameSelect.value = "";
+    if (elements.patientProcedureCustomNameInput) {
+      elements.patientProcedureCustomNameInput.value = "";
+    }
+    syncPatientProcedureCustomField();
+    return;
+  }
+  if (matchesPredefined) {
+    elements.patientProcedureNameSelect.value = normalized;
+    if (elements.patientProcedureCustomNameInput) {
+      elements.patientProcedureCustomNameInput.value = "";
+    }
+    syncPatientProcedureCustomField();
+    return;
+  }
+  elements.patientProcedureNameSelect.value = CONSULTORIO_PROCEDURE_CUSTOM_OPTION;
+  if (elements.patientProcedureCustomNameInput) {
+    elements.patientProcedureCustomNameInput.value = normalized;
+  }
+  syncPatientProcedureCustomField();
+}
+
+function getPatientProcedureNameValue(form) {
+  const selected = String(form?.elements?.procedure_name?.value || "").trim();
+  if (selected === CONSULTORIO_PROCEDURE_CUSTOM_OPTION) {
+    return String(form?.elements?.procedure_name_custom?.value || "").trim();
   }
   return selected;
 }
@@ -6796,6 +6988,8 @@ function openPatientConsultationModal(consultation = null) {
   const isVaccinationMode = isVaccinationConsultationType(defaultConsultationType);
   const isFormulaMode = isFormulaConsultationType(defaultConsultationType);
   const isDewormingMode = isDewormingConsultationType(defaultConsultationType);
+  const isProcedureMode =
+    isProcedureConsultationType(defaultConsultationType) || profileConfig?.value === "cirugia";
   const isHospAmbMode =
     isHospAmbConsultationType(defaultConsultationType) || profileConfig?.value === "hospamb";
   const defaultTitle =
@@ -6805,6 +6999,7 @@ function openPatientConsultationModal(consultation = null) {
   const vaccinationDetails = parseConsultorioVaccinationDetails(consultation);
   const formulaDetails = parseConsultorioFormulaDetails(consultation);
   const dewormingDetails = parseConsultorioDewormingDetails(consultation);
+  const procedureDetails = parseConsultorioProcedureDetails(consultation);
   const hospAmbDetails = parseConsultorioHospAmbDetails(consultation);
   form.elements.id.value = consultation?.id || "";
   form.elements.record_id.value = record?.id || "";
@@ -6844,6 +7039,31 @@ function openPatientConsultationModal(consultation = null) {
   }
   if (form.elements.hospamb_observations) {
     form.elements.hospamb_observations.value = hospAmbDetails.observations || "";
+  }
+  if (form.elements.procedure_date) {
+    form.elements.procedure_date.value =
+      procedureDetails.procedureDate || normalizeDateFieldValue(new Date().toISOString());
+  }
+  if (form.elements.procedure_description) {
+    form.elements.procedure_description.value = procedureDetails.description || "";
+  }
+  if (form.elements.procedure_preanesthetic) {
+    form.elements.procedure_preanesthetic.value = procedureDetails.preanesthetic || "";
+  }
+  if (form.elements.procedure_anesthetic) {
+    form.elements.procedure_anesthetic.value = procedureDetails.anesthetic || "";
+  }
+  if (form.elements.procedure_other_medications) {
+    form.elements.procedure_other_medications.value = procedureDetails.otherMedications || "";
+  }
+  if (form.elements.procedure_treatment) {
+    form.elements.procedure_treatment.value = procedureDetails.treatment || "";
+  }
+  if (form.elements.procedure_observations) {
+    form.elements.procedure_observations.value = procedureDetails.observations || "";
+  }
+  if (form.elements.procedure_complications) {
+    form.elements.procedure_complications.value = procedureDetails.complications || "";
   }
   if (form.elements.vaccination_date) {
     form.elements.vaccination_date.value =
@@ -6913,8 +7133,13 @@ function openPatientConsultationModal(consultation = null) {
   if (elements.patientDewormingAttachmentFileInput) {
     elements.patientDewormingAttachmentFileInput.value = "";
   }
+  if (elements.patientProcedureAttachmentFileInput) {
+    elements.patientProcedureAttachmentFileInput.value = "";
+  }
   setPatientConsultationAttachments(parseConsultorioAttachments(consultation?.attachments_summary || ""));
   setPatientDewormingAttachments(parseConsultorioAttachments(consultation?.attachments_summary || ""));
+  setPatientProcedureAttachments(parseConsultorioAttachments(consultation?.attachments_summary || ""));
+  setPatientProcedureNameValue(procedureDetails.name || "");
   if (elements.patientConsultationModalTitle) {
     const entityLabel = isHospAmbMode
       ? "Hospitalizaci\u00f3n/ambulatorio"
@@ -6947,39 +7172,72 @@ function openPatientConsultationModal(consultation = null) {
   if (elements.patientDewormingFields) {
     elements.patientDewormingFields.classList.toggle("is-hidden", !isDewormingMode);
   }
+  if (elements.patientProcedureFields) {
+    elements.patientProcedureFields.classList.toggle("is-hidden", !isProcedureMode);
+  }
   if (elements.patientConsultationClinicalFields) {
     elements.patientConsultationClinicalFields.classList.toggle(
       "is-hidden",
-      isVaccinationMode || isFormulaMode || isDewormingMode || isHospAmbMode
+      isVaccinationMode || isFormulaMode || isDewormingMode || isHospAmbMode || isProcedureMode
     );
   }
   const modalCard = elements.patientConsultationModal.querySelector(".modal-card");
+  const defaultModalIconSvg = `
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M6 21V5.5A1.5 1.5 0 0 1 7.5 4h9A1.5 1.5 0 0 1 18 5.5V21"></path>
+      <path d="M3 21h18"></path>
+      <path d="M9 8h1"></path>
+      <path d="M14 8h1"></path>
+      <path d="M9 12h1"></path>
+      <path d="M14 12h1"></path>
+      <path d="M12 7v6"></path>
+      <path d="M9 10h6"></path>
+      <path d="M10 21v-4h4v4"></path>
+    </svg>
+  `;
+  const procedureModalIconSvg = `
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M15 4V2"></path>
+      <path d="M9 4V2"></path>
+      <path d="M10 10 4.5 15.5a2.12 2.12 0 1 0 3 3L13 13"></path>
+      <path d="m14 9 1-1"></path>
+      <path d="M5 8h14"></path>
+      <path d="M7 4h10a2 2 0 0 1 2 2v2H5V6a2 2 0 0 1 2-2Z"></path>
+    </svg>
+  `;
   elements.patientConsultationModal.classList.toggle("modal-shell--hospamb", isHospAmbMode);
+  elements.patientConsultationModal.classList.toggle("modal-shell--procedure", isProcedureMode);
   modalCard?.classList.toggle("consultorio-consultation-modal--hospamb", isHospAmbMode);
+  modalCard?.classList.toggle("consultorio-consultation-modal--procedure", isProcedureMode);
   modalCard?.classList.toggle("consultorio-consultation-modal--vaccination", isVaccinationMode);
   modalCard?.classList.toggle("consultorio-consultation-modal--formula", isFormulaMode);
   modalCard?.classList.toggle("consultorio-consultation-modal--deworming", isDewormingMode);
+  if (elements.patientConsultationModalIcon) {
+    elements.patientConsultationModalIcon.innerHTML = isProcedureMode
+      ? procedureModalIconSvg
+      : defaultModalIconSvg;
+  }
   elements.patientConsultationModalIcon?.classList.toggle("is-hospamb", isHospAmbMode);
   if (elements.closePatientConsultationModalButton) {
     elements.closePatientConsultationModalButton.innerHTML = "&times;";
   }
   if (elements.patientConsultationRecordLabel) {
     elements.patientConsultationRecordLabel.textContent =
-      isVaccinationMode || isFormulaMode || isDewormingMode || isHospAmbMode
+      isVaccinationMode || isFormulaMode || isDewormingMode || isHospAmbMode || isProcedureMode
         ? ""
         : record
         ? `Historia clinica vinculada: ${record.id}`
         : "La historia clinica se creara automaticamente al guardar esta consulta.";
     elements.patientConsultationRecordLabel.classList.toggle(
       "is-hidden",
-      isVaccinationMode || isFormulaMode || isDewormingMode || isHospAmbMode
+      isVaccinationMode || isFormulaMode || isDewormingMode || isHospAmbMode || isProcedureMode
     );
   }
   form
     .querySelector(".consultorio-consultation-form__footer")
     ?.classList.toggle(
       "consultorio-consultation-form__footer--align-end",
-      isVaccinationMode || isFormulaMode || isDewormingMode || isHospAmbMode
+      isVaccinationMode || isFormulaMode || isDewormingMode || isHospAmbMode || isProcedureMode
     );
   elements.patientConsultationModal.classList.remove("is-hidden");
   elements.patientConsultationModal.setAttribute("aria-hidden", "false");
@@ -6991,6 +7249,8 @@ function openPatientConsultationModal(consultation = null) {
     form.elements.vaccination_date.focus();
   } else if (isDewormingMode && form.elements.deworming_date) {
     form.elements.deworming_date.focus();
+  } else if (isProcedureMode && form.elements.procedure_date) {
+    form.elements.procedure_date.focus();
   } else if (isHospAmbMode && form.elements.hospamb_type) {
     form.elements.hospamb_type.focus();
   } else {
@@ -7684,6 +7944,33 @@ async function handlePatientConsultationSubmit(event) {
       dischargeReason,
       dischargeAt,
     });
+  } else if (isProcedureConsultationType(payload.consultation_type)) {
+    const procedureName = getPatientProcedureNameValue(form);
+    if (!payload.procedure_date) {
+      throw new Error("Selecciona la fecha de la cirug\u00eda/procedimiento.");
+    }
+    if (!procedureName) {
+      throw new Error("Selecciona o escribe la cirug\u00eda/procedimiento.");
+    }
+    payload.title = procedureName;
+    payload.consultation_at = `${payload.procedure_date}T12:00`;
+    payload.next_control = "";
+    payload.summary = buildConsultorioProcedureSummary(payload);
+    payload.indications = buildConsultorioProcedureIndications(payload);
+    payload.attachments_summary = serializeConsultorioAttachments(
+      getPatientProcedureAttachments()
+    );
+    payload.document_reference = JSON.stringify({
+      kind: "procedure",
+      name: procedureName,
+      description: String(payload.procedure_description || "").trim(),
+      preanesthetic: String(payload.procedure_preanesthetic || "").trim(),
+      anesthetic: String(payload.procedure_anesthetic || "").trim(),
+      otherMedications: String(payload.procedure_other_medications || "").trim(),
+      treatment: String(payload.procedure_treatment || "").trim(),
+      observations: String(payload.procedure_observations || "").trim(),
+      complications: String(payload.procedure_complications || "").trim(),
+    });
   } else if (isFormulaConsultationType(payload.consultation_type)) {
     const formulaMedications = getPatientFormulaMedications();
     if (!payload.formula_date) {
@@ -8346,6 +8633,43 @@ function bindForms() {
       if (elements.patientConsultationForm?.elements?.consultation_type) {
         elements.patientConsultationForm.elements.consultation_type.value = event.target.value || "Hospitalizacion";
       }
+    });
+  }
+  if (elements.patientProcedureRegisterTypeButton && elements.patientProcedureNameSelect) {
+    elements.patientProcedureRegisterTypeButton.addEventListener("click", () => {
+      elements.patientProcedureNameSelect.value = CONSULTORIO_PROCEDURE_CUSTOM_OPTION;
+      syncPatientProcedureCustomField();
+      elements.patientProcedureCustomNameInput?.focus();
+    });
+  }
+  if (elements.patientProcedureNameSelect) {
+    elements.patientProcedureNameSelect.addEventListener("change", syncPatientProcedureCustomField);
+  }
+  if (elements.patientProcedureAttachmentFileButton && elements.patientProcedureAttachmentFileInput) {
+    elements.patientProcedureAttachmentFileButton.addEventListener("click", () => {
+      elements.patientProcedureAttachmentFileInput.click();
+    });
+    elements.patientProcedureAttachmentFileInput.addEventListener(
+      "change",
+      wrapAsync(async (event) => {
+        try {
+          await addPatientProcedureAttachmentImages(event.currentTarget.files);
+        } finally {
+          event.currentTarget.value = "";
+        }
+      })
+    );
+  }
+  if (elements.patientProcedureAttachmentsList) {
+    elements.patientProcedureAttachmentsList.addEventListener("click", (event) => {
+      const removeButton = event.target.closest("[data-remove-patient-consultation-attachment]");
+      if (!removeButton) {
+        return;
+      }
+      const index = Number(removeButton.dataset.removePatientConsultationAttachment);
+      const items = getPatientProcedureAttachments();
+      items.splice(index, 1);
+      setPatientProcedureAttachments(items);
     });
   }
   if (elements.patientConsultationAttachmentFileButton && elements.patientConsultationAttachmentFileInput) {

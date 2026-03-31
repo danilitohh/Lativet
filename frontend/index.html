@@ -1545,6 +1545,141 @@
             </label>
           </div>
 
+          <div id="patientProcedureFields" class="consultorio-procedure-fields is-hidden">
+            <div class="consultorio-procedure-fields__top">
+              <label class="consultorio-consultation-form__field consultorio-procedure-fields__date">
+                <span>Fecha</span>
+                <input id="patientProcedureDateInput" name="procedure_date" type="date" />
+              </label>
+
+              <div class="consultorio-consultation-form__field consultorio-procedure-fields__type">
+                <div class="consultorio-procedure-fields__label-row">
+                  <span>Cirug&iacute;a/Procedimiento</span>
+                  <button
+                    id="patientProcedureRegisterTypeButton"
+                    class="inline-link consultorio-procedure-fields__link"
+                    type="button"
+                  >
+                    + Registrar nuevo
+                  </button>
+                </div>
+                <select id="patientProcedureNameSelect" name="procedure_name">
+                  <option value="">Selecciona una cirug&iacute;a/procedimiento</option>
+                  <option value="Esterilizaci&oacute;n">Esterilizaci&oacute;n</option>
+                  <option value="Limpieza dental">Limpieza dental</option>
+                  <option value="Sutura">Sutura</option>
+                  <option value="Biopsia">Biopsia</option>
+                  <option value="Tumorectom&iacute;a">Tumorectom&iacute;a</option>
+                  <option value="Ces&aacute;rea">Ces&aacute;rea</option>
+                  <option value="__custom__">Otra cirug&iacute;a/procedimiento</option>
+                </select>
+                <input
+                  id="patientProcedureCustomNameInput"
+                  class="is-hidden"
+                  name="procedure_name_custom"
+                  type="text"
+                  placeholder="Nombre de la cirug&iacute;a/procedimiento"
+                />
+              </div>
+            </div>
+
+            <label class="full consultorio-consultation-form__field">
+              <span>Descripci&oacute;n quir&uacute;rgica</span>
+              <textarea
+                id="patientProcedureDescriptionInput"
+                name="procedure_description"
+                rows="4"
+                placeholder="Descripci&oacute;n quir&uacute;rgica"
+              ></textarea>
+            </label>
+
+            <div class="consultorio-procedure-fields__pair">
+              <label class="consultorio-consultation-form__field">
+                <span>Preanest&eacute;sico</span>
+                <input
+                  id="patientProcedurePreanestheticInput"
+                  name="procedure_preanesthetic"
+                  type="text"
+                  placeholder="Preanest&eacute;sico"
+                />
+              </label>
+
+              <label class="consultorio-consultation-form__field">
+                <span>Anest&eacute;sico</span>
+                <input
+                  id="patientProcedureAnestheticInput"
+                  name="procedure_anesthetic"
+                  type="text"
+                  placeholder="Anest&eacute;sico"
+                />
+              </label>
+            </div>
+
+            <div class="consultorio-procedure-fields__trio">
+              <label class="consultorio-consultation-form__field">
+                <span>Otros medicamentos</span>
+                <textarea
+                  id="patientProcedureOtherMedicationsInput"
+                  name="procedure_other_medications"
+                  rows="4"
+                  placeholder="Otros medicamentos"
+                ></textarea>
+              </label>
+
+              <label class="consultorio-consultation-form__field">
+                <span>Tratamiento</span>
+                <textarea
+                  id="patientProcedureTreatmentInput"
+                  name="procedure_treatment"
+                  rows="4"
+                  placeholder="Tratamiento"
+                ></textarea>
+              </label>
+
+              <label class="consultorio-consultation-form__field">
+                <span>Observaciones</span>
+                <textarea
+                  id="patientProcedureObservationsInput"
+                  name="procedure_observations"
+                  rows="4"
+                  placeholder="Observaciones"
+                ></textarea>
+              </label>
+            </div>
+
+            <label class="full consultorio-consultation-form__field">
+              <span>Complicaciones</span>
+              <textarea
+                id="patientProcedureComplicationsInput"
+                name="procedure_complications"
+                rows="4"
+                placeholder="Complicaciones"
+              ></textarea>
+            </label>
+
+            <div class="consultorio-consultation-form__field consultorio-procedure-fields__attachments">
+              <span>Im&aacute;genes/Fotos/Adjuntos</span>
+              <div class="consultorio-consultation-form__attachment-row">
+                <input
+                  id="patientProcedureAttachmentFileInput"
+                  class="is-hidden"
+                  type="file"
+                  accept="image/*"
+                  multiple
+                />
+                <button
+                  id="patientProcedureAttachmentFileButton"
+                  class="consultorio-consultation-form__add consultorio-consultation-form__add--file"
+                  type="button"
+                >
+                  + Agregar
+                </button>
+              </div>
+              <div id="patientProcedureAttachmentsList" class="consultorio-consultation-attachments"></div>
+              <textarea id="patientProcedureAttachmentsValue" name="procedure_attachments_summary" class="is-hidden"></textarea>
+            </div>
+          </div>
+
           <div id="patientConsultationClinicalFields" class="consultorio-consultation-mode consultorio-consultation-mode--clinical">
             <label class="consultorio-consultation-form__field">
               <span>Fecha consulta</span>

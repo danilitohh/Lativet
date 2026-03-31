@@ -1457,6 +1457,67 @@ button:active {
   text-decoration: underline;
 }
 
+.consultorio-procedure-fields {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 14px;
+}
+
+.consultorio-procedure-fields__top {
+  display: grid;
+  grid-template-columns: minmax(180px, 220px) minmax(0, 1fr);
+  gap: 14px 16px;
+  align-items: end;
+}
+
+.consultorio-procedure-fields__type {
+  min-width: 0;
+}
+
+.consultorio-procedure-fields__label-row {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.consultorio-procedure-fields__pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.consultorio-procedure-fields__trio {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.consultorio-procedure-fields__link {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #5b69ea;
+  font-size: 0.72rem;
+  font-weight: 600;
+  box-shadow: none;
+  white-space: nowrap;
+}
+
+.consultorio-procedure-fields__link:hover {
+  transform: none;
+  text-decoration: underline;
+}
+
+.consultorio-procedure-fields__attachments {
+  gap: 8px;
+}
+
+.consultorio-procedure-fields__attachments .consultorio-consultation-form__attachment-row {
+  justify-content: flex-start;
+}
+
 .consultorio-formula-fields__top {
   display: grid;
   grid-template-columns: minmax(240px, 280px) minmax(220px, 1fr);
@@ -1862,6 +1923,164 @@ button:active {
   width: 100%;
   height: 100%;
   display: block;
+}
+
+.consultorio-consultation-modal--procedure {
+  width: min(900px, 100%);
+  max-height: min(88vh, 760px);
+  border-radius: 6px;
+  border: 1px solid #d9deec;
+  background: #fff;
+  box-shadow: 0 26px 62px rgba(12, 20, 36, 0.22);
+}
+
+#patientConsultationModal.modal-shell--procedure {
+  padding: 22px 24px;
+}
+
+.consultorio-consultation-modal--procedure .consultorio-consultation-modal__header {
+  margin-bottom: 0;
+  padding: 12px 14px 11px;
+  border-bottom: 1px solid #e4e8f4;
+}
+
+.consultorio-consultation-modal--procedure .consultorio-consultation-modal__heading {
+  gap: 8px;
+}
+
+.consultorio-consultation-modal--procedure .consultorio-consultation-modal__heading-icon {
+  width: 16px;
+  height: 16px;
+  color: #5c6cf0;
+}
+
+.consultorio-consultation-modal--procedure .consultorio-consultation-modal__title {
+  font-size: 0.9rem;
+  color: #4a4f69;
+}
+
+.consultorio-consultation-modal--procedure .consultorio-consultation-modal__close {
+  width: 28px;
+  height: 28px;
+  color: #c4c8d5;
+  font-size: 1.5rem;
+}
+
+.consultorio-consultation-modal--procedure .consultorio-consultation-form {
+  padding: 14px 14px 16px;
+  gap: 14px;
+}
+
+.consultorio-consultation-modal--procedure .consultorio-consultation-form__field {
+  gap: 6px;
+}
+
+.consultorio-consultation-modal--procedure .consultorio-consultation-form__field > span {
+  font-size: 0.7rem;
+  color: #6671b2;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.consultorio-consultation-modal--procedure .consultorio-procedure-fields__label-row span {
+  font-size: 0.7rem;
+  color: #6671b2;
+  font-weight: 500;
+}
+
+.consultorio-consultation-modal--procedure .consultorio-consultation-form input,
+.consultorio-consultation-modal--procedure .consultorio-consultation-form select,
+.consultorio-consultation-modal--procedure .consultorio-consultation-form textarea {
+  border-color: #d9dff0;
+  border-radius: 4px;
+  padding: 8px 10px;
+  font-size: 0.78rem;
+  line-height: 1.25;
+  color: #5a6071;
+}
+
+.consultorio-consultation-modal--procedure .consultorio-consultation-form input,
+.consultorio-consultation-modal--procedure .consultorio-consultation-form select {
+  min-height: 34px;
+}
+
+.consultorio-consultation-modal--procedure .consultorio-consultation-form textarea {
+  min-height: 76px;
+  resize: vertical;
+}
+
+.consultorio-consultation-modal--procedure
+  #patientProcedureDescriptionInput,
+.consultorio-consultation-modal--procedure
+  #patientProcedureComplicationsInput {
+  min-height: 84px;
+}
+
+.consultorio-consultation-modal--procedure .consultorio-consultation-form input::placeholder,
+.consultorio-consultation-modal--procedure .consultorio-consultation-form textarea::placeholder {
+  color: #7c8296;
+}
+
+.consultorio-consultation-modal--procedure .consultorio-consultation-form input:focus,
+.consultorio-consultation-modal--procedure .consultorio-consultation-form select:focus,
+.consultorio-consultation-modal--procedure .consultorio-consultation-form textarea:focus {
+  outline: none;
+  border-color: rgba(90, 103, 232, 0.36);
+  box-shadow: 0 0 0 2px rgba(90, 103, 232, 0.08);
+}
+
+.consultorio-consultation-modal--procedure .consultorio-consultation-form__footer {
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid #e4e8f4;
+}
+
+.consultorio-consultation-modal--procedure .consultorio-consultation-form__cancel,
+.consultorio-consultation-modal--procedure .consultorio-consultation-form__submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 34px;
+  padding: 7px 12px;
+  border-radius: 4px;
+  font-size: 0.76rem;
+}
+
+.consultorio-consultation-modal--procedure .consultorio-consultation-form__cancel {
+  border: 1px solid #d9dff0;
+  background: #fff;
+  color: #5b6478;
+}
+
+.consultorio-consultation-modal--procedure .consultorio-consultation-form__submit {
+  border: 1px solid #5a67e8;
+  background: #5a67e8;
+  color: #fff;
+}
+
+.consultorio-consultation-modal--procedure .consultorio-consultation-form__submit-icon {
+  width: 12px;
+  height: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+.consultorio-consultation-modal--procedure .consultorio-consultation-form__submit-icon svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.consultorio-consultation-modal--procedure .consultorio-consultation-form__add {
+  min-height: 32px;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 0.76rem;
 }
 
 .consultorio-consultation-form__add,
@@ -3638,6 +3857,12 @@ body.auth-locked .page-shell > :not(#loginModal) {
   .consultorio-hospamb-fields__top {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .consultorio-procedure-fields__top,
+  .consultorio-procedure-fields__pair,
+  .consultorio-procedure-fields__trio {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 780px) {
@@ -3737,6 +3962,12 @@ body.auth-locked .page-shell > :not(#loginModal) {
     grid-template-columns: 1fr;
   }
 
+  .consultorio-procedure-fields__top,
+  .consultorio-procedure-fields__pair,
+  .consultorio-procedure-fields__trio {
+    grid-template-columns: 1fr;
+  }
+
   .consultorio-vaccination-fields__date,
   .consultorio-vaccination-fields__next,
   .consultorio-deworming-fields__attachments {
@@ -3755,8 +3986,17 @@ body.auth-locked .page-shell > :not(#loginModal) {
     padding-inline: 14px;
   }
 
+  .consultorio-consultation-modal--procedure .consultorio-consultation-modal__header,
+  .consultorio-consultation-modal--procedure .consultorio-consultation-form {
+    padding-inline: 12px;
+  }
+
   #patientConsultationModal.modal-shell--hospamb {
     padding: 18px;
+  }
+
+  #patientConsultationModal.modal-shell--procedure {
+    padding: 16px;
   }
 
   .hero-copy h2 {
