@@ -1698,6 +1698,141 @@ button:active {
   gap: 12px;
 }
 
+.consultorio-order-item__picker-field {
+  position: relative;
+  min-width: 0;
+}
+
+.consultorio-order-item__label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.consultorio-order-item__link {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #5b69ea;
+  font-size: 0.72rem;
+  font-weight: 600;
+  box-shadow: none;
+  white-space: nowrap;
+}
+
+.consultorio-order-item__link:hover {
+  transform: none;
+  text-decoration: underline;
+}
+
+.consultorio-order-picker {
+  position: relative;
+}
+
+.consultorio-order-picker__trigger {
+  width: 100%;
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px;
+  border: 1px solid #d9dff0;
+  border-radius: 4px;
+  background: #fff;
+  color: #5a6071;
+  font-size: 0.78rem;
+  font-weight: 400;
+  text-align: left;
+  box-shadow: none;
+}
+
+.consultorio-order-picker__trigger:hover {
+  transform: none;
+  border-color: rgba(90, 103, 232, 0.36);
+}
+
+.consultorio-order-picker__trigger > span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.consultorio-order-picker__chevron {
+  width: 8px;
+  height: 8px;
+  border-right: 1.6px solid currentColor;
+  border-bottom: 1.6px solid currentColor;
+  transform: rotate(45deg) translateY(-1px);
+  flex: 0 0 auto;
+}
+
+.consultorio-order-picker__panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 14;
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid #d9dff0;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 18px 34px rgba(16, 28, 52, 0.16);
+}
+
+.consultorio-order-picker__panel.is-hidden,
+.consultorio-order-picker__option.is-hidden {
+  display: none;
+}
+
+.consultorio-order-picker__search {
+  min-height: 34px;
+  padding: 8px 10px;
+  border: 1px solid rgba(90, 103, 232, 0.36);
+  border-radius: 4px;
+  color: #5a6071;
+  font-size: 0.78rem;
+}
+
+.consultorio-order-picker__options {
+  max-height: 300px;
+  overflow: auto;
+  display: grid;
+  gap: 2px;
+}
+
+.consultorio-order-picker__option {
+  width: 100%;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: #566078;
+  font-size: 0.74rem;
+  text-align: left;
+  line-height: 1.45;
+  box-shadow: none;
+  white-space: normal;
+}
+
+.consultorio-order-picker__option:hover,
+.consultorio-order-picker__option.is-selected {
+  transform: none;
+  background: rgba(90, 103, 232, 0.08);
+  color: #4b5edc;
+}
+
+.consultorio-order-picker__empty {
+  padding: 10px;
+  color: #8a93aa;
+  font-size: 0.74rem;
+  text-align: center;
+}
+
 .consultorio-order-item__quantity input {
   text-align: center;
 }
