@@ -2168,7 +2168,7 @@ function getConsultorioProfileTimelineItems(option = getConsultorioProfileViewCo
           ].filter(Boolean)
         : isHospAmbConsultationType(consultation.consultation_type)
         ? [
-            hospAmbDetails?.reason ? `Razon: ${truncate(hospAmbDetails.reason, 180)}` : "",
+            hospAmbDetails?.reason ? `Raz\u00f3n: ${truncate(hospAmbDetails.reason, 180)}` : "",
             hospAmbDetails?.observations
               ? `Observaciones: ${truncate(hospAmbDetails.observations, 180)}`
               : "",
@@ -2832,7 +2832,7 @@ function buildConsultorioDewormingIndications(payload) {
 
 function buildConsultorioHospAmbSummary(payload) {
   return buildConsultorioStructuredText([
-    ["Razon", payload.hospamb_reason],
+    ["Raz\u00f3n", payload.hospamb_reason],
     ["Observaciones", payload.hospamb_observations],
   ]);
 }
@@ -3676,7 +3676,12 @@ function buildConsultorioHospAmbWorkspace(patient, profileConfig) {
                       </div>
                     </td>
                     <td>${escapeHtml(formatDateTime(details.admissionAt || consultation.consultation_at))}</td>
-                    <td>${escapeHtml(details.type || consultation.consultation_type || "Hospitalizacion")}</td>
+                    <td>${escapeHtml(
+                      (details.type || consultation.consultation_type || "Hospitalizacion") ===
+                        "Hospitalizacion"
+                        ? "Hospitalizaci\u00f3n"
+                        : details.type || consultation.consultation_type || "Hospitalizaci\u00f3n"
+                    )}</td>
                     <td>${escapeHtml(truncate(details.reason || consultation.title || "Sin motivo", 88))}</td>
                     <td>${escapeHtml(detailLabel)}</td>
                     <td>${escapeHtml(consultation.professional_name || "Sin usuario")}</td>
@@ -3705,7 +3710,7 @@ function buildConsultorioHospAmbWorkspace(patient, profileConfig) {
             <path d="M13 14h0"></path>
           </svg>
         </span>
-        <strong>No hay registros de hospitalizacion/ambulatorio</strong>
+        <strong>No hay registros de hospitalizaci\u00f3n/ambulatorio</strong>
       </div>
     `;
   return `
@@ -3722,7 +3727,7 @@ function buildConsultorioHospAmbWorkspace(patient, profileConfig) {
             data-open-patient-consultation-modal="true"
             data-consultation-profile-view="hospamb"
           >
-            Registrar hospitalizacion/ambulatorio
+            Registrar hospitalizaci\u00f3n/ambulatorio
           </button>
         </div>
       </div>
@@ -6807,7 +6812,7 @@ function openPatientConsultationModal(consultation = null) {
   setPatientDewormingAttachments(parseConsultorioAttachments(consultation?.attachments_summary || ""));
   if (elements.patientConsultationModalTitle) {
     const entityLabel = isHospAmbMode
-      ? "Hospitalizacion/ambulatorio"
+      ? "Hospitalizaci\u00f3n/ambulatorio"
       : getConsultorioProfileModalEntityLabel(defaultConsultationType);
     elements.patientConsultationModalTitle.textContent = `${
       consultation ? `Editar ${entityLabel}` : `Registro de ${entityLabel}`
@@ -6844,6 +6849,7 @@ function openPatientConsultationModal(consultation = null) {
     );
   }
   const modalCard = elements.patientConsultationModal.querySelector(".modal-card");
+  elements.patientConsultationModal.classList.toggle("modal-shell--hospamb", isHospAmbMode);
   modalCard?.classList.toggle("consultorio-consultation-modal--hospamb", isHospAmbMode);
   modalCard?.classList.toggle("consultorio-consultation-modal--vaccination", isVaccinationMode);
   modalCard?.classList.toggle("consultorio-consultation-modal--formula", isFormulaMode);
@@ -7537,13 +7543,13 @@ async function handlePatientConsultationSubmit(event) {
     const dischargeReason = String(payload.hospamb_discharge_reason || "").trim();
     const dischargeAt = String(payload.hospamb_discharge_at || "").trim();
     if (!selectedType) {
-      throw new Error("Selecciona si el registro corresponde a hospitalizacion o ambulatorio.");
+      throw new Error("Selecciona si el registro corresponde a hospitalizaci\u00f3n o ambulatorio.");
     }
     if (!admissionAt) {
       throw new Error("Selecciona la fecha de ingreso.");
     }
     if (!reason) {
-      throw new Error("Escribe la razon del ingreso.");
+      throw new Error("Escribe la raz\u00f3n del ingreso.");
     }
     if ((dischargeReason && !dischargeAt) || (!dischargeReason && dischargeAt)) {
       throw new Error("Completa motivo y fecha de salida, o deja ambos campos vacios.");
@@ -8224,7 +8230,7 @@ function bindForms() {
   if (elements.patientHospAmbRegisterTypeButton) {
     elements.patientHospAmbRegisterTypeButton.addEventListener("click", () => {
       showStatus(
-        "Por ahora los tipos disponibles para este registro son Hospitalizacion y Ambulatorio.",
+        "Por ahora los tipos disponibles para este registro son Hospitalizaci\u00f3n y Ambulatorio.",
         "info"
       );
       elements.patientHospAmbTypeSelect?.focus();

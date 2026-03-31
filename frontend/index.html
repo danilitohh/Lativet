@@ -1322,8 +1322,8 @@
                   </button>
                 </div>
                 <select id="patientHospAmbTypeSelect" name="hospamb_type">
-                  <option value="">Seleccione una opcion</option>
-                  <option value="Hospitalizacion">Hospitalizacion</option>
+                  <option value="">Seleccione una opci&oacute;n</option>
+                  <option value="Hospitalizacion">Hospitalizaci&oacute;n</option>
                   <option value="Ambulatorio">Ambulatorio</option>
                 </select>
               </div>
@@ -1336,11 +1336,11 @@
               <label class="consultorio-consultation-form__field">
                 <span>Motivo de salida</span>
                 <select id="patientHospAmbDischargeReasonSelect" name="hospamb_discharge_reason">
-                  <option value="">Indica la finalizacion de la hospitalizacion</option>
-                  <option value="Alta medica">Alta medica</option>
+                  <option value="">Indica la finalizaci&oacute;n de la hospitalizaci&oacute;n</option>
+                  <option value="Alta medica">Alta m&eacute;dica</option>
                   <option value="Alta voluntaria">Alta voluntaria</option>
                   <option value="Traslado">Traslado</option>
-                  <option value="Remision">Remision</option>
+                  <option value="Remision">Remisi&oacute;n</option>
                   <option value="Fallecimiento">Fallecimiento</option>
                 </select>
               </label>
@@ -1353,12 +1353,12 @@
 
             <div class="consultorio-hospamb-fields__notes">
               <label class="consultorio-consultation-form__field">
-                <span>Razon</span>
+                <span>Raz&oacute;n</span>
                 <textarea
                   id="patientHospAmbReasonInput"
                   name="hospamb_reason"
                   rows="8"
-                  placeholder="Razon"
+                  placeholder="Raz&oacute;n"
                 ></textarea>
               </label>
 
@@ -1834,7 +1834,16 @@
             <p id="patientConsultationRecordLabel" class="meta-copy"></p>
             <div class="form-actions">
               <button id="cancelPatientConsultationButton" class="consultorio-consultation-form__cancel" type="button">Cerrar</button>
-              <button class="consultorio-consultation-form__submit" type="submit">Guardar</button>
+              <button class="consultorio-consultation-form__submit" type="submit">
+                <span class="consultorio-consultation-form__submit-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M5 4h11l3 3v13H5z"></path>
+                    <path d="M8 4v6h8V4"></path>
+                    <path d="M9 20v-6h6v6"></path>
+                  </svg>
+                </span>
+                <span>Guardar</span>
+              </button>
             </div>
           </div>
         </form>
