@@ -286,7 +286,25 @@ const consultationTypes = [
 const CONSULTORIO_VACCINATION_CUSTOM_OPTION = "__custom__";
 const CONSULTORIO_PROCEDURE_CUSTOM_OPTION = "__custom__";
 const CONSULTORIO_ORDER_ITEM_CUSTOM_OPTION = "__custom__";
+const LAB_TEST_CATEGORY_CUSTOM_OPTION = "__custom__";
 const LAB_TEST_LABEL_SEPARATOR = " - ";
+const LAB_TEST_CATEGORY_OPTIONS = [
+  "PERFILES MAS USADOS",
+  "PARASITOLOGIA VETERINARIA",
+  "SEROLOGIAS EN CANINOS",
+  "PRUEBAS SEROLOGICAS EN FELINOS",
+  "QUIMICA SANGUINEA",
+  "HORMONAS",
+  "HEMATOLOGIA VETERINARIA",
+  "HEMOPARASITOS",
+  "COAGULACION",
+  "ANALISIS DE LIQUIDOS Y OTROS",
+  "CITOLOGIA VETERINARIA",
+  "MICROBIOLOGIA - TRADICIONAL",
+  "MICROBIOLOGIA TRADICIONAL - PERFILES",
+  "MICROBIOLOGIA - MICROSCAN",
+  "MICROBIOLOGIA GRANDES ESPECIES - MICROSCAN",
+];
 const CONSULTORIO_ORDER_TYPE_OPTIONS = [
   "Cirugia/procedimiento",
   "Prueba/Examen",
@@ -1230,7 +1248,8 @@ function cacheElements() {
     "closeLabTestModalButton",
     "cancelLabTestModalButton",
     "labTestForm",
-    "labTestCategoryInput",
+    "labTestCategorySelect",
+    "labTestCategoryCustomInput",
     "labTestNameInput",
     "procedureOrderModal",
     "closeProcedureOrderModalButton",
@@ -2988,14 +3007,75 @@ function parseOrderCatalogLabel(label) {
   if (!text) {
     return { category: "", name: "" };
   }
-  if (text.includes(LAB_TEST_LABEL_SEPARATOR)) {
-    const [category, ...rest] = text.split(LAB_TEST_LABEL_SEPARATOR);
-    const name = rest.join(LAB_TEST_LABEL_SEPARATOR).trim();
+  const matchingCategory = LAB_TEST_CATEGORY_OPTIONS.slice()
+    .sort((left, right) => right.length - left.length)
+    .find((category) => text.startsWith(`${category}${LAB_TEST_LABEL_SEPARATOR}`));
+  if (matchingCategory) {
+    return {
+      category: matchingCategory,
+      name: text.slice(`${matchingCategory}${LAB_TEST_LABEL_SEPARATOR}`.length).trim(),
+    };
+  }
+  const separatorIndex = text.lastIndexOf(LAB_TEST_LABEL_SEPARATOR);
+  if (separatorIndex > 0) {
+    const category = text.slice(0, separatorIndex).trim();
+    const name = text.slice(separatorIndex + LAB_TEST_LABEL_SEPARATOR.length).trim();
     if (name) {
-      return { category: category.trim(), name };
+      return { category, name };
     }
   }
   return { category: "", name: text };
+}
+
+function syncLabTestCategoryCustomField() {
+  const showCustom =
+    elements.labTestCategorySelect?.value === LAB_TEST_CATEGORY_CUSTOM_OPTION;
+  elements.labTestCategoryCustomInput?.classList.toggle("is-hidden", !showCustom);
+  if (!showCustom && elements.labTestCategoryCustomInput) {
+    elements.labTestCategoryCustomInput.value = "";
+  }
+}
+
+function setLabTestCategoryValue(value) {
+  const normalized = String(value || "").trim();
+  if (!elements.labTestCategorySelect) {
+    return;
+  }
+  const matchesPredefined = Array.from(elements.labTestCategorySelect.options || []).some(
+    (option) =>
+      option.value &&
+      option.value !== LAB_TEST_CATEGORY_CUSTOM_OPTION &&
+      option.value === normalized
+  );
+  if (!normalized) {
+    elements.labTestCategorySelect.value = "";
+    if (elements.labTestCategoryCustomInput) {
+      elements.labTestCategoryCustomInput.value = "";
+    }
+    syncLabTestCategoryCustomField();
+    return;
+  }
+  if (matchesPredefined) {
+    elements.labTestCategorySelect.value = normalized;
+    if (elements.labTestCategoryCustomInput) {
+      elements.labTestCategoryCustomInput.value = "";
+    }
+    syncLabTestCategoryCustomField();
+    return;
+  }
+  elements.labTestCategorySelect.value = LAB_TEST_CATEGORY_CUSTOM_OPTION;
+  if (elements.labTestCategoryCustomInput) {
+    elements.labTestCategoryCustomInput.value = normalized;
+  }
+  syncLabTestCategoryCustomField();
+}
+
+function getLabTestCategoryValue() {
+  const selected = String(elements.labTestCategorySelect?.value || "").trim();
+  if (selected === LAB_TEST_CATEGORY_CUSTOM_OPTION) {
+    return String(elements.labTestCategoryCustomInput?.value || "").trim();
+  }
+  return selected;
 }
 
 function isConsultorioOrderSearchableType(type) {
@@ -7291,9 +7371,7 @@ function openLabTestModal({ index = null, category = "", name = "" } = {}) {
     return;
   }
   pendingLabTestOrderItemIndex = Number.isFinite(index) ? index : null;
-  if (elements.labTestCategoryInput) {
-    elements.labTestCategoryInput.value = category;
-  }
+  setLabTestCategoryValue(category);
   if (elements.labTestNameInput) {
     elements.labTestNameInput.value = name;
   }
@@ -7301,10 +7379,13 @@ function openLabTestModal({ index = null, category = "", name = "" } = {}) {
   elements.labTestModal.classList.remove("is-hidden");
   elements.labTestModal.setAttribute("aria-hidden", "false");
   syncModalOpenState();
+  const selectedCategoryOption = String(elements.labTestCategorySelect?.value || "").trim();
   const focusTarget =
-    elements.labTestCategoryInput && !elements.labTestCategoryInput.value
-      ? elements.labTestCategoryInput
-      : elements.labTestNameInput;
+    selectedCategoryOption === LAB_TEST_CATEGORY_CUSTOM_OPTION
+      ? elements.labTestCategoryCustomInput || elements.labTestNameInput
+      : getLabTestCategoryValue()
+        ? elements.labTestNameInput
+        : elements.labTestCategorySelect || elements.labTestNameInput;
   focusTarget?.focus();
 }
 
@@ -7318,12 +7399,16 @@ function closeLabTestModal() {
   if (elements.labTestForm) {
     elements.labTestForm.reset();
   }
-  if (elements.labTestCategoryInput) {
-    elements.labTestCategoryInput.value = "";
+  if (elements.labTestCategorySelect) {
+    elements.labTestCategorySelect.value = "";
+  }
+  if (elements.labTestCategoryCustomInput) {
+    elements.labTestCategoryCustomInput.value = "";
   }
   if (elements.labTestNameInput) {
     elements.labTestNameInput.value = "";
   }
+  syncLabTestCategoryCustomField();
   syncModalOpenState();
 }
 
@@ -7360,8 +7445,15 @@ function closeProcedureOrderModal() {
 
 function handleLabTestSubmit(event) {
   event.preventDefault();
-  const category = String(elements.labTestCategoryInput?.value || "").trim();
+  const category = getLabTestCategoryValue();
   const name = String(elements.labTestNameInput?.value || "").trim();
+  if (
+    elements.labTestCategorySelect?.value === LAB_TEST_CATEGORY_CUSTOM_OPTION &&
+    !category
+  ) {
+    elements.labTestCategoryCustomInput?.focus();
+    return;
+  }
   if (!name) {
     elements.labTestNameInput?.focus();
     return;
@@ -9819,6 +9911,14 @@ function bindForms() {
   if (elements.labTestForm) {
     elements.labTestForm.addEventListener("submit", handleLabTestSubmit);
   }
+  if (elements.labTestCategorySelect) {
+    elements.labTestCategorySelect.addEventListener("change", () => {
+      syncLabTestCategoryCustomField();
+      if (elements.labTestCategorySelect?.value === LAB_TEST_CATEGORY_CUSTOM_OPTION) {
+        elements.labTestCategoryCustomInput?.focus();
+      }
+    });
+  }
   if (elements.closeProcedureOrderModalButton) {
     elements.closeProcedureOrderModalButton.addEventListener("click", closeProcedureOrderModal);
   }
@@ -9943,8 +10043,7 @@ function bindForms() {
             items[index].item === CONSULTORIO_ORDER_ITEM_CUSTOM_OPTION ||
             Boolean(items[index].itemCustom);
           const existingLabel = hasCustom ? getConsultorioOrderItemDisplayName(items[index]) : "";
-          const parsed = parseOrderCatalogLabel(existingLabel);
-          openProcedureOrderModal({ index, name: parsed.name });
+          openProcedureOrderModal({ index, name: existingLabel });
           return;
         }
         if (orderType === "Prueba/Examen") {

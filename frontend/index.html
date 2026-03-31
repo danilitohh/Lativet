@@ -2029,11 +2029,31 @@
           <div class="lab-test-modal__grid">
             <label class="consultorio-consultation-form__field">
               <span>Categor&iacute;a/Agrupaci&oacute;n</span>
+              <select id="labTestCategorySelect" name="lab_test_category_select">
+                <option value="">Seleccione (opcional)</option>
+                <option value="PERFILES MAS USADOS">PERFILES MAS USADOS</option>
+                <option value="PARASITOLOGIA VETERINARIA">PARASITOLOGIA VETERINARIA</option>
+                <option value="SEROLOGIAS EN CANINOS">SEROLOGIAS EN CANINOS</option>
+                <option value="PRUEBAS SEROLOGICAS EN FELINOS">PRUEBAS SEROLOGICAS EN FELINOS</option>
+                <option value="QUIMICA SANGUINEA">QUIMICA SANGUINEA</option>
+                <option value="HORMONAS">HORMONAS</option>
+                <option value="HEMATOLOGIA VETERINARIA">HEMATOLOGIA VETERINARIA</option>
+                <option value="HEMOPARASITOS">HEMOPARASITOS</option>
+                <option value="COAGULACION">COAGULACION</option>
+                <option value="ANALISIS DE LIQUIDOS Y OTROS">ANALISIS DE LIQUIDOS Y OTROS</option>
+                <option value="CITOLOGIA VETERINARIA">CITOLOGIA VETERINARIA</option>
+                <option value="MICROBIOLOGIA - TRADICIONAL">MICROBIOLOGIA - TRADICIONAL</option>
+                <option value="MICROBIOLOGIA TRADICIONAL - PERFILES">MICROBIOLOGIA TRADICIONAL - PERFILES</option>
+                <option value="MICROBIOLOGIA - MICROSCAN">MICROBIOLOGIA - MICROSCAN</option>
+                <option value="MICROBIOLOGIA GRANDES ESPECIES - MICROSCAN">MICROBIOLOGIA GRANDES ESPECIES - MICROSCAN</option>
+                <option value="__custom__">Otra categor&iacute;a</option>
+              </select>
               <input
-                id="labTestCategoryInput"
-                name="lab_test_category"
+                id="labTestCategoryCustomInput"
+                class="is-hidden"
+                name="lab_test_category_custom"
                 type="text"
-                placeholder="Categor&iacute;a/Agrupaci&oacute;n"
+                placeholder="Nueva categor&iacute;a"
               />
             </label>
             <label class="consultorio-consultation-form__field">
