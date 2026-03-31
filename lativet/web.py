@@ -139,11 +139,11 @@ def create_app(base_dir: Path | None = None, data_dir: Path | None = None) -> Fl
 
     @app.get("/styles.css")
     def styles():
-        return send_cached(frontend_dir, "styles.css", "public, max-age=0, must-revalidate")
+        return send_cached(frontend_dir, "styles.css", "no-store")
 
     @app.get("/app.js")
     def javascript():
-        return send_cached(frontend_dir, "app.js", "public, max-age=0, must-revalidate")
+        return send_cached(frontend_dir, "app.js", "no-store")
 
     @app.get("/images/<path:filename>")
     def images(filename: str):
