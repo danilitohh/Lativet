@@ -2018,6 +2018,55 @@
     </div>
 
 
+    <div id="labTestModal" class="modal-shell is-hidden" aria-hidden="true">
+      <div class="modal-backdrop" data-close-lab-test-modal="true"></div>
+      <div class="modal-card modal-card--compact lab-test-modal" role="dialog" aria-modal="true" aria-labelledby="labTestModalTitle">
+        <div class="lab-test-modal__header">
+          <h3 id="labTestModalTitle">Registro de prueba de laboratorio</h3>
+          <button id="closeLabTestModalButton" class="lab-test-modal__close" type="button" aria-label="Cerrar">&times;</button>
+        </div>
+        <form id="labTestForm" class="consultorio-consultation-form lab-test-modal__form">
+          <div class="lab-test-modal__grid">
+            <label class="consultorio-consultation-form__field">
+              <span>Categor&iacute;a/Agrupaci&oacute;n</span>
+              <input
+                id="labTestCategoryInput"
+                name="lab_test_category"
+                type="text"
+                placeholder="Categor&iacute;a/Agrupaci&oacute;n"
+              />
+            </label>
+            <label class="consultorio-consultation-form__field">
+              <span>Nombre de la prueba</span>
+              <input
+                id="labTestNameInput"
+                name="lab_test_name"
+                type="text"
+                placeholder="Nombre de la prueba"
+                required
+              />
+            </label>
+          </div>
+          <div class="consultorio-consultation-form__footer consultorio-consultation-form__footer--align-end">
+            <div class="form-actions">
+              <button id="cancelLabTestModalButton" class="consultorio-consultation-form__cancel" type="button">Cerrar</button>
+              <button class="consultorio-consultation-form__submit" type="submit">
+                <span class="consultorio-consultation-form__submit-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M5 4h11l3 3v13H5z"></path>
+                    <path d="M8 4v6h8V4"></path>
+                    <path d="M9 20v-6h6v6"></path>
+                  </svg>
+                </span>
+                <span>Guardar</span>
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+
+
     </main>
 
     <div id="loginModal" class="modal-shell is-hidden" aria-hidden="true">

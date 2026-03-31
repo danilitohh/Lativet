@@ -3975,6 +3975,59 @@ body.auth-locked .page-shell > :not(#loginModal) {
   padding: 14px 18px 18px;
 }
 
+.lab-test-modal {
+  width: min(520px, 100%);
+  padding: 0;
+  border-radius: 18px;
+  background: #ffffff;
+}
+
+.lab-test-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 16px 18px;
+  border-bottom: 1px solid rgba(11, 39, 49, 0.12);
+}
+
+.lab-test-modal__header h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #27303f;
+}
+
+.lab-test-modal__close {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  border: 1px solid rgba(11, 39, 49, 0.12);
+  background: rgba(255, 255, 255, 0.95);
+  color: #8b94a9;
+  font-size: 1.2rem;
+  line-height: 1;
+  box-shadow: none;
+}
+
+.lab-test-modal__form {
+  display: grid;
+  gap: 12px;
+  padding: 14px 18px 18px;
+  margin: 0;
+}
+
+.lab-test-modal__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.lab-test-modal__grid .consultorio-consultation-form__field {
+  display: grid;
+  gap: 5px;
+}
+
 .appointment-modal__row {
   display: grid;
   gap: 10px;
@@ -4438,6 +4491,10 @@ body.auth-locked .page-shell > :not(#loginModal) {
   }
 
   .consultorio-consultation-exam-grid--special {
+    grid-template-columns: 1fr;
+  }
+
+  .lab-test-modal__grid {
     grid-template-columns: 1fr;
   }
 
