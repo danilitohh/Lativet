@@ -1357,14 +1357,14 @@ button:active {
 .consultorio-hospamb-fields {
   grid-column: 1 / -1;
   display: grid;
-  gap: 22px;
+  gap: 16px;
 }
 
 .consultorio-hospamb-fields__top {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 20px 24px;
-  align-items: end;
+  gap: 14px 16px;
+  align-items: start;
 }
 
 .consultorio-hospamb-fields__type {
@@ -1375,13 +1375,13 @@ button:active {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  gap: 10px;
+  gap: 8px;
 }
 
 .consultorio-hospamb-fields__notes {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 24px;
+  gap: 16px;
 }
 
 .consultorio-hospamb-fields__link {
@@ -1390,9 +1390,10 @@ button:active {
   border-radius: 0;
   background: transparent;
   color: #5b69ea;
-  font-size: 0.8rem;
+  font-size: 0.74rem;
   font-weight: 600;
   box-shadow: none;
+  white-space: nowrap;
 }
 
 .consultorio-hospamb-fields__link:hover {
@@ -1664,7 +1665,7 @@ button:active {
 
 .consultorio-consultation-modal--hospamb {
   width: min(1628px, calc(100vw - 96px));
-  max-height: min(80vh, 720px);
+  max-height: min(78vh, 680px);
   border: 1px solid #d9deec;
   border-radius: 6px;
   background: #fff;
@@ -1672,7 +1673,7 @@ button:active {
 }
 
 #patientConsultationModal.modal-shell--hospamb {
-  padding: 32px 48px;
+  padding: 26px 40px;
 }
 
 #patientConsultationModal.modal-shell--hospamb .modal-backdrop {
@@ -1682,45 +1683,45 @@ button:active {
 
 .consultorio-consultation-modal--hospamb .consultorio-consultation-modal__header {
   margin-bottom: 0;
-  padding: 22px 20px 18px;
+  padding: 18px 18px 14px;
   border-bottom: 1px solid #e4e8f4;
 }
 
 .consultorio-consultation-modal--hospamb .consultorio-consultation-modal__heading {
-  gap: 12px;
+  gap: 10px;
 }
 
 .consultorio-consultation-modal--hospamb .consultorio-consultation-modal__heading-icon {
-  width: 21px;
-  height: 21px;
+  width: 18px;
+  height: 18px;
   color: #5c6cf0;
 }
 
 .consultorio-consultation-modal--hospamb .consultorio-consultation-modal__title {
-  font-size: 1.08rem;
+  font-size: 0.94rem;
   font-weight: 700;
   line-height: 1.2;
   color: #4a4f69;
 }
 
 .consultorio-consultation-modal--hospamb .consultorio-consultation-modal__close {
-  width: 40px;
-  height: 40px;
+  width: 30px;
+  height: 30px;
   color: #c4c8d5;
-  font-size: 2rem;
+  font-size: 1.7rem;
 }
 
 .consultorio-consultation-modal--hospamb .consultorio-consultation-form {
-  padding: 26px 20px 20px;
-  gap: 22px;
+  padding: 16px 18px 16px;
+  gap: 16px;
 }
 
 .consultorio-consultation-modal--hospamb .consultorio-consultation-form__field {
-  gap: 11px;
+  gap: 6px;
 }
 
 .consultorio-consultation-modal--hospamb .consultorio-consultation-form__field > span {
-  font-size: 0.82rem;
+  font-size: 0.72rem;
   color: #6671b2;
   font-weight: 500;
   letter-spacing: 0;
@@ -1732,19 +1733,19 @@ button:active {
 .consultorio-consultation-modal--hospamb .consultorio-consultation-form textarea {
   border-color: #d9dff0;
   border-radius: 6px;
-  padding: 11px 16px;
-  font-size: 0.88rem;
-  line-height: 1.35;
+  padding: 8px 12px;
+  font-size: 0.8rem;
+  line-height: 1.25;
   color: #5a6071;
 }
 
 .consultorio-consultation-modal--hospamb .consultorio-consultation-form input,
 .consultorio-consultation-modal--hospamb .consultorio-consultation-form select {
-  min-height: 48px;
+  min-height: 36px;
 }
 
 .consultorio-consultation-modal--hospamb .consultorio-consultation-form textarea {
-  min-height: 146px;
+  min-height: 112px;
   resize: vertical;
 }
 
@@ -1753,9 +1754,18 @@ button:active {
   color: #7c8296;
 }
 
+.consultorio-consultation-modal--hospamb .consultorio-consultation-form input:focus,
+.consultorio-consultation-modal--hospamb .consultorio-consultation-form select:focus,
+.consultorio-consultation-modal--hospamb .consultorio-consultation-form textarea:focus {
+  outline: none;
+  border-color: rgba(15, 118, 110, 0.28);
+  box-shadow: 0 0 0 2px rgba(15, 118, 110, 0.1);
+}
+
 .consultorio-consultation-modal--hospamb .consultorio-consultation-form__footer {
   justify-content: flex-end;
-  padding-top: 20px;
+  gap: 10px;
+  padding-top: 14px;
   border-top: 1px solid #e4e8f4;
 }
 
@@ -1764,11 +1774,11 @@ button:active {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  min-height: 48px;
-  padding: 10px 18px;
+  gap: 8px;
+  min-height: 38px;
+  padding: 8px 14px;
   border-radius: 6px;
-  font-size: 0.9rem;
+  font-size: 0.8rem;
 }
 
 .consultorio-consultation-modal--hospamb .consultorio-consultation-form__cancel {
@@ -1784,8 +1794,8 @@ button:active {
 }
 
 .consultorio-consultation-modal--hospamb .consultorio-consultation-form__submit-icon {
-  width: 15px;
-  height: 15px;
+  width: 13px;
+  height: 13px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
