@@ -1138,8 +1138,17 @@ function cacheElements() {
     "patientConsultationModalTitle",
     "patientConsultationModalSubtitle",
     "patientConsultationModalBadge",
+    "patientConsultationModalIcon",
     "patientConsultationForm",
     "patientConsultationClinicalFields",
+    "patientHospAmbFields",
+    "patientHospAmbTypeSelect",
+    "patientHospAmbRegisterTypeButton",
+    "patientHospAmbAdmissionInput",
+    "patientHospAmbDischargeReasonSelect",
+    "patientHospAmbDischargeInput",
+    "patientHospAmbReasonInput",
+    "patientHospAmbObservationsInput",
     "patientVaccinationFields",
     "patientFormulaFields",
     "patientDewormingFields",
@@ -2132,6 +2141,9 @@ function getConsultorioProfileTimelineItems(option = getConsultorioProfileViewCo
     const formulaDetails = isFormulaConsultationType(consultation.consultation_type)
       ? parseConsultorioFormulaDetails(consultation)
       : null;
+    const hospAmbDetails = isHospAmbConsultationType(consultation.consultation_type)
+      ? parseConsultorioHospAmbDetails(consultation)
+      : null;
     return {
       id: `consultation-${consultation.id}`,
       at: consultation.consultation_at,
@@ -2152,6 +2164,24 @@ function getConsultorioProfileTimelineItems(option = getConsultorioProfileViewCo
               : "",
             formulaDetails?.observations
               ? `Observaciones: ${truncate(formulaDetails.observations, 180)}`
+              : "",
+          ].filter(Boolean)
+        : isHospAmbConsultationType(consultation.consultation_type)
+        ? [
+            hospAmbDetails?.reason ? `Razon: ${truncate(hospAmbDetails.reason, 180)}` : "",
+            hospAmbDetails?.observations
+              ? `Observaciones: ${truncate(hospAmbDetails.observations, 180)}`
+              : "",
+            hospAmbDetails?.dischargeReason || hospAmbDetails?.dischargeAt
+              ? `Salida: ${truncate(
+                  [
+                    hospAmbDetails?.dischargeReason || "",
+                    hospAmbDetails?.dischargeAt ? formatDateTime(hospAmbDetails.dischargeAt) : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" / "),
+                  180
+                )}`
               : "",
           ].filter(Boolean)
         : [
@@ -2279,6 +2309,11 @@ function isFormulaConsultationType(consultationType) {
 
 function isDewormingConsultationType(consultationType) {
   return String(consultationType || "").trim() === "Desparasitacion";
+}
+
+function isHospAmbConsultationType(consultationType) {
+  const normalized = String(consultationType || "").trim();
+  return normalized === "Hospitalizacion" || normalized === "Ambulatorio";
 }
 
 function isConsultorioPatientsViewActive() {
@@ -2630,6 +2665,52 @@ function parseConsultorioDewormingDetails(consultation) {
   };
 }
 
+function parseConsultorioHospAmbDetails(consultation) {
+  const summary = parseConsultorioStructuredText(consultation?.summary || "", {
+    razon: "reason",
+    observaciones: "observations",
+  });
+  const indications = parseConsultorioStructuredText(consultation?.indications || "", {
+    "motivo de salida": "dischargeReason",
+    "fecha de salida": "dischargeAt",
+  });
+  const genericDetails = parseConsultorioConsultationDetails(consultation);
+  let stored = null;
+  const rawReference = String(consultation?.document_reference || "").trim();
+  if (rawReference.startsWith("{")) {
+    try {
+      const parsed = JSON.parse(rawReference);
+      if (parsed && parsed.kind === "hospamb") {
+        stored = parsed;
+      }
+    } catch (error) {
+      stored = null;
+    }
+  }
+  return {
+    type:
+      String(stored?.type || "").trim() ||
+      String(consultation?.consultation_type || "").trim() ||
+      "Hospitalizacion",
+    admissionAt: toInputDateTime(consultation?.consultation_at || ""),
+    reason:
+      String(stored?.reason || "").trim() ||
+      summary.reason ||
+      String(consultation?.title || "").trim() ||
+      genericDetails.subjective ||
+      genericDetails.objective ||
+      String(consultation?.summary || "").trim(),
+    observations:
+      String(stored?.observations || "").trim() ||
+      summary.observations ||
+      genericDetails.objective ||
+      genericDetails.interpretation ||
+      "",
+    dischargeReason: String(stored?.dischargeReason || "").trim() || indications.dischargeReason || "",
+    dischargeAt: toInputDateTime(String(stored?.dischargeAt || "").trim() || indications.dischargeAt || ""),
+  };
+}
+
 function createConsultorioFormulaMedication(item = {}) {
   return {
     name: String(item.name || "").trim(),
@@ -2746,6 +2827,20 @@ function buildConsultorioDewormingIndications(payload) {
   return buildConsultorioStructuredText([
     ["Ultima desparasitacion", payload.deworming_last_date],
     ["Proximo control", payload.deworming_next_control],
+  ]);
+}
+
+function buildConsultorioHospAmbSummary(payload) {
+  return buildConsultorioStructuredText([
+    ["Razon", payload.hospamb_reason],
+    ["Observaciones", payload.hospamb_observations],
+  ]);
+}
+
+function buildConsultorioHospAmbIndications(payload) {
+  return buildConsultorioStructuredText([
+    ["Motivo de salida", payload.hospamb_discharge_reason],
+    ["Fecha de salida", payload.hospamb_discharge_at],
   ]);
 }
 
@@ -3556,14 +3651,12 @@ function buildConsultorioHospAmbWorkspace(patient, profileConfig) {
           <tbody>
             ${entries
               .map((consultation) => {
-                const details = parseConsultorioConsultationDetails(consultation);
+                const details = parseConsultorioHospAmbDetails(consultation);
                 const detailLabel = truncate(
                   [
-                    details.interpretation ? `Diagnostico: ${details.interpretation}` : "",
-                    details.therapeuticPlan ? `Plan: ${details.therapeuticPlan}` : "",
-                    !details.interpretation && !details.therapeuticPlan && consultation.summary
-                      ? consultation.summary
-                      : "",
+                    details.dischargeReason ? `Motivo de salida: ${details.dischargeReason}` : "",
+                    details.dischargeAt ? `Fecha de salida: ${formatDateTime(details.dischargeAt)}` : "",
+                    details.observations || "",
                   ]
                     .filter(Boolean)
                     .join(" | ") || "Sin detalle registrado.",
@@ -3582,9 +3675,9 @@ function buildConsultorioHospAmbWorkspace(patient, profileConfig) {
                         </button>
                       </div>
                     </td>
-                    <td>${escapeHtml(formatDateTime(consultation.consultation_at))}</td>
-                    <td>${escapeHtml(consultation.consultation_type || "Hospitalizacion")}</td>
-                    <td>${escapeHtml(consultation.title || "Sin motivo")}</td>
+                    <td>${escapeHtml(formatDateTime(details.admissionAt || consultation.consultation_at))}</td>
+                    <td>${escapeHtml(details.type || consultation.consultation_type || "Hospitalizacion")}</td>
+                    <td>${escapeHtml(truncate(details.reason || consultation.title || "Sin motivo", 88))}</td>
                     <td>${escapeHtml(detailLabel)}</td>
                     <td>${escapeHtml(consultation.professional_name || "Sin usuario")}</td>
                   </tr>
@@ -4723,32 +4816,48 @@ function renderConsultations() {
   renderList(
     elements.consultationsList,
     visibleConsultations,
-    (consultation) => `
-      <article class="list-card">
-        <header>
-          <div>
-            <h4>${escapeHtml(consultation.title)}</h4>
-            <p>${escapeHtml(consultation.consultation_type)} / ${formatDateTime(
-              consultation.consultation_at
-            )}</p>
-          </div>
-          <span class="${statusClass(
-            consultation.consent_required ? "confirmed" : "scheduled"
-          )}">${consultation.consent_required ? "Con consentimiento" : "Sin consentimiento"}</span>
-        </header>
-        <p>Paciente: ${escapeHtml(consultation.patient_name)}</p>
-        <p>${escapeHtml(
-          isFormulaConsultationType(consultation.consultation_type)
-            ? getConsultorioFormulaMedicationLabel(consultation)
-            : truncate(consultation.summary)
-        )}</p>
-        <p>${escapeHtml(
-          isFormulaConsultationType(consultation.consultation_type)
-            ? ""
-            : consultation.document_reference || consultation.referred_to || ""
-        )}</p>
-      </article>
-    `,
+    (consultation) => {
+      const hospAmbDetails = isHospAmbConsultationType(consultation.consultation_type)
+        ? parseConsultorioHospAmbDetails(consultation)
+        : null;
+      return `
+        <article class="list-card">
+          <header>
+            <div>
+              <h4>${escapeHtml(consultation.title)}</h4>
+              <p>${escapeHtml(consultation.consultation_type)} / ${formatDateTime(
+                consultation.consultation_at
+              )}</p>
+            </div>
+            <span class="${statusClass(
+              consultation.consent_required ? "confirmed" : "scheduled"
+            )}">${consultation.consent_required ? "Con consentimiento" : "Sin consentimiento"}</span>
+          </header>
+          <p>Paciente: ${escapeHtml(consultation.patient_name)}</p>
+          <p>${escapeHtml(
+            isFormulaConsultationType(consultation.consultation_type)
+              ? getConsultorioFormulaMedicationLabel(consultation)
+              : hospAmbDetails
+              ? truncate([hospAmbDetails.reason, hospAmbDetails.observations].filter(Boolean).join(" | "))
+              : truncate(consultation.summary)
+          )}</p>
+          <p>${escapeHtml(
+            isFormulaConsultationType(consultation.consultation_type)
+              ? ""
+              : hospAmbDetails
+              ? truncate(
+                  [
+                    hospAmbDetails.dischargeReason,
+                    hospAmbDetails.dischargeAt ? formatDateTime(hospAmbDetails.dischargeAt) : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" / ")
+                )
+              : consultation.document_reference || consultation.referred_to || ""
+          )}</p>
+        </article>
+      `;
+    },
     isConsultorioPatientProfileActive()
       ? "Este paciente aun no tiene registros en esta seccion."
       : "Aun no hay consultas internas registradas."
@@ -6577,6 +6686,8 @@ function openPatientConsultationModal(consultation = null) {
   const isVaccinationMode = isVaccinationConsultationType(defaultConsultationType);
   const isFormulaMode = isFormulaConsultationType(defaultConsultationType);
   const isDewormingMode = isDewormingConsultationType(defaultConsultationType);
+  const isHospAmbMode =
+    isHospAmbConsultationType(defaultConsultationType) || profileConfig?.value === "hospamb";
   const defaultTitle =
     consultation?.title || getConsultorioProfileDefaultConsultationTitle(profileConfig);
   form.reset();
@@ -6584,6 +6695,7 @@ function openPatientConsultationModal(consultation = null) {
   const vaccinationDetails = parseConsultorioVaccinationDetails(consultation);
   const formulaDetails = parseConsultorioFormulaDetails(consultation);
   const dewormingDetails = parseConsultorioDewormingDetails(consultation);
+  const hospAmbDetails = parseConsultorioHospAmbDetails(consultation);
   form.elements.id.value = consultation?.id || "";
   form.elements.record_id.value = record?.id || "";
   form.elements.consultation_type.value = defaultConsultationType;
@@ -6594,14 +6706,35 @@ function openPatientConsultationModal(consultation = null) {
   form.elements.consultation_at.value = toInputDateTime(
     consultation?.consultation_at || new Date().toISOString()
   );
-  ensurePatientConsultationReasonOption(defaultTitle);
-  form.elements.title.value = defaultTitle;
+  if (!isHospAmbMode) {
+    ensurePatientConsultationReasonOption(defaultTitle);
+    form.elements.title.value = defaultTitle;
+  }
   form.elements.subjective.value = details.subjective || "";
   form.elements.objective.value = details.objective || "";
   form.elements.interpretation.value = details.interpretation || "";
   form.elements.therapeutic_plan.value = details.therapeuticPlan || "";
   form.elements.diagnostic_plan.value = details.diagnosticPlan || "";
   form.elements.next_control.value = normalizeDateFieldValue(details.nextControl);
+  if (form.elements.hospamb_type) {
+    form.elements.hospamb_type.value = hospAmbDetails.type || defaultConsultationType;
+  }
+  if (form.elements.hospamb_admission_at) {
+    form.elements.hospamb_admission_at.value =
+      hospAmbDetails.admissionAt || toInputDateTime(new Date().toISOString());
+  }
+  if (form.elements.hospamb_discharge_reason) {
+    form.elements.hospamb_discharge_reason.value = hospAmbDetails.dischargeReason || "";
+  }
+  if (form.elements.hospamb_discharge_at) {
+    form.elements.hospamb_discharge_at.value = hospAmbDetails.dischargeAt || "";
+  }
+  if (form.elements.hospamb_reason) {
+    form.elements.hospamb_reason.value = hospAmbDetails.reason || "";
+  }
+  if (form.elements.hospamb_observations) {
+    form.elements.hospamb_observations.value = hospAmbDetails.observations || "";
+  }
   if (form.elements.vaccination_date) {
     form.elements.vaccination_date.value =
       vaccinationDetails.vaccinationDate || normalizeDateFieldValue(new Date().toISOString());
@@ -6673,7 +6806,9 @@ function openPatientConsultationModal(consultation = null) {
   setPatientConsultationAttachments(parseConsultorioAttachments(consultation?.attachments_summary || ""));
   setPatientDewormingAttachments(parseConsultorioAttachments(consultation?.attachments_summary || ""));
   if (elements.patientConsultationModalTitle) {
-    const entityLabel = getConsultorioProfileModalEntityLabel(defaultConsultationType);
+    const entityLabel = isHospAmbMode
+      ? "Hospitalizacion/ambulatorio"
+      : getConsultorioProfileModalEntityLabel(defaultConsultationType);
     elements.patientConsultationModalTitle.textContent = `${
       consultation ? `Editar ${entityLabel}` : `Registro de ${entityLabel}`
     } - ${patient.name || "Paciente"}`;
@@ -6690,6 +6825,9 @@ function openPatientConsultationModal(consultation = null) {
     elements.patientConsultationModalBadge.textContent = badgeText;
     elements.patientConsultationModalBadge.classList.toggle("is-hidden", !badgeText);
   }
+  if (elements.patientHospAmbFields) {
+    elements.patientHospAmbFields.classList.toggle("is-hidden", !isHospAmbMode);
+  }
   if (elements.patientVaccinationFields) {
     elements.patientVaccinationFields.classList.toggle("is-hidden", !isVaccinationMode);
   }
@@ -6702,32 +6840,35 @@ function openPatientConsultationModal(consultation = null) {
   if (elements.patientConsultationClinicalFields) {
     elements.patientConsultationClinicalFields.classList.toggle(
       "is-hidden",
-      isVaccinationMode || isFormulaMode || isDewormingMode
+      isVaccinationMode || isFormulaMode || isDewormingMode || isHospAmbMode
     );
   }
   const modalCard = elements.patientConsultationModal.querySelector(".modal-card");
+  modalCard?.classList.toggle("consultorio-consultation-modal--hospamb", isHospAmbMode);
   modalCard?.classList.toggle("consultorio-consultation-modal--vaccination", isVaccinationMode);
   modalCard?.classList.toggle("consultorio-consultation-modal--formula", isFormulaMode);
   modalCard?.classList.toggle("consultorio-consultation-modal--deworming", isDewormingMode);
+  elements.patientConsultationModalIcon?.classList.toggle("is-hospamb", isHospAmbMode);
   if (elements.closePatientConsultationModalButton) {
     elements.closePatientConsultationModalButton.innerHTML = "&times;";
   }
   if (elements.patientConsultationRecordLabel) {
-    elements.patientConsultationRecordLabel.textContent = isVaccinationMode || isFormulaMode || isDewormingMode
-      ? ""
-      : record
+    elements.patientConsultationRecordLabel.textContent =
+      isVaccinationMode || isFormulaMode || isDewormingMode || isHospAmbMode
+        ? ""
+        : record
         ? `Historia clinica vinculada: ${record.id}`
         : "La historia clinica se creara automaticamente al guardar esta consulta.";
     elements.patientConsultationRecordLabel.classList.toggle(
       "is-hidden",
-      isVaccinationMode || isFormulaMode || isDewormingMode
+      isVaccinationMode || isFormulaMode || isDewormingMode || isHospAmbMode
     );
   }
   form
     .querySelector(".consultorio-consultation-form__footer")
     ?.classList.toggle(
       "consultorio-consultation-form__footer--align-end",
-      isVaccinationMode || isFormulaMode || isDewormingMode
+      isVaccinationMode || isFormulaMode || isDewormingMode || isHospAmbMode
     );
   elements.patientConsultationModal.classList.remove("is-hidden");
   elements.patientConsultationModal.setAttribute("aria-hidden", "false");
@@ -6739,6 +6880,8 @@ function openPatientConsultationModal(consultation = null) {
     form.elements.vaccination_date.focus();
   } else if (isDewormingMode && form.elements.deworming_date) {
     form.elements.deworming_date.focus();
+  } else if (isHospAmbMode && form.elements.hospamb_type) {
+    form.elements.hospamb_type.focus();
   } else {
     form.elements.consultation_at.focus();
   }
@@ -7387,7 +7530,50 @@ async function handlePatientConsultationSubmit(event) {
     payload.consultation_type ||
     getConsultorioProfileViewConfig()?.formConsultationType ||
     "Consulta";
-  if (isFormulaConsultationType(payload.consultation_type)) {
+  if (isHospAmbConsultationType(payload.consultation_type)) {
+    const selectedType = String(payload.hospamb_type || payload.consultation_type || "").trim();
+    const admissionAt = String(payload.hospamb_admission_at || payload.consultation_at || "").trim();
+    const reason = String(payload.hospamb_reason || "").trim();
+    const dischargeReason = String(payload.hospamb_discharge_reason || "").trim();
+    const dischargeAt = String(payload.hospamb_discharge_at || "").trim();
+    if (!selectedType) {
+      throw new Error("Selecciona si el registro corresponde a hospitalizacion o ambulatorio.");
+    }
+    if (!admissionAt) {
+      throw new Error("Selecciona la fecha de ingreso.");
+    }
+    if (!reason) {
+      throw new Error("Escribe la razon del ingreso.");
+    }
+    if ((dischargeReason && !dischargeAt) || (!dischargeReason && dischargeAt)) {
+      throw new Error("Completa motivo y fecha de salida, o deja ambos campos vacios.");
+    }
+    const parsedAdmissionAt = new Date(admissionAt);
+    const parsedDischargeAt = dischargeAt ? new Date(dischargeAt) : null;
+    if (
+      parsedDischargeAt &&
+      !Number.isNaN(parsedAdmissionAt.getTime()) &&
+      !Number.isNaN(parsedDischargeAt.getTime()) &&
+      parsedDischargeAt < parsedAdmissionAt
+    ) {
+      throw new Error("La fecha de salida no puede ser anterior a la fecha de ingreso.");
+    }
+    payload.consultation_type = selectedType;
+    payload.title = reason;
+    payload.consultation_at = admissionAt;
+    payload.next_control = "";
+    payload.summary = buildConsultorioHospAmbSummary(payload);
+    payload.indications = buildConsultorioHospAmbIndications(payload);
+    payload.attachments_summary = "";
+    payload.document_reference = JSON.stringify({
+      kind: "hospamb",
+      type: selectedType,
+      reason,
+      observations: String(payload.hospamb_observations || "").trim(),
+      dischargeReason,
+      dischargeAt,
+    });
+  } else if (isFormulaConsultationType(payload.consultation_type)) {
     const formulaMedications = getPatientFormulaMedications();
     if (!payload.formula_date) {
       throw new Error("Selecciona la fecha de la formula.");
@@ -8032,6 +8218,22 @@ function bindForms() {
     elements.patientConsultationModal.addEventListener("click", (event) => {
       if (event.target.dataset.closePatientConsultationModal) {
         closePatientConsultationModal();
+      }
+    });
+  }
+  if (elements.patientHospAmbRegisterTypeButton) {
+    elements.patientHospAmbRegisterTypeButton.addEventListener("click", () => {
+      showStatus(
+        "Por ahora los tipos disponibles para este registro son Hospitalizacion y Ambulatorio.",
+        "info"
+      );
+      elements.patientHospAmbTypeSelect?.focus();
+    });
+  }
+  if (elements.patientHospAmbTypeSelect && elements.patientConsultationForm) {
+    elements.patientHospAmbTypeSelect.addEventListener("change", (event) => {
+      if (elements.patientConsultationForm?.elements?.consultation_type) {
+        elements.patientConsultationForm.elements.consultation_type.value = event.target.value || "Hospitalizacion";
       }
     });
   }

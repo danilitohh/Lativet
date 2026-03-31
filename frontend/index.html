@@ -1267,7 +1267,23 @@
       <div class="modal-card consultorio-consultation-modal" role="dialog" aria-modal="true" aria-labelledby="patientConsultationModalTitle">
         <div class="panel-heading consultorio-consultation-modal__header">
           <div class="consultorio-consultation-modal__heading">
-            <span class="consultorio-consultation-modal__heading-icon" aria-hidden="true"></span>
+            <span
+              id="patientConsultationModalIcon"
+              class="consultorio-consultation-modal__heading-icon"
+              aria-hidden="true"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M6 21V5.5A1.5 1.5 0 0 1 7.5 4h9A1.5 1.5 0 0 1 18 5.5V21"></path>
+                <path d="M3 21h18"></path>
+                <path d="M9 8h1"></path>
+                <path d="M14 8h1"></path>
+                <path d="M9 12h1"></path>
+                <path d="M14 12h1"></path>
+                <path d="M12 7v6"></path>
+                <path d="M9 10h6"></path>
+                <path d="M10 21v-4h4v4"></path>
+              </svg>
+            </span>
             <div class="consultorio-consultation-modal__heading-copy">
               <h3 id="patientConsultationModalTitle" class="consultorio-consultation-modal__title">Registro de Consulta</h3>
               <p id="patientConsultationModalSubtitle" class="meta-copy is-hidden"></p>
@@ -1291,6 +1307,72 @@
           <input type="hidden" name="professional_license" />
           <input type="hidden" name="consent_id" value="" />
           <input type="hidden" name="consent_required" value="false" />
+
+          <div id="patientHospAmbFields" class="consultorio-hospamb-fields is-hidden">
+            <div class="consultorio-hospamb-fields__top">
+              <div class="consultorio-consultation-form__field consultorio-hospamb-fields__type">
+                <div class="consultorio-hospamb-fields__label-row">
+                  <span>Tipo</span>
+                  <button
+                    id="patientHospAmbRegisterTypeButton"
+                    class="inline-link consultorio-hospamb-fields__link"
+                    type="button"
+                  >
+                    + Registrar tipo
+                  </button>
+                </div>
+                <select id="patientHospAmbTypeSelect" name="hospamb_type">
+                  <option value="">Seleccione una opcion</option>
+                  <option value="Hospitalizacion">Hospitalizacion</option>
+                  <option value="Ambulatorio">Ambulatorio</option>
+                </select>
+              </div>
+
+              <label class="consultorio-consultation-form__field">
+                <span>Fecha de ingreso</span>
+                <input id="patientHospAmbAdmissionInput" name="hospamb_admission_at" type="datetime-local" />
+              </label>
+
+              <label class="consultorio-consultation-form__field">
+                <span>Motivo de salida</span>
+                <select id="patientHospAmbDischargeReasonSelect" name="hospamb_discharge_reason">
+                  <option value="">Indica la finalizacion de la hospitalizacion</option>
+                  <option value="Alta medica">Alta medica</option>
+                  <option value="Alta voluntaria">Alta voluntaria</option>
+                  <option value="Traslado">Traslado</option>
+                  <option value="Remision">Remision</option>
+                  <option value="Fallecimiento">Fallecimiento</option>
+                </select>
+              </label>
+
+              <label class="consultorio-consultation-form__field">
+                <span>Fecha de salida</span>
+                <input id="patientHospAmbDischargeInput" name="hospamb_discharge_at" type="datetime-local" />
+              </label>
+            </div>
+
+            <div class="consultorio-hospamb-fields__notes">
+              <label class="consultorio-consultation-form__field">
+                <span>Razon</span>
+                <textarea
+                  id="patientHospAmbReasonInput"
+                  name="hospamb_reason"
+                  rows="8"
+                  placeholder="Razon"
+                ></textarea>
+              </label>
+
+              <label class="consultorio-consultation-form__field">
+                <span>Observaciones</span>
+                <textarea
+                  id="patientHospAmbObservationsInput"
+                  name="hospamb_observations"
+                  rows="8"
+                  placeholder="Observaciones"
+                ></textarea>
+              </label>
+            </div>
+          </div>
 
           <div id="patientVaccinationFields" class="consultorio-vaccination-fields is-hidden">
             <label class="consultorio-consultation-form__field consultorio-vaccination-fields__date">
