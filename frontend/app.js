@@ -148,7 +148,7 @@ const CONSULTORIO_PROFILE_VIEWS = [
   },
   {
     value: "orders",
-    label: "Ordenes",
+    label: "\u00d3rdenes",
     panels: ["consultorioConsultationFormPanel", "consultorioConsultationsPanel"],
     dataRequirements: ["owners", "patients", "records", "consultations"],
     consultationTypes: ["Documento"],
@@ -2294,7 +2294,7 @@ function getConsultorioProfileViewConfig() {
 }
 
 function isConsultorioWorkspaceOnlyView(profileConfig) {
-  return ["consultations", "vacunacion", "formula", "desparasitacion", "hospamb", "cirugia"].includes(
+  return ["consultations", "vacunacion", "formula", "desparasitacion", "hospamb", "cirugia", "orders"].includes(
     profileConfig?.value || ""
   );
 }
@@ -2308,7 +2308,7 @@ function getConsultorioProfileDefaultConsultationTitle(profileConfig) {
       desparasitacion: "Desparasitacion",
       hospamb: "Hospitalizacion",
       cirugia: "Cirugia / procedimiento",
-      orders: "Documento clinico",
+      orders: "Orden",
       laboratorio: "Examen de laboratorio",
       imagenes: "Imagen diagnostica",
       seguimiento: "Seguimiento",
@@ -3956,6 +3956,106 @@ function buildConsultorioProcedureWorkspace(patient, profileConfig) {
   `;
 }
 
+function buildConsultorioOrdersWorkspace(patient, profileConfig) {
+  const orders = getConsultorioScopedConsultations(profileConfig?.consultationTypes || null);
+  const content = orders.length
+    ? `
+      <div class="table-wrapper consultorio-consultations-table-wrapper">
+        <table class="data-table consultorio-consultations-table">
+          <thead>
+            <tr>
+              <th>Opc.</th>
+              <th>Fecha</th>
+              <th>Orden</th>
+              <th>Detalle</th>
+              <th>Usuario</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${orders
+              .map((consultation) => {
+                const details = parseConsultorioConsultationDetails(consultation);
+                const detailLabel =
+                  consultation.document_reference ||
+                  consultation.referred_to ||
+                  details.interpretation ||
+                  details.therapeuticPlan ||
+                  consultation.summary ||
+                  "Sin detalle";
+                return `
+                  <tr>
+                    <td>
+                      <div class="table-actions consultorio-consultations-table__actions">
+                        <button
+                          class="ghost-button"
+                          type="button"
+                          data-edit-patient-consultation="${escapeHtml(consultation.id)}"
+                        >
+                          Editar
+                        </button>
+                      </div>
+                    </td>
+                    <td>${escapeHtml(formatDateTime(consultation.consultation_at))}</td>
+                    <td>${escapeHtml(consultation.title || "Orden")}</td>
+                    <td>${escapeHtml(truncate(detailLabel, 120))}</td>
+                    <td>${escapeHtml(consultation.professional_name || "Sin usuario")}</td>
+                  </tr>
+                `;
+              })
+              .join("")}
+          </tbody>
+        </table>
+      </div>
+    `
+    : `
+      <div class="consultorio-module-empty consultorio-module-empty--orders">
+        <span class="consultorio-module-empty__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"></path>
+            <path d="M14 2v5h5"></path>
+            <path d="M9 12h6"></path>
+            <path d="M9 16h6"></path>
+            <path d="M9 8h2"></path>
+          </svg>
+        </span>
+        <strong>No hay registros de orden</strong>
+      </div>
+    `;
+  return `
+    <article class="consultorio-profile-shell consultorio-orders-shell">
+      <div class="consultorio-profile-table-toolbar">
+        <div class="consultorio-profile-toolbar__group">
+          <span class="consultorio-profile-toolbar__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"></path>
+              <path d="M14 2v5h5"></path>
+              <path d="M9 12h6"></path>
+              <path d="M9 16h6"></path>
+              <path d="M9 8h2"></path>
+            </svg>
+          </span>
+          <div class="consultorio-profile-toolbar__title">
+            <h4>\u00d3rdenes de <span class="consultorio-profile-toolbar__accent">${escapeHtml(
+              patient?.name || "Paciente"
+            )}</span></h4>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button
+            class="primary-button"
+            type="button"
+            data-open-patient-consultation-modal="true"
+            data-consultation-profile-view="orders"
+          >
+            + Registrar orden
+          </button>
+        </div>
+      </div>
+      ${content}
+    </article>
+  `;
+}
+
 function renderConsultorioPatientProfile() {
   if (!elements.consultorioPatientProfilePanel) {
     return;
@@ -4127,6 +4227,8 @@ function renderConsultorioPatientProfile() {
         ? buildConsultorioHospAmbWorkspace(patient, profileConfig)
         : profileConfig?.value === "cirugia"
         ? buildConsultorioProcedureWorkspace(patient, profileConfig)
+        : profileConfig?.value === "orders"
+        ? buildConsultorioOrdersWorkspace(patient, profileConfig)
         : buildConsultorioProfileTimelineMarkup(profileConfig, timelineItems);
     elements.consultorioPatientProfileSummary.innerHTML = `
       <div class="consultorio-profile-workspace">
@@ -7143,6 +7245,8 @@ function openPatientConsultationModal(consultation = null) {
   if (elements.patientConsultationModalTitle) {
     const entityLabel = isHospAmbMode
       ? "Hospitalizaci\u00f3n/ambulatorio"
+      : profileConfig?.value === "orders" && defaultConsultationType === "Documento"
+      ? "Orden"
       : getConsultorioProfileModalEntityLabel(defaultConsultationType);
     elements.patientConsultationModalTitle.textContent = `${
       consultation ? `Editar ${entityLabel}` : `Registro de ${entityLabel}`

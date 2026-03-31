@@ -1233,7 +1233,8 @@ button:active {
 .consultorio-formulas-shell,
 .consultorio-deworming-shell,
 .consultorio-hospamb-shell,
-.consultorio-procedures-shell {
+.consultorio-procedures-shell,
+.consultorio-orders-shell {
   min-height: 340px;
 }
 
@@ -1283,6 +1284,26 @@ button:active {
 }
 
 .consultorio-module-empty--procedures strong {
+  font-family: var(--font-head);
+  font-size: 1.28rem;
+  font-weight: 600;
+  color: #6270aa;
+}
+
+.consultorio-module-empty--orders {
+  min-height: 180px;
+  margin-top: 10px;
+  border: 0;
+  background: transparent;
+}
+
+.consultorio-module-empty--orders .consultorio-module-empty__icon {
+  width: 58px;
+  height: 58px;
+  color: #6b76ab;
+}
+
+.consultorio-module-empty--orders strong {
   font-family: var(--font-head);
   font-size: 1.28rem;
   font-weight: 600;
