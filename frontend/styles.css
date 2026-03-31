@@ -4028,6 +4028,10 @@ body.auth-locked .page-shell > :not(#loginModal) {
   gap: 5px;
 }
 
+.lab-test-modal__grid .consultorio-consultation-form__field.full {
+  grid-column: 1 / -1;
+}
+
 .lab-test-modal .consultorio-consultation-form__footer {
   padding-top: 10px;
 }

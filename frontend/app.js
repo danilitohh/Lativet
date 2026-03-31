@@ -1236,7 +1236,6 @@ function cacheElements() {
     "closeProcedureOrderModalButton",
     "cancelProcedureOrderModalButton",
     "procedureOrderForm",
-    "procedureOrderCategoryInput",
     "procedureOrderNameInput",
     "patientConsultationModalTitle",
     "patientConsultationModalSubtitle",
@@ -7328,14 +7327,11 @@ function closeLabTestModal() {
   syncModalOpenState();
 }
 
-function openProcedureOrderModal({ index = null, category = "", name = "" } = {}) {
+function openProcedureOrderModal({ index = null, name = "" } = {}) {
   if (!elements.procedureOrderModal) {
     return;
   }
   pendingProcedureOrderItemIndex = Number.isFinite(index) ? index : null;
-  if (elements.procedureOrderCategoryInput) {
-    elements.procedureOrderCategoryInput.value = category;
-  }
   if (elements.procedureOrderNameInput) {
     elements.procedureOrderNameInput.value = name;
   }
@@ -7343,11 +7339,7 @@ function openProcedureOrderModal({ index = null, category = "", name = "" } = {}
   elements.procedureOrderModal.classList.remove("is-hidden");
   elements.procedureOrderModal.setAttribute("aria-hidden", "false");
   syncModalOpenState();
-  const focusTarget =
-    elements.procedureOrderCategoryInput && !elements.procedureOrderCategoryInput.value
-      ? elements.procedureOrderCategoryInput
-      : elements.procedureOrderNameInput;
-  focusTarget?.focus();
+  elements.procedureOrderNameInput?.focus();
 }
 
 function closeProcedureOrderModal() {
@@ -7359,9 +7351,6 @@ function closeProcedureOrderModal() {
   pendingProcedureOrderItemIndex = null;
   if (elements.procedureOrderForm) {
     elements.procedureOrderForm.reset();
-  }
-  if (elements.procedureOrderCategoryInput) {
-    elements.procedureOrderCategoryInput.value = "";
   }
   if (elements.procedureOrderNameInput) {
     elements.procedureOrderNameInput.value = "";
@@ -7399,13 +7388,12 @@ function handleLabTestSubmit(event) {
 
 function handleProcedureOrderSubmit(event) {
   event.preventDefault();
-  const category = String(elements.procedureOrderCategoryInput?.value || "").trim();
   const name = String(elements.procedureOrderNameInput?.value || "").trim();
   if (!name) {
     elements.procedureOrderNameInput?.focus();
     return;
   }
-  const label = buildOrderCatalogLabel(category, name);
+  const label = name;
   if (!label) {
     return;
   }
@@ -9956,7 +9944,7 @@ function bindForms() {
             Boolean(items[index].itemCustom);
           const existingLabel = hasCustom ? getConsultorioOrderItemDisplayName(items[index]) : "";
           const parsed = parseOrderCatalogLabel(existingLabel);
-          openProcedureOrderModal({ index, category: parsed.category, name: parsed.name });
+          openProcedureOrderModal({ index, name: parsed.name });
           return;
         }
         if (orderType === "Prueba/Examen") {
