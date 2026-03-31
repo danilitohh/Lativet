@@ -305,6 +305,29 @@ const LAB_TEST_CATEGORY_OPTIONS = [
   "MICROBIOLOGIA - MICROSCAN",
   "MICROBIOLOGIA GRANDES ESPECIES - MICROSCAN",
 ];
+const CONSULTORIO_ORDER_STANDARD_PRIORITY_OPTIONS = ["Baja", "Media", "Alta", "Urgente"];
+const CONSULTORIO_HOSPITALIZATION_PRIORITY_OPTIONS = [
+  {
+    value: "Emergencia",
+    description: "Requiere atencion inmediata, en un periodo no mayor a 2 horas.",
+    tone: "critical",
+  },
+  {
+    value: "Urgencia",
+    description: "Puede tener preparacion/estabilizacion antes del proceso, en un periodo no mayor a 24 horas.",
+    tone: "warning",
+  },
+  {
+    value: "Prioritario",
+    description: "Si la vida no esta en riesgo, en un periodo no mayor a 7 dias.",
+    tone: "info",
+  },
+  {
+    value: "Electiva",
+    description: "Segun condiciones, realizar en un periodo no mayor a un mes.",
+    tone: "neutral",
+  },
+];
 const CONSULTORIO_ORDER_TYPE_OPTIONS = [
   "Cirugia/procedimiento",
   "Prueba/Examen",
@@ -3082,6 +3105,20 @@ function isConsultorioOrderSearchableType(type) {
   return CONSULTORIO_ORDER_SEARCHABLE_TYPES.includes(normalizeConsultorioOrderType(type));
 }
 
+function isConsultorioHospitalizationOrderType(type) {
+  return normalizeConsultorioOrderType(type) === "Hospitalizacion";
+}
+
+function getConsultorioOrderPriorityOptions(type) {
+  return isConsultorioHospitalizationOrderType(type)
+    ? CONSULTORIO_HOSPITALIZATION_PRIORITY_OPTIONS
+    : CONSULTORIO_ORDER_STANDARD_PRIORITY_OPTIONS.map((value) => ({
+        value,
+        description: "",
+        tone: "neutral",
+      }));
+}
+
 function getConsultorioOrderTypeLabel(type) {
   return (
     {
@@ -3095,12 +3132,19 @@ function getConsultorioOrderTypeLabel(type) {
 }
 
 function getConsultorioOrderItemDisplayName(item = {}) {
+  const orderType = normalizeConsultorioOrderType(item.type);
   const selectedItem = String(item.item || item.name || "").trim();
   const customItem = String(item.itemCustom || "").trim();
   if (selectedItem === CONSULTORIO_ORDER_ITEM_CUSTOM_OPTION) {
-    return customItem;
+    return customItem || (isConsultorioHospitalizationOrderType(orderType)
+      ? getConsultorioOrderTypeLabel(orderType)
+      : "");
   }
-  return customItem || selectedItem;
+  return (
+    customItem ||
+    selectedItem ||
+    (isConsultorioHospitalizationOrderType(orderType) ? getConsultorioOrderTypeLabel(orderType) : "")
+  );
 }
 
 function createConsultorioOrderItem(item = {}) {
@@ -3108,6 +3152,10 @@ function createConsultorioOrderItem(item = {}) {
   const catalogValues = getConsultorioOrderCatalogOptions(type).map((option) => option.value);
   let selectedItem = String(item.item || item.name || "").trim();
   let customItem = String(item.itemCustom || "").trim();
+  const normalizedPriority = String(item.priority || "").trim();
+  const hospitalizationPriorityValues = CONSULTORIO_HOSPITALIZATION_PRIORITY_OPTIONS.map(
+    (option) => option.value
+  );
   if (
     selectedItem &&
     selectedItem !== CONSULTORIO_ORDER_ITEM_CUSTOM_OPTION &&
@@ -3124,7 +3172,12 @@ function createConsultorioOrderItem(item = {}) {
     item: selectedItem,
     itemCustom: customItem,
     quantity: String(item.quantity || "1").trim() || "1",
-    priority: String(item.priority || "").trim(),
+    priority:
+      isConsultorioHospitalizationOrderType(type)
+        ? hospitalizationPriorityValues.includes(normalizedPriority)
+          ? normalizedPriority
+          : "Urgencia"
+        : normalizedPriority,
     notes: String(item.notes || "").trim(),
   };
 }
@@ -3147,7 +3200,7 @@ function buildConsultorioOrderItemLabel(item = {}) {
   const quantity = String(normalized.quantity || "").trim();
   const priority = String(normalized.priority || "").trim();
   const parts = [];
-  if (type && name) {
+  if (type && name && type !== name) {
     parts.push(`${type}: ${name}`);
   } else if (name) {
     parts.push(name);
@@ -7608,6 +7661,172 @@ function getPatientProcedureNameValue(form) {
   return selected;
 }
 
+function renderConsultorioOrderNameField({
+  index,
+  orderType,
+  searchOptions,
+  itemOptions,
+  itemSelectValue,
+  pickerLabel,
+  isSearchableType,
+}) {
+  if (isSearchableType) {
+    return `
+      <div class="consultorio-consultation-form__field consultorio-order-item__picker-field">
+        <div class="consultorio-order-item__label-row">
+          <span>${escapeHtml(getConsultorioOrderTypeLabel(orderType))}</span>
+          <button
+            class="inline-link consultorio-order-item__link"
+            type="button"
+            data-order-item-register-custom="${escapeHtml(String(index))}"
+          >
+            + Registrar nuevo
+          </button>
+        </div>
+        <div class="consultorio-order-picker" data-order-picker="${escapeHtml(String(index))}">
+          <button
+            class="consultorio-order-picker__trigger"
+            type="button"
+            data-order-picker-trigger="${escapeHtml(String(index))}"
+            aria-expanded="false"
+          >
+            <span>${escapeHtml(pickerLabel || "Seleccione una opcion")}</span>
+            <span class="consultorio-order-picker__chevron" aria-hidden="true"></span>
+          </button>
+          <div class="consultorio-order-picker__panel is-hidden" data-order-picker-panel="${escapeHtml(
+            String(index)
+          )}">
+            <input
+              class="consultorio-order-picker__search"
+              type="text"
+              data-order-picker-search="${escapeHtml(String(index))}"
+              placeholder="Buscar una opcion"
+              autocomplete="off"
+            />
+            <div class="consultorio-order-picker__options">
+              ${searchOptions
+                .map(
+                  (option) => `
+                    <button
+                      class="consultorio-order-picker__option${
+                        option.value === itemSelectValue ? " is-selected" : ""
+                      }"
+                      type="button"
+                      data-order-item-option="${escapeHtml(String(index))}"
+                      data-option-value="${escapeHtml(option.value)}"
+                    >
+                      ${escapeHtml(option.label)}
+                    </button>
+                  `
+                )
+                .join("")}
+              <div class="consultorio-order-picker__empty is-hidden" data-order-picker-empty>
+                No se encontraron opciones
+              </div>
+            </div>
+          </div>
+          <input
+            data-order-item-field="item"
+            type="hidden"
+            value="${escapeHtml(itemSelectValue)}"
+          />
+        </div>
+      </div>
+    `;
+  }
+  return `
+    <label class="consultorio-consultation-form__field">
+      <span>Orden</span>
+      <select data-order-item-field="item">
+        <option value="">Seleccione una opcion</option>
+        ${itemOptions
+          .map(
+            (option) =>
+              `<option value="${escapeHtml(option.value)}"${
+                option.value === itemSelectValue ? " selected" : ""
+              }>${escapeHtml(option.label)}</option>`
+          )
+          .join("")}
+      </select>
+    </label>
+  `;
+}
+
+function renderConsultorioHospitalizationPriorityField(item, index) {
+  const priorityOptions = getConsultorioOrderPriorityOptions("Hospitalizacion");
+  const selectedOption =
+    priorityOptions.find((option) => option.value === String(item.priority || "").trim()) || null;
+  return `
+    <div class="consultorio-consultation-form__field consultorio-order-item__priority-field">
+      <span>Prioridad</span>
+      <div class="consultorio-order-picker consultorio-order-priority-picker" data-order-picker="${escapeHtml(
+        `priority-${index}`
+      )}">
+        <button
+          class="consultorio-order-picker__trigger"
+          type="button"
+          data-order-priority-trigger="${escapeHtml(String(index))}"
+          aria-expanded="false"
+        >
+          <span>${escapeHtml(selectedOption?.value || "Seleccione una opcion")}</span>
+          <span class="consultorio-order-picker__chevron" aria-hidden="true"></span>
+        </button>
+        <div
+          class="consultorio-order-picker__panel consultorio-order-priority-picker__panel is-hidden"
+          data-order-priority-panel="${escapeHtml(String(index))}"
+        >
+          <input
+            class="consultorio-order-picker__search consultorio-order-priority-picker__search"
+            type="text"
+            data-order-priority-search="${escapeHtml(String(index))}"
+            placeholder=""
+            autocomplete="off"
+          />
+          <div class="consultorio-order-picker__options consultorio-order-priority-picker__options">
+            ${priorityOptions
+              .map(
+                (option) => `
+                  <button
+                    class="consultorio-order-priority-picker__option${
+                      option.value === selectedOption?.value ? " is-selected" : ""
+                    }"
+                    type="button"
+                    data-order-priority-option="${escapeHtml(String(index))}"
+                    data-priority-value="${escapeHtml(option.value)}"
+                  >
+                    <span
+                      class="consultorio-order-priority-picker__dot consultorio-order-priority-picker__dot--${escapeHtml(
+                        option.tone
+                      )}"
+                      aria-hidden="true"
+                    ></span>
+                    <span class="consultorio-order-priority-picker__content">
+                      <span class="consultorio-order-priority-picker__label">${escapeHtml(
+                        option.value
+                      )}</span>
+                      <span class="consultorio-order-priority-picker__description">${escapeHtml(
+                        option.description
+                      )}</span>
+                    </span>
+                  </button>
+                `
+              )
+              .join("")}
+            <div class="consultorio-order-picker__empty is-hidden" data-order-priority-empty>
+              No se encontraron opciones
+            </div>
+          </div>
+        </div>
+        <input
+          data-order-item-field="priority"
+          type="hidden"
+          value="${escapeHtml(String(item.priority || ""))}"
+        />
+      </div>
+    </div>
+  `;
+}
+
 function renderPatientOrderItems(items = []) {
   if (!elements.patientOrderItemsList) {
     return;
@@ -7625,6 +7844,7 @@ function renderPatientOrderItems(items = []) {
         (option) => option.value !== CONSULTORIO_ORDER_ITEM_CUSTOM_OPTION
       );
       const isSearchableType = isConsultorioOrderSearchableType(orderType);
+      const isHospitalizationType = isConsultorioHospitalizationOrderType(orderType);
       const showCustomField = item.item === CONSULTORIO_ORDER_ITEM_CUSTOM_OPTION || Boolean(item.itemCustom);
       const itemSelectValue = showCustomField
         ? CONSULTORIO_ORDER_ITEM_CUSTOM_OPTION
@@ -7656,7 +7876,9 @@ function renderPatientOrderItems(items = []) {
             </div>
           </div>
 
-          <div class="consultorio-order-item__grid">
+          <div class="consultorio-order-item__grid${
+            isHospitalizationType ? " consultorio-order-item__grid--hospitalization" : ""
+          }">
             <label class="consultorio-consultation-form__field">
               <span>Tipo de orden</span>
               <select data-order-item-field="type">
@@ -7671,85 +7893,17 @@ function renderPatientOrderItems(items = []) {
             </label>
 
             ${
-              isSearchableType
-                ? `
-            <div class="consultorio-consultation-form__field consultorio-order-item__picker-field">
-              <div class="consultorio-order-item__label-row">
-                <span>${escapeHtml(getConsultorioOrderTypeLabel(orderType))}</span>
-                <button
-                  class="inline-link consultorio-order-item__link"
-                  type="button"
-                  data-order-item-register-custom="${escapeHtml(String(index))}"
-                >
-                  + Registrar nuevo
-                </button>
-              </div>
-              <div class="consultorio-order-picker" data-order-picker="${escapeHtml(String(index))}">
-                <button
-                  class="consultorio-order-picker__trigger"
-                  type="button"
-                  data-order-picker-trigger="${escapeHtml(String(index))}"
-                  aria-expanded="false"
-                >
-                  <span>${escapeHtml(pickerLabel || "Seleccione una opcion")}</span>
-                  <span class="consultorio-order-picker__chevron" aria-hidden="true"></span>
-                </button>
-                <div class="consultorio-order-picker__panel is-hidden" data-order-picker-panel="${escapeHtml(
-                  String(index)
-                )}">
-                  <input
-                    class="consultorio-order-picker__search"
-                    type="text"
-                    data-order-picker-search="${escapeHtml(String(index))}"
-                    placeholder="Buscar una opcion"
-                    autocomplete="off"
-                  />
-                  <div class="consultorio-order-picker__options">
-                    ${searchOptions
-                      .map(
-                        (option) => `
-                          <button
-                            class="consultorio-order-picker__option${
-                              option.value === itemSelectValue ? " is-selected" : ""
-                            }"
-                            type="button"
-                            data-order-item-option="${escapeHtml(String(index))}"
-                            data-option-value="${escapeHtml(option.value)}"
-                          >
-                            ${escapeHtml(option.label)}
-                          </button>
-                        `
-                      )
-                      .join("")}
-                    <div class="consultorio-order-picker__empty is-hidden" data-order-picker-empty>
-                      No se encontraron opciones
-                    </div>
-                  </div>
-                </div>
-                <input
-                  data-order-item-field="item"
-                  type="hidden"
-                  value="${escapeHtml(itemSelectValue)}"
-                />
-              </div>
-            </div>
-            `
-                : `
-            <label class="consultorio-consultation-form__field">
-              <span>Orden</span>
-              <select data-order-item-field="item">
-                <option value="">Seleccione una opcion</option>
-                ${itemOptions
-                  .map(
-                    (option) =>
-                      `<option value="${escapeHtml(option.value)}"${
-                        option.value === itemSelectValue ? " selected" : ""
-                      }>${escapeHtml(option.label)}</option>`
-                  )
-                  .join("")}
-              </select>
-            </label>
-            `
+              isHospitalizationType
+                ? ""
+                : renderConsultorioOrderNameField({
+                    index,
+                    orderType,
+                    searchOptions,
+                    itemOptions,
+                    itemSelectValue,
+                    pickerLabel,
+                    isSearchableType,
+                  })
             }
 
             <label class="consultorio-consultation-form__field consultorio-order-item__quantity">
@@ -7763,11 +7917,15 @@ function renderPatientOrderItems(items = []) {
               />
             </label>
 
+            ${
+              isHospitalizationType
+                ? renderConsultorioHospitalizationPriorityField(item, index)
+                : `
             <label class="consultorio-consultation-form__field">
               <span>Prioridad</span>
               <select data-order-item-field="priority">
                 <option value="">Seleccione (opcional)</option>
-                ${["Baja", "Media", "Alta", "Urgente"]
+                ${CONSULTORIO_ORDER_STANDARD_PRIORITY_OPTIONS
                   .map(
                     (option) =>
                       `<option value="${escapeHtml(option)}"${
@@ -7777,10 +7935,28 @@ function renderPatientOrderItems(items = []) {
                   .join("")}
               </select>
             </label>
+            `
+            }
+
+            ${
+              isHospitalizationType
+                ? `
+            <label class="consultorio-consultation-form__field consultorio-order-item__notes-inline">
+              <span>Notas</span>
+              <input
+                data-order-item-field="notes"
+                type="text"
+                value="${escapeHtml(item.notes || "")}"
+                placeholder="Notas u observaciones"
+              />
+            </label>
+            `
+                : ""
+            }
           </div>
 
           <label class="consultorio-consultation-form__field consultorio-order-item__custom${
-            showCustomField ? "" : " is-hidden"
+            showCustomField && !isHospitalizationType ? "" : " is-hidden"
           }">
             <span>Orden personalizada</span>
             <input
@@ -7791,6 +7967,10 @@ function renderPatientOrderItems(items = []) {
             />
           </label>
 
+          ${
+            isHospitalizationType
+              ? ""
+              : `
           <label class="consultorio-consultation-form__field">
             <span>Notas</span>
             <input
@@ -7800,6 +7980,8 @@ function renderPatientOrderItems(items = []) {
               placeholder="Notas u observaciones"
             />
           </label>
+          `
+          }
         </article>
       `;
     })
@@ -7832,6 +8014,12 @@ function closePatientOrderPickerPanels() {
   elements.patientOrderItemsList
     ?.querySelectorAll("[data-order-picker-trigger]")
     .forEach((trigger) => trigger.setAttribute("aria-expanded", "false"));
+  elements.patientOrderItemsList
+    ?.querySelectorAll("[data-order-priority-panel]")
+    .forEach((panel) => panel.classList.add("is-hidden"));
+  elements.patientOrderItemsList
+    ?.querySelectorAll("[data-order-priority-trigger]")
+    .forEach((trigger) => trigger.setAttribute("aria-expanded", "false"));
 }
 
 function filterPatientOrderPickerOptions(searchInput) {
@@ -7850,6 +8038,25 @@ function filterPatientOrderPickerOptions(searchInput) {
   });
   panel
     .querySelector("[data-order-picker-empty]")
+    ?.classList.toggle("is-hidden", visibleCount > 0);
+}
+
+function filterPatientOrderPriorityOptions(searchInput) {
+  const panel = searchInput?.closest("[data-order-priority-panel]");
+  if (!panel) {
+    return;
+  }
+  const query = String(searchInput.value || "").trim().toLowerCase();
+  let visibleCount = 0;
+  panel.querySelectorAll("[data-order-priority-option]").forEach((button) => {
+    const matches = !query || button.textContent.toLowerCase().includes(query);
+    button.classList.toggle("is-hidden", !matches);
+    if (matches) {
+      visibleCount += 1;
+    }
+  });
+  panel
+    .querySelector("[data-order-priority-empty]")
     ?.classList.toggle("is-hidden", visibleCount > 0);
 }
 
@@ -10018,6 +10225,24 @@ function bindForms() {
         }
         return;
       }
+      const priorityTrigger = event.target.closest("[data-order-priority-trigger]");
+      if (priorityTrigger) {
+        const row = priorityTrigger.closest("[data-order-item]");
+        const panel = row?.querySelector("[data-order-priority-panel]");
+        const searchInput = row?.querySelector("[data-order-priority-search]");
+        const willOpen = panel?.classList.contains("is-hidden");
+        closePatientOrderPickerPanels();
+        if (willOpen && panel) {
+          panel.classList.remove("is-hidden");
+          priorityTrigger.setAttribute("aria-expanded", "true");
+          if (searchInput) {
+            searchInput.value = "";
+            filterPatientOrderPriorityOptions(searchInput);
+            searchInput.focus();
+          }
+        }
+        return;
+      }
       const optionButton = event.target.closest("[data-order-item-option]");
       if (optionButton) {
         const index = Number(optionButton.dataset.orderItemOption);
@@ -10027,6 +10252,17 @@ function bindForms() {
         }
         items[index].item = optionButton.dataset.optionValue || "";
         items[index].itemCustom = "";
+        renderPatientOrderItems(items);
+        return;
+      }
+      const priorityOptionButton = event.target.closest("[data-order-priority-option]");
+      if (priorityOptionButton) {
+        const index = Number(priorityOptionButton.dataset.orderPriorityOption);
+        const items = getPatientOrderItems({ includeEmpty: true });
+        if (!items[index]) {
+          return;
+        }
+        items[index].priority = priorityOptionButton.dataset.priorityValue || "";
         renderPatientOrderItems(items);
         return;
       }
@@ -10077,10 +10313,15 @@ function bindForms() {
     });
     elements.patientOrderItemsList.addEventListener("input", (event) => {
       const searchInput = event.target.closest("[data-order-picker-search]");
-      if (!searchInput) {
+      if (searchInput) {
+        filterPatientOrderPickerOptions(searchInput);
         return;
       }
-      filterPatientOrderPickerOptions(searchInput);
+      const prioritySearchInput = event.target.closest("[data-order-priority-search]");
+      if (!prioritySearchInput) {
+        return;
+      }
+      filterPatientOrderPriorityOptions(prioritySearchInput);
     });
     elements.patientOrderItemsList.addEventListener("change", (event) => {
       const field = event.target.closest("[data-order-item-field]");
@@ -10100,10 +10341,20 @@ function bindForms() {
         items[index].type = field.value || "";
         items[index].item = "";
         items[index].itemCustom = "";
+        if (
+          isConsultorioHospitalizationOrderType(items[index].type) &&
+          !CONSULTORIO_HOSPITALIZATION_PRIORITY_OPTIONS.some(
+            (option) => option.value === items[index].priority
+          )
+        ) {
+          items[index].priority = "Urgencia";
+        }
         renderPatientOrderItems(items);
         elements.patientOrderItemsList
           ?.querySelector(
-            `[data-order-item="${index}"] [data-order-picker-trigger], [data-order-item="${index}"] [data-order-item-field="item"]`
+            isConsultorioHospitalizationOrderType(items[index].type)
+              ? `[data-order-item="${index}"] [data-order-priority-trigger]`
+              : `[data-order-item="${index}"] [data-order-picker-trigger], [data-order-item="${index}"] [data-order-item-field="item"]`
           )
           ?.focus();
         return;

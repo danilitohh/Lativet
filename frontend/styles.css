@@ -1652,6 +1652,11 @@ button:active {
   gap: 12px;
 }
 
+.consultorio-order-item__grid--hospitalization {
+  grid-template-columns: minmax(0, 1fr) minmax(84px, 0.28fr) minmax(0, 1.35fr) minmax(0, 1.25fr);
+  align-items: start;
+}
+
 .consultorio-order-item__picker-field {
   position: relative;
   min-width: 0;
@@ -1743,6 +1748,10 @@ button:active {
   display: none;
 }
 
+.consultorio-order-priority-picker__option.is-hidden {
+  display: none;
+}
+
 .consultorio-order-picker__search {
   min-height: 34px;
   padding: 8px 10px;
@@ -1785,6 +1794,84 @@ button:active {
   color: #8a93aa;
   font-size: 0.74rem;
   text-align: center;
+}
+
+.consultorio-order-priority-picker {
+  position: relative;
+}
+
+.consultorio-order-priority-picker__panel {
+  left: 0;
+  right: auto;
+  width: min(360px, 100%);
+}
+
+.consultorio-order-priority-picker__options {
+  gap: 6px;
+}
+
+.consultorio-order-priority-picker__option {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  text-align: left;
+  box-shadow: none;
+}
+
+.consultorio-order-priority-picker__option:hover,
+.consultorio-order-priority-picker__option.is-selected {
+  transform: none;
+  background: rgba(90, 103, 232, 0.08);
+}
+
+.consultorio-order-priority-picker__dot {
+  width: 8px;
+  height: 8px;
+  margin-top: 4px;
+  border-radius: 999px;
+  background: #c8d1e5;
+}
+
+.consultorio-order-priority-picker__dot--critical {
+  background: #d94b54;
+}
+
+.consultorio-order-priority-picker__dot--warning {
+  background: #f5b835;
+}
+
+.consultorio-order-priority-picker__dot--info {
+  background: #4b8ff7;
+}
+
+.consultorio-order-priority-picker__dot--neutral {
+  background: #d7dde9;
+}
+
+.consultorio-order-priority-picker__content {
+  display: grid;
+  gap: 3px;
+}
+
+.consultorio-order-priority-picker__label {
+  color: #54607a;
+  font-size: 0.74rem;
+  font-weight: 600;
+}
+
+.consultorio-order-priority-picker__description {
+  color: #8b93a8;
+  font-size: 0.65rem;
+  line-height: 1.35;
+}
+
+.consultorio-order-item__notes-inline {
+  min-width: 0;
 }
 
 .consultorio-order-item__quantity input {
