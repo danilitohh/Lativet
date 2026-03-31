@@ -1188,6 +1188,41 @@ button:active {
   flex-wrap: wrap;
 }
 
+.consultorio-profile-toolbar__group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.consultorio-profile-toolbar__icon {
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #3179ee;
+  flex: 0 0 auto;
+}
+
+.consultorio-profile-toolbar__icon svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.consultorio-profile-toolbar__title {
+  min-width: 0;
+}
+
+.consultorio-profile-toolbar__title h4 {
+  margin: 0;
+}
+
+.consultorio-profile-toolbar__accent {
+  color: #27c3b5;
+}
+
 .consultorio-profile-table-toolbar h4 {
   margin: 4px 0 0;
   font-family: var(--font-head);
@@ -1197,7 +1232,8 @@ button:active {
 .consultorio-vaccinations-shell,
 .consultorio-formulas-shell,
 .consultorio-deworming-shell,
-.consultorio-hospamb-shell {
+.consultorio-hospamb-shell,
+.consultorio-procedures-shell {
   min-height: 340px;
 }
 
@@ -1231,6 +1267,26 @@ button:active {
 .consultorio-module-empty strong {
   font-size: 0.96rem;
   font-weight: 700;
+}
+
+.consultorio-module-empty--procedures {
+  min-height: 180px;
+  margin-top: 10px;
+  border: 0;
+  background: transparent;
+}
+
+.consultorio-module-empty--procedures .consultorio-module-empty__icon {
+  width: 58px;
+  height: 58px;
+  color: #6b76ab;
+}
+
+.consultorio-module-empty--procedures strong {
+  font-family: var(--font-head);
+  font-size: 1.28rem;
+  font-weight: 600;
+  color: #6270aa;
 }
 
 .consultorio-vaccinations-table-wrapper {

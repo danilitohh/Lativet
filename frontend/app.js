@@ -140,7 +140,7 @@ const CONSULTORIO_PROFILE_VIEWS = [
   },
   {
     value: "cirugia",
-    label: "Cirugias / procedimientos",
+    label: "Cirug\u00edas/procedimientos",
     panels: ["consultorioConsultationFormPanel", "consultorioConsultationsPanel"],
     dataRequirements: ["owners", "patients", "records", "consultations"],
     consultationTypes: ["Cirugia / procedimiento"],
@@ -414,7 +414,11 @@ const sectionSubsections = {
     options: [
       { value: "hospitalization", label: "Hospitalizacion", panels: ["hospambHospitalizationPanel"] },
       { value: "ambulatory", label: "Ambulatorio", panels: ["hospambAmbulatoryPanel"] },
-      { value: "procedures", label: "Cirugias / procedimientos", panels: ["hospambProcedurePanel"] },
+      {
+        value: "procedures",
+        label: "Cirug\u00edas / procedimientos",
+        panels: ["hospambProcedurePanel"],
+      },
     ],
   },
   requests: {
@@ -2256,7 +2260,7 @@ function getConsultorioProfileViewConfig() {
 }
 
 function isConsultorioWorkspaceOnlyView(profileConfig) {
-  return ["consultations", "vacunacion", "formula", "desparasitacion", "hospamb"].includes(
+  return ["consultations", "vacunacion", "formula", "desparasitacion", "hospamb", "cirugia"].includes(
     profileConfig?.value || ""
   );
 }
@@ -2289,7 +2293,7 @@ function getConsultorioProfileModalEntityLabel(consultationType) {
       Desparasitacion: "Desparasitacion",
       Ambulatorio: "Ambulatorio",
       Hospitalizacion: "Hospitalizacion",
-      "Cirugia / procedimiento": "Cirugia / procedimiento",
+      "Cirugia / procedimiento": "Cirug\u00eda/procedimiento",
       "Examen de laboratorio": "Examen de laboratorio",
       "Imagen diagnostica": "Imagen diagnostica",
       Seguimiento: "Seguimiento",
@@ -3736,6 +3740,105 @@ function buildConsultorioHospAmbWorkspace(patient, profileConfig) {
   `;
 }
 
+function buildConsultorioProcedureWorkspace(patient, profileConfig) {
+  const procedures = getConsultorioScopedConsultations(profileConfig?.consultationTypes || null);
+  const content = procedures.length
+    ? `
+      <div class="table-wrapper consultorio-consultations-table-wrapper">
+        <table class="data-table consultorio-consultations-table">
+          <thead>
+            <tr>
+              <th>Opc.</th>
+              <th>Fecha</th>
+              <th>Procedimiento</th>
+              <th>Resumen</th>
+              <th>Usuario</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${procedures
+              .map(
+                (consultation) => `
+                  <tr>
+                    <td>
+                      <div class="table-actions consultorio-consultations-table__actions">
+                        <button
+                          class="ghost-button"
+                          type="button"
+                          data-edit-patient-consultation="${escapeHtml(consultation.id)}"
+                        >
+                          Editar
+                        </button>
+                      </div>
+                    </td>
+                    <td>${escapeHtml(formatDateTime(consultation.consultation_at))}</td>
+                    <td>${escapeHtml(consultation.title || "Cirug\u00eda / procedimiento")}</td>
+                    <td>${escapeHtml(
+                      truncate(
+                        consultation.summary ||
+                          getConsultorioConsultationDiagnosisLabel(consultation) ||
+                          "Sin resumen",
+                        120
+                      )
+                    )}</td>
+                    <td>${escapeHtml(consultation.professional_name || "Sin usuario")}</td>
+                  </tr>
+                `
+              )
+              .join("")}
+          </tbody>
+        </table>
+      </div>
+    `
+    : `
+      <div class="consultorio-module-empty consultorio-module-empty--procedures">
+        <span class="consultorio-module-empty__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 3a4 4 0 0 1 4 4v1.4a3 3 0 0 0 .88 2.12l.8.8A2 2 0 0 1 18.2 15L15 18.2a4.25 4.25 0 0 1-6 0L5.8 15a2 2 0 0 1 .52-3.68l.8-.8A3 3 0 0 0 8 8.4V7a4 4 0 0 1 4-4Z"></path>
+            <path d="M9.5 7.5h5"></path>
+            <path d="M12 5v5"></path>
+            <path d="M8 20h8"></path>
+          </svg>
+        </span>
+        <strong>No hay registros de cirug\u00eda/procedimiento</strong>
+      </div>
+    `;
+  return `
+    <article class="consultorio-profile-shell consultorio-procedures-shell">
+      <div class="consultorio-profile-table-toolbar">
+        <div class="consultorio-profile-toolbar__group">
+          <span class="consultorio-profile-toolbar__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M15 4V2"></path>
+              <path d="M9 4V2"></path>
+              <path d="M10 10 4.5 15.5a2.12 2.12 0 1 0 3 3L13 13"></path>
+              <path d="m14 9 1-1"></path>
+              <path d="M5 8h14"></path>
+              <path d="M7 4h10a2 2 0 0 1 2 2v2H5V6a2 2 0 0 1 2-2Z"></path>
+            </svg>
+          </span>
+          <div class="consultorio-profile-toolbar__title">
+            <h4>Cirug\u00edas/procedimientos de <span class="consultorio-profile-toolbar__accent">${escapeHtml(
+              patient?.name || "Paciente"
+            )}</span></h4>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button
+            class="primary-button"
+            type="button"
+            data-open-patient-consultation-modal="true"
+            data-consultation-profile-view="cirugia"
+          >
+            + Registrar cirug\u00eda/procedimiento
+          </button>
+        </div>
+      </div>
+      ${content}
+    </article>
+  `;
+}
+
 function renderConsultorioPatientProfile() {
   if (!elements.consultorioPatientProfilePanel) {
     return;
@@ -3905,6 +4008,8 @@ function renderConsultorioPatientProfile() {
         ? buildConsultorioDewormingWorkspace(patient, profileConfig)
         : profileConfig?.value === "hospamb"
         ? buildConsultorioHospAmbWorkspace(patient, profileConfig)
+        : profileConfig?.value === "cirugia"
+        ? buildConsultorioProcedureWorkspace(patient, profileConfig)
         : buildConsultorioProfileTimelineMarkup(profileConfig, timelineItems);
     elements.consultorioPatientProfileSummary.innerHTML = `
       <div class="consultorio-profile-workspace">
