@@ -2066,6 +2066,72 @@
       </div>
     </div>
 
+    <div id="procedureOrderModal" class="modal-shell is-hidden" aria-hidden="true">
+      <div class="modal-backdrop" data-close-procedure-order-modal="true"></div>
+      <div
+        class="modal-card modal-card--compact lab-test-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="procedureOrderModalTitle"
+      >
+        <div class="lab-test-modal__header">
+          <h3 id="procedureOrderModalTitle">Registro de cirug&iacute;a/procedimiento</h3>
+          <button
+            id="closeProcedureOrderModalButton"
+            class="lab-test-modal__close"
+            type="button"
+            aria-label="Cerrar"
+          >
+            &times;
+          </button>
+        </div>
+        <form id="procedureOrderForm" class="consultorio-consultation-form lab-test-modal__form">
+          <div class="lab-test-modal__grid">
+            <label class="consultorio-consultation-form__field">
+              <span>Categor&iacute;a/Agrupaci&oacute;n</span>
+              <input
+                id="procedureOrderCategoryInput"
+                name="procedure_order_category"
+                type="text"
+                placeholder="Categor&iacute;a/Agrupaci&oacute;n"
+              />
+            </label>
+            <label class="consultorio-consultation-form__field">
+              <span>Nombre de la cirug&iacute;a/procedimiento</span>
+              <input
+                id="procedureOrderNameInput"
+                name="procedure_order_name"
+                type="text"
+                placeholder="Nombre de la cirug&iacute;a/procedimiento"
+                required
+              />
+            </label>
+          </div>
+          <div class="consultorio-consultation-form__footer consultorio-consultation-form__footer--align-end">
+            <div class="form-actions">
+              <button
+                id="cancelProcedureOrderModalButton"
+                class="consultorio-consultation-form__cancel"
+                type="button"
+              >
+                Cerrar
+              </button>
+              <button class="consultorio-consultation-form__submit" type="submit">
+                <span class="consultorio-consultation-form__submit-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M5 4h11l3 3v13H5z"></path>
+                    <path d="M8 4v6h8V4"></path>
+                    <path d="M9 20v-6h6v6"></path>
+                  </svg>
+                </span>
+                <span>Guardar</span>
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+
 
     </main>
 

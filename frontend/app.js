@@ -52,6 +52,7 @@ let consultorioProfileView = "records";
 let consultorioPatientEditorVisible = false;
 let consultorioPatientProfileOpen = false;
 let pendingLabTestOrderItemIndex = null;
+let pendingProcedureOrderItemIndex = null;
 let activeSectionId = "dashboard";
 let pendingAppointmentDraft = null;
 let returnToAppointmentModal = false;
@@ -1231,6 +1232,12 @@ function cacheElements() {
     "labTestForm",
     "labTestCategoryInput",
     "labTestNameInput",
+    "procedureOrderModal",
+    "closeProcedureOrderModalButton",
+    "cancelProcedureOrderModalButton",
+    "procedureOrderForm",
+    "procedureOrderCategoryInput",
+    "procedureOrderNameInput",
     "patientConsultationModalTitle",
     "patientConsultationModalSubtitle",
     "patientConsultationModalBadge",
@@ -2965,7 +2972,7 @@ function registerConsultorioOrderCatalogEntry(type, label) {
   return label;
 }
 
-function buildLabTestLabel(category, name) {
+function buildOrderCatalogLabel(category, name) {
   const cleanCategory = String(category || "").trim();
   const cleanName = String(name || "").trim();
   if (!cleanName) {
@@ -2977,7 +2984,7 @@ function buildLabTestLabel(category, name) {
   return `${cleanCategory}${LAB_TEST_LABEL_SEPARATOR}${cleanName}`;
 }
 
-function parseLabTestLabel(label) {
+function parseOrderCatalogLabel(label) {
   const text = String(label || "").trim();
   if (!text) {
     return { category: "", name: "" };
@@ -7321,6 +7328,47 @@ function closeLabTestModal() {
   syncModalOpenState();
 }
 
+function openProcedureOrderModal({ index = null, category = "", name = "" } = {}) {
+  if (!elements.procedureOrderModal) {
+    return;
+  }
+  pendingProcedureOrderItemIndex = Number.isFinite(index) ? index : null;
+  if (elements.procedureOrderCategoryInput) {
+    elements.procedureOrderCategoryInput.value = category;
+  }
+  if (elements.procedureOrderNameInput) {
+    elements.procedureOrderNameInput.value = name;
+  }
+  closePatientOrderPickerPanels();
+  elements.procedureOrderModal.classList.remove("is-hidden");
+  elements.procedureOrderModal.setAttribute("aria-hidden", "false");
+  syncModalOpenState();
+  const focusTarget =
+    elements.procedureOrderCategoryInput && !elements.procedureOrderCategoryInput.value
+      ? elements.procedureOrderCategoryInput
+      : elements.procedureOrderNameInput;
+  focusTarget?.focus();
+}
+
+function closeProcedureOrderModal() {
+  if (!elements.procedureOrderModal) {
+    return;
+  }
+  elements.procedureOrderModal.classList.add("is-hidden");
+  elements.procedureOrderModal.setAttribute("aria-hidden", "true");
+  pendingProcedureOrderItemIndex = null;
+  if (elements.procedureOrderForm) {
+    elements.procedureOrderForm.reset();
+  }
+  if (elements.procedureOrderCategoryInput) {
+    elements.procedureOrderCategoryInput.value = "";
+  }
+  if (elements.procedureOrderNameInput) {
+    elements.procedureOrderNameInput.value = "";
+  }
+  syncModalOpenState();
+}
+
 function handleLabTestSubmit(event) {
   event.preventDefault();
   const category = String(elements.labTestCategoryInput?.value || "").trim();
@@ -7329,7 +7377,7 @@ function handleLabTestSubmit(event) {
     elements.labTestNameInput?.focus();
     return;
   }
-  const label = buildLabTestLabel(category, name);
+  const label = buildOrderCatalogLabel(category, name);
   if (!label) {
     return;
   }
@@ -7347,6 +7395,35 @@ function handleLabTestSubmit(event) {
     }
   }
   closeLabTestModal();
+}
+
+function handleProcedureOrderSubmit(event) {
+  event.preventDefault();
+  const category = String(elements.procedureOrderCategoryInput?.value || "").trim();
+  const name = String(elements.procedureOrderNameInput?.value || "").trim();
+  if (!name) {
+    elements.procedureOrderNameInput?.focus();
+    return;
+  }
+  const label = buildOrderCatalogLabel(category, name);
+  if (!label) {
+    return;
+  }
+  const resolvedLabel =
+    registerConsultorioOrderCatalogEntry("Cirugia/procedimiento", label) || label;
+  const index = pendingProcedureOrderItemIndex;
+  if (Number.isFinite(index)) {
+    const items = getPatientOrderItems({ includeEmpty: true });
+    if (items[index]) {
+      items[index].item = resolvedLabel;
+      items[index].itemCustom = "";
+      renderPatientOrderItems(items);
+      elements.patientOrderItemsList
+        ?.querySelector(`[data-order-item="${index}"] [data-order-picker-trigger]`)
+        ?.focus();
+    }
+  }
+  closeProcedureOrderModal();
 }
 
 function syncPatientVaccinationCustomField() {
@@ -9482,6 +9559,14 @@ function bindNavigation() {
         closeLabTestModal();
         return;
       }
+      const procedureOrderModalOpen = Boolean(
+        elements.procedureOrderModal &&
+          !elements.procedureOrderModal.classList.contains("is-hidden")
+      );
+      if (procedureOrderModalOpen) {
+        closeProcedureOrderModal();
+        return;
+      }
       const consultationModalOpen = Boolean(
         elements.patientConsultationModal &&
           !elements.patientConsultationModal.classList.contains("is-hidden")
@@ -9746,6 +9831,22 @@ function bindForms() {
   if (elements.labTestForm) {
     elements.labTestForm.addEventListener("submit", handleLabTestSubmit);
   }
+  if (elements.closeProcedureOrderModalButton) {
+    elements.closeProcedureOrderModalButton.addEventListener("click", closeProcedureOrderModal);
+  }
+  if (elements.cancelProcedureOrderModalButton) {
+    elements.cancelProcedureOrderModalButton.addEventListener("click", closeProcedureOrderModal);
+  }
+  if (elements.procedureOrderModal) {
+    elements.procedureOrderModal.addEventListener("click", (event) => {
+      if (event.target.dataset.closeProcedureOrderModal) {
+        closeProcedureOrderModal();
+      }
+    });
+  }
+  if (elements.procedureOrderForm) {
+    elements.procedureOrderForm.addEventListener("submit", handleProcedureOrderSubmit);
+  }
   if (elements.patientHospAmbRegisterTypeButton) {
     elements.patientHospAmbRegisterTypeButton.addEventListener("click", () => {
       showStatus(
@@ -9849,12 +9950,21 @@ function bindForms() {
           return;
         }
         const orderType = normalizeConsultorioOrderType(items[index].type);
+        if (orderType === "Cirugia/procedimiento") {
+          const hasCustom =
+            items[index].item === CONSULTORIO_ORDER_ITEM_CUSTOM_OPTION ||
+            Boolean(items[index].itemCustom);
+          const existingLabel = hasCustom ? getConsultorioOrderItemDisplayName(items[index]) : "";
+          const parsed = parseOrderCatalogLabel(existingLabel);
+          openProcedureOrderModal({ index, category: parsed.category, name: parsed.name });
+          return;
+        }
         if (orderType === "Prueba/Examen") {
           const hasCustom =
             items[index].item === CONSULTORIO_ORDER_ITEM_CUSTOM_OPTION ||
             Boolean(items[index].itemCustom);
           const existingLabel = hasCustom ? getConsultorioOrderItemDisplayName(items[index]) : "";
-          const parsed = parseLabTestLabel(existingLabel);
+          const parsed = parseOrderCatalogLabel(existingLabel);
           openLabTestModal({ index, category: parsed.category, name: parsed.name });
           return;
         }
