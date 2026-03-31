@@ -1635,52 +1635,6 @@ button:active {
   flex-wrap: wrap;
 }
 
-.consultorio-order-item__toggle {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  color: #7d88b1;
-  font-size: 0.68rem;
-  font-weight: 500;
-}
-
-.consultorio-order-item__toggle input {
-  position: absolute;
-  opacity: 0;
-  pointer-events: none;
-}
-
-.consultorio-order-item__switch {
-  position: relative;
-  width: 24px;
-  height: 14px;
-  border-radius: 999px;
-  background: #e5e9f2;
-  transition: background 160ms ease;
-}
-
-.consultorio-order-item__switch::after {
-  content: "";
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 1px 2px rgba(20, 36, 68, 0.16);
-  transition: transform 160ms ease;
-}
-
-.consultorio-order-item__toggle input:checked + .consultorio-order-item__switch {
-  background: #31cabf;
-}
-
-.consultorio-order-item__toggle input:checked + .consultorio-order-item__switch::after {
-  transform: translateX(10px);
-}
-
 .consultorio-order-item__remove {
   padding: 0;
   color: #8da0f3;
@@ -2530,8 +2484,7 @@ button:active {
   gap: 6px;
 }
 
-.consultorio-consultation-modal--orders .consultorio-consultation-form__field > span,
-.consultorio-consultation-modal--orders .consultorio-order-item__toggle > span:first-child {
+.consultorio-consultation-modal--orders .consultorio-consultation-form__field > span {
   font-size: 0.7rem;
   color: #6671b2;
   font-weight: 500;

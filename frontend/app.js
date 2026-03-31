@@ -2978,11 +2978,6 @@ function createConsultorioOrderItem(item = {}) {
     quantity: String(item.quantity || "1").trim() || "1",
     priority: String(item.priority || "").trim(),
     notes: String(item.notes || "").trim(),
-    generateRequest:
-      item.generateRequest === true ||
-      item.generateRequest === "true" ||
-      item.generate_request === true ||
-      item.generate_request === "true",
   };
 }
 
@@ -2993,7 +2988,6 @@ function hasConsultorioOrderItemContent(item = {}) {
       getConsultorioOrderItemDisplayName(normalized) ||
       normalized.notes ||
       normalized.priority ||
-      normalized.generateRequest ||
       (normalized.quantity && normalized.quantity !== "1")
   );
 }
@@ -3039,7 +3033,6 @@ function buildConsultorioOrderItemsMarkup(items = []) {
         normalized.quantity ? `Cantidad: ${normalized.quantity}` : "",
         normalized.priority ? `Prioridad: ${normalized.priority}` : "",
         normalized.notes ? `Notas: ${normalized.notes}` : "",
-        normalized.generateRequest ? "Genera solicitud" : "",
       ].filter(Boolean);
       return `
         <li>
@@ -3089,7 +3082,6 @@ function parseConsultorioOrderDetails(consultation) {
           type: inferredType,
           item: consultation.title,
           notes: indications.notesPreview || "",
-          generateRequest: Boolean(inferredType),
         }),
       ]
     : [createConsultorioOrderItem()];
@@ -3111,11 +3103,6 @@ function buildConsultorioOrderSummary(payload, items = []) {
 }
 
 function buildConsultorioOrderIndications(_payload, items = []) {
-  const requestsPreview = items
-    .filter((item) => item.generateRequest)
-    .map((item) => buildConsultorioOrderItemLabel(item))
-    .filter(Boolean)
-    .join(" | ");
   const notesPreview = items
     .map((item) => {
       const notes = String(item.notes || "").trim();
@@ -3127,10 +3114,7 @@ function buildConsultorioOrderIndications(_payload, items = []) {
     })
     .filter(Boolean)
     .join(" | ");
-  return buildConsultorioStructuredText([
-    ["Solicitudes", requestsPreview],
-    ["Notas", notesPreview],
-  ]);
+  return buildConsultorioStructuredText([["Notas", notesPreview]]);
 }
 
 function buildConsultorioOrderActionMenuMarkup(consultation) {
@@ -7367,15 +7351,6 @@ function renderPatientOrderItems(items = []) {
               <strong>${rows.length > 1 ? `Orden ${index + 1}` : "Orden"}</strong>
             </div>
             <div class="consultorio-order-item__actions">
-              <label class="consultorio-order-item__toggle">
-                <span>Generar solicitud</span>
-                <input
-                  type="checkbox"
-                  data-order-item-field="generate_request"
-                  ${item.generateRequest ? "checked" : ""}
-                />
-                <span class="consultorio-order-item__switch" aria-hidden="true"></span>
-              </label>
               <button
                 class="inline-link consultorio-order-item__remove${rows.length === 1 ? " is-hidden" : ""}"
                 type="button"
@@ -7547,8 +7522,6 @@ function getPatientOrderItems({ includeEmpty = false } = {}) {
       quantity: row.querySelector('[data-order-item-field="quantity"]')?.value || "1",
       priority: row.querySelector('[data-order-item-field="priority"]')?.value || "",
       notes: row.querySelector('[data-order-item-field="notes"]')?.value || "",
-      generateRequest:
-        row.querySelector('[data-order-item-field="generate_request"]')?.checked || false,
     })
   );
   if (includeEmpty) {
@@ -8873,7 +8846,6 @@ async function handlePatientConsultationSubmit(event) {
         quantity: item.quantity,
         priority: item.priority,
         notes: item.notes,
-        generateRequest: item.generateRequest,
       })),
     });
   } else if (isHospAmbConsultationType(payload.consultation_type)) {
