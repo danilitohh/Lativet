@@ -8194,10 +8194,42 @@ function filterPatientOrderPriorityOptions(searchInput) {
 function closeConsultorioOrderActionMenus() {
   elements.consultorioPatientProfileSummary
     ?.querySelectorAll("[data-order-actions-menu]")
-    .forEach((menu) => menu.classList.add("is-hidden"));
+    .forEach((menu) => {
+      menu.classList.add("is-hidden");
+      menu.style.removeProperty("top");
+      menu.style.removeProperty("left");
+    });
   elements.consultorioPatientProfileSummary
     ?.querySelectorAll("[data-order-actions-toggle]")
     .forEach((button) => button.setAttribute("aria-expanded", "false"));
+}
+
+function positionConsultorioOrderActionMenu(menu, button) {
+  if (!menu || !button) {
+    return;
+  }
+  const buttonRect = button.getBoundingClientRect();
+  const spacing = 8;
+  const viewportPadding = 12;
+  const menuWidth = menu.offsetWidth || 168;
+  const menuHeight = menu.offsetHeight || 0;
+  const viewportWidth = window.innerWidth || document.documentElement.clientWidth || 0;
+  const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 0;
+  const availableBelow = viewportHeight - buttonRect.bottom - viewportPadding;
+  const shouldOpenUpward = menuHeight > availableBelow && buttonRect.top > menuHeight + viewportPadding;
+  const resolvedTop = shouldOpenUpward
+    ? Math.max(viewportPadding, buttonRect.top - menuHeight - spacing)
+    : Math.min(
+        viewportHeight - menuHeight - viewportPadding,
+        buttonRect.bottom + spacing
+      );
+  const preferredLeft = buttonRect.right - menuWidth;
+  const resolvedLeft = Math.min(
+    Math.max(viewportPadding, preferredLeft),
+    Math.max(viewportPadding, viewportWidth - menuWidth - viewportPadding)
+  );
+  menu.style.top = `${Math.max(viewportPadding, resolvedTop)}px`;
+  menu.style.left = `${resolvedLeft}px`;
 }
 
 function toggleConsultorioOrderActionMenu(orderId) {
@@ -8215,8 +8247,14 @@ function toggleConsultorioOrderActionMenu(orderId) {
   }
   const willOpen = menu.classList.contains("is-hidden");
   closeConsultorioOrderActionMenus();
-  menu.classList.toggle("is-hidden", !willOpen);
-  button.setAttribute("aria-expanded", willOpen ? "true" : "false");
+  if (willOpen) {
+    menu.classList.remove("is-hidden");
+    positionConsultorioOrderActionMenu(menu, button);
+    button.setAttribute("aria-expanded", "true");
+    return;
+  }
+  menu.classList.add("is-hidden");
+  button.setAttribute("aria-expanded", "false");
 }
 
 function openConsultorioOrderPrintView(consultation) {
@@ -10221,6 +10259,8 @@ function bindForms() {
       openConsultorioPatientProfile(patient);
     }));
   }
+  window.addEventListener("resize", closeConsultorioOrderActionMenus);
+  window.addEventListener("scroll", closeConsultorioOrderActionMenus, true);
   if (elements.closePatientConsultationModalButton) {
     elements.closePatientConsultationModalButton.addEventListener("click", closePatientConsultationModal);
   }
