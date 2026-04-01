@@ -2338,6 +2338,9 @@ function getConsultorioProfileTimelineItems(option = getConsultorioProfileViewCo
   });
 
   const buildConsultationItem = (consultation) => {
+    const orderDetails = isConsultorioOrderDocument(consultation)
+      ? getConsultorioOrderDisplayData(consultation)
+      : null;
     const formulaDetails = isFormulaConsultationType(consultation.consultation_type)
       ? parseConsultorioFormulaDetails(consultation)
       : null;
@@ -2351,10 +2354,19 @@ function getConsultorioProfileTimelineItems(option = getConsultorioProfileViewCo
       id: `consultation-${consultation.id}`,
       at: consultation.consultation_at,
       typeLabel: consultation.consultation_type || "Consulta",
-      title: consultation.title || consultation.consultation_type || "Consulta clinica",
+      title:
+        orderDetails?.preview || consultation.title || consultation.consultation_type || "Consulta clinica",
       tone: consultation.consent_required ? "pill pill--confirmed" : "pill pill--draft",
       attachments: parseConsultorioAttachments(consultation.attachments_summary || ""),
-      lines: isFormulaConsultationType(consultation.consultation_type)
+      lines: orderDetails
+        ? [
+            `Ordenes: ${truncate(orderDetails.preview, 180)}`,
+            orderDetails.reason ? `Motivo: ${truncate(orderDetails.reason, 180)}` : "",
+            orderDetails.notesPreview
+              ? `Notas: ${truncate(orderDetails.notesPreview, 180)}`
+              : "",
+          ].filter(Boolean)
+        : isFormulaConsultationType(consultation.consultation_type)
         ? [
             formulaDetails?.diagnosis
               ? `Diagnostico: ${truncate(formulaDetails.diagnosis, 180)}`
@@ -3264,6 +3276,46 @@ function buildConsultorioOrderItemsPreview(items = []) {
     .join(" | ");
 }
 
+function buildConsultorioOrderNotesPreview(items = []) {
+  return (Array.isArray(items) ? items : [])
+    .map((item) => String(item?.notes || "").trim())
+    .filter(Boolean)
+    .join(" | ");
+}
+
+function isConsultorioOrderDocument(consultation) {
+  const rawReference = String(consultation?.document_reference || "").trim();
+  if (rawReference.startsWith("{")) {
+    try {
+      const parsed = JSON.parse(rawReference);
+      if (parsed?.kind === "order") {
+        return true;
+      }
+    } catch (error) {
+      // Ignored: fallback to summary/type detection below.
+    }
+  }
+  if (String(consultation?.consultation_type || "").trim() !== "Documento") {
+    return false;
+  }
+  const summary = parseConsultorioStructuredText(consultation?.summary || "", {
+    "motivo de la orden": "reason",
+    motivo: "reason",
+    ordenes: "itemsPreview",
+  });
+  return Boolean(String(consultation?.title || "").trim() || summary.reason || summary.itemsPreview);
+}
+
+function getConsultorioOrderDisplayData(consultation) {
+  const details = parseConsultorioOrderDetails(consultation);
+  return {
+    details,
+    preview: buildConsultorioOrderItemsPreview(details.items) || consultation?.title || "Orden",
+    reason: String(details.reason || "").trim(),
+    notesPreview: buildConsultorioOrderNotesPreview(details.items),
+  };
+}
+
 function buildConsultorioOrderItemsMarkup(items = []) {
   return (Array.isArray(items) ? items : [])
     .filter((item) => hasConsultorioOrderItemContent(item))
@@ -3328,7 +3380,9 @@ function parseConsultorioOrderDetails(consultation) {
       ]
     : [createConsultorioOrderItem()];
   return {
-    orderDate: normalizeDateFieldValue(consultation?.consultation_at),
+    orderDate:
+      normalizeDateFieldValue(stored?.orderDate || "") ||
+      normalizeDateFieldValue(consultation?.consultation_at),
     reason: String(stored?.reason || "").trim() || summary.reason || "",
     items:
       Array.isArray(stored?.items) && stored.items.length
@@ -3338,9 +3392,16 @@ function parseConsultorioOrderDetails(consultation) {
 }
 
 function buildConsultorioOrderSummary(payload, items = []) {
+  const normalizedItems = (Array.isArray(items) ? items : [])
+    .map((item) => createConsultorioOrderItem(item))
+    .filter((item) => hasConsultorioOrderItemContent(item));
   return buildConsultorioStructuredText([
     ["Motivo de la orden", payload.order_reason],
     ["Ordenes", buildConsultorioOrderItemsPreview(items)],
+    ...normalizedItems.map((item, index) => [
+      `Orden ${index + 1}`,
+      buildConsultorioOrderItemLabel(item),
+    ]),
   ]);
 }
 
@@ -3356,7 +3417,16 @@ function buildConsultorioOrderIndications(_payload, items = []) {
     })
     .filter(Boolean)
     .join(" | ");
-  return buildConsultorioStructuredText([["Notas", notesPreview]]);
+  const itemNoteEntries = (Array.isArray(items) ? items : [])
+    .map((item, index) => {
+      const notes = String(item?.notes || "").trim();
+      if (!notes) {
+        return null;
+      }
+      return [`Notas orden ${index + 1}`, notes];
+    })
+    .filter(Boolean);
+  return buildConsultorioStructuredText([["Notas", notesPreview], ...itemNoteEntries]);
 }
 
 function buildConsultorioOrderActionMenuMarkup(consultation) {
@@ -4561,13 +4631,11 @@ function buildConsultorioOrdersWorkspace(patient, profileConfig) {
           <tbody>
             ${orders
               .map((consultation) => {
-                const orderDetails = parseConsultorioOrderDetails(consultation);
-                const orderPreview =
-                  buildConsultorioOrderItemsPreview(orderDetails.items) ||
-                  consultation.title ||
-                  "Orden";
+                const orderDisplay = getConsultorioOrderDisplayData(consultation);
+                const orderPreview = orderDisplay.preview;
                 const detailLabel =
-                  orderDetails.reason ||
+                  orderDisplay.reason ||
+                  orderDisplay.notesPreview ||
                   consultation.referred_to ||
                   consultation.summary ||
                   "Sin detalle";
@@ -5727,6 +5795,9 @@ function renderConsultations() {
     elements.consultationsList,
     visibleConsultations,
     (consultation) => {
+      const orderDetails = isConsultorioOrderDocument(consultation)
+        ? getConsultorioOrderDisplayData(consultation)
+        : null;
       const hospAmbDetails = isHospAmbConsultationType(consultation.consultation_type)
         ? parseConsultorioHospAmbDetails(consultation)
         : null;
@@ -5734,7 +5805,7 @@ function renderConsultations() {
         <article class="list-card">
           <header>
             <div>
-              <h4>${escapeHtml(consultation.title)}</h4>
+              <h4>${escapeHtml(orderDetails?.preview || consultation.title)}</h4>
               <p>${escapeHtml(consultation.consultation_type)} / ${formatDateTime(
                 consultation.consultation_at
               )}</p>
@@ -5745,14 +5816,21 @@ function renderConsultations() {
           </header>
           <p>Paciente: ${escapeHtml(consultation.patient_name)}</p>
           <p>${escapeHtml(
-            isFormulaConsultationType(consultation.consultation_type)
+            orderDetails
+              ? truncate(
+                  [orderDetails.reason, orderDetails.notesPreview].filter(Boolean).join(" | ") ||
+                    "Sin detalle"
+                )
+              : isFormulaConsultationType(consultation.consultation_type)
               ? getConsultorioFormulaMedicationLabel(consultation)
               : hospAmbDetails
               ? truncate([hospAmbDetails.reason, hospAmbDetails.observations].filter(Boolean).join(" | "))
               : truncate(consultation.summary)
           )}</p>
           <p>${escapeHtml(
-            isFormulaConsultationType(consultation.consultation_type)
+            orderDetails
+              ? truncate(buildConsultorioOrderItemsPreview(orderDetails.details.items))
+              : isFormulaConsultationType(consultation.consultation_type)
               ? ""
               : hospAmbDetails
               ? truncate(
@@ -5889,13 +5967,18 @@ function renderRequests() {
   renderList(
     elements.requestOrdersList,
     requests.orders || [],
-    (consultation) => `
-      <article class="list-card">
-        <h4>${escapeHtml(consultation.patient_name)}</h4>
-        <p>${escapeHtml(consultation.consultation_type)}</p>
-        <p>${escapeHtml(consultation.title)}</p>
-      </article>
-    `,
+    (consultation) => {
+      const orderDetails = getConsultorioOrderDisplayData(consultation);
+      return `
+        <article class="list-card">
+          <h4>${escapeHtml(consultation.patient_name)}</h4>
+          <p>${escapeHtml(truncate(orderDetails.preview, 160))}</p>
+          <p>${escapeHtml(
+            truncate(orderDetails.reason || orderDetails.notesPreview || "Sin detalle", 160)
+          )}</p>
+        </article>
+      `;
+    },
     "No hay ordenes pendientes."
   );
   renderList(
@@ -9388,6 +9471,7 @@ async function handlePatientConsultationSubmit(event) {
     payload.attachments_summary = "";
     payload.document_reference = JSON.stringify({
       kind: "order",
+      orderDate: String(payload.order_date || "").trim(),
       reason: String(payload.order_reason || "").trim(),
       items: orderItems.map((item) => ({
         type: item.type,
