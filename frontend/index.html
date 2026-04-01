@@ -1296,7 +1296,7 @@
             type="button"
             aria-label="Cerrar"
           >
-            ×
+            &times;
           </button>
         </div>
         <form id="patientConsultationForm" class="form-grid consultorio-consultation-form">
@@ -1708,6 +1708,39 @@
                 name="order_reason"
                 rows="4"
                 placeholder="Motivo de la orden"
+              ></textarea>
+            </label>
+          </div>
+
+          <div id="patientLaboratoryFields" class="consultorio-laboratory-fields is-hidden">
+            <div class="consultorio-order-fields__top">
+              <label class="consultorio-consultation-form__field consultorio-order-fields__date">
+                <span>Fecha</span>
+                <input id="patientLaboratoryDateInput" name="laboratory_date" type="date" />
+              </label>
+            </div>
+
+            <section class="consultorio-order-builder consultorio-laboratory-builder">
+              <p class="consultorio-order-builder__legend">Pruebas de laboratorio</p>
+              <div id="patientLaboratoryItemsList" class="consultorio-order-builder__list"></div>
+              <div class="consultorio-order-builder__footer">
+                <button
+                  id="patientLaboratoryAddButton"
+                  class="consultorio-order-builder__add"
+                  type="button"
+                >
+                  + Agregar prueba de laboratorio
+                </button>
+              </div>
+            </section>
+
+            <label class="full consultorio-consultation-form__field">
+              <span>Diagn&oacute;stico presuntivo</span>
+              <textarea
+                id="patientLaboratoryDiagnosisInput"
+                name="laboratory_diagnosis"
+                rows="4"
+                placeholder="Diagn&oacute;stico presuntivo"
               ></textarea>
             </label>
           </div>

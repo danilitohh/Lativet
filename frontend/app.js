@@ -51,7 +51,7 @@ let consultorioPatientId = "";
 let consultorioProfileView = "records";
 let consultorioPatientEditorVisible = false;
 let consultorioPatientProfileOpen = false;
-let pendingLabTestOrderItemIndex = null;
+let pendingLabTestContext = null;
 let pendingProcedureOrderItemIndex = null;
 let activeSectionId = "dashboard";
 let pendingAppointmentDraft = null;
@@ -1368,6 +1368,11 @@ function cacheElements() {
     "patientProcedureAttachmentFileButton",
     "patientProcedureAttachmentsList",
     "patientProcedureAttachmentsValue",
+    "patientLaboratoryFields",
+    "patientLaboratoryDateInput",
+    "patientLaboratoryItemsList",
+    "patientLaboratoryAddButton",
+    "patientLaboratoryDiagnosisInput",
     "patientOrderFields",
     "patientOrderDateInput",
     "patientOrderItemsList",
@@ -2556,6 +2561,10 @@ function isProcedureConsultationType(consultationType) {
   return String(consultationType || "").trim() === "Cirugia / procedimiento";
 }
 
+function isLaboratoryConsultationType(consultationType) {
+  return String(consultationType || "").trim() === "Examen de laboratorio";
+}
+
 function isConsultorioPatientsViewActive() {
   return getActiveSectionId() === "consultorio" && getSubsectionOption("consultorio")?.value === "patients";
 }
@@ -3724,22 +3733,88 @@ function getConsultorioLaboratoryExamName(consultation) {
   );
 }
 
+function parseConsultorioLaboratoryDetails(consultation) {
+  const details = parseConsultorioConsultationDetails(consultation);
+  let stored = null;
+  const rawReference = String(consultation?.document_reference || "").trim();
+  if (rawReference.startsWith("{")) {
+    try {
+      const parsed = JSON.parse(rawReference);
+      if (parsed?.kind === "laboratory") {
+        stored = parsed;
+      }
+    } catch (error) {
+      stored = null;
+    }
+  }
+  const fallbackResults = parseConsultorioAttachments(consultation?.attachments_summary || "")
+    .map((item) =>
+      item?.kind === "image"
+        ? {
+            name: item.name || "Resultado",
+            dataUrl: item.dataUrl || "",
+            mimeType: item.mimeType || "image/jpeg",
+          }
+        : {
+            name: item.value || item.name || "Resultado",
+            dataUrl: "",
+            mimeType: "text/plain",
+          }
+    )
+    .map((item) => normalizeConsultorioLaboratoryResultFile(item))
+    .filter(Boolean);
+  const fallbackItem = createConsultorioLaboratoryItem({
+    professional: String(consultation?.professional_name || "").trim(),
+    item: getConsultorioLaboratoryExamName(consultation),
+    quantity: "1",
+    results: fallbackResults,
+  });
+  return {
+    examDate:
+      normalizeDateFieldValue(stored?.examDate || "") ||
+      normalizeDateFieldValue(consultation?.consultation_at),
+    diagnosis:
+      String(stored?.diagnosis || "").trim() ||
+      details.interpretation ||
+      details.therapeuticPlan ||
+      details.diagnosticPlan ||
+      "",
+    related: String(stored?.related || consultation?.referred_to || "").trim(),
+    items:
+      Array.isArray(stored?.items) && stored.items.length
+        ? stored.items.map((item) => createConsultorioLaboratoryItem(item))
+        : hasConsultorioLaboratoryItemContent(fallbackItem)
+        ? [fallbackItem]
+        : [createConsultorioLaboratoryItem()],
+  };
+}
+
+function buildConsultorioLaboratorySummary(payload, items = []) {
+  return buildConsultorioStructuredText([
+    ["Diagnostico presuntivo", payload.laboratory_diagnosis],
+    ["Pruebas de laboratorio", buildConsultorioLaboratoryItemsPreview(items)],
+  ]);
+}
+
+function buildConsultorioLaboratoryIndications(_payload, items = []) {
+  return buildConsultorioStructuredText([
+    ["Resultados", buildConsultorioLaboratoryResultsPreview(items)],
+  ]);
+}
+
 function buildConsultorioLaboratoryResultLinksMarkup(items = []) {
   const attachments = (Array.isArray(items) ? items : [])
-    .map((item) => normalizeConsultorioAttachmentItem(item))
+    .map((item) => normalizeConsultorioLaboratoryResultFile(item))
     .filter(Boolean);
   if (!attachments.length) {
     return '<span class="consultorio-laboratory-entry__muted">Sin resultado adjunto.</span>';
   }
   return attachments
-    .map((item, index) => {
+    .map((item) => {
       const label = escapeHtml(
-        truncate(
-          item.kind === "image" ? item.name || `Resultado ${index + 1}` : item.value || `Resultado ${index + 1}`,
-          68
-        )
+        truncate(item.name || "Resultado", 68)
       );
-      if (item.kind === "image") {
+      if (item.dataUrl) {
         return `<a class="consultorio-laboratory-entry__result-link" href="${escapeHtml(
           item.dataUrl
         )}" target="_blank" rel="noreferrer">${label}</a>`;
@@ -3749,18 +3824,45 @@ function buildConsultorioLaboratoryResultLinksMarkup(items = []) {
     .join('<span class="consultorio-laboratory-entry__separator">, </span>');
 }
 
+function buildConsultorioLaboratoryItemsMarkup(items = [], fallbackProfessional = "") {
+  return (Array.isArray(items) ? items : [])
+    .map((item) => createConsultorioLaboratoryItem(item))
+    .filter((item) => hasConsultorioLaboratoryItemContent(item))
+    .map(
+      (item) => `
+        <div class="consultorio-laboratory-entry">
+          <div class="consultorio-laboratory-entry__line">
+            <strong>Profesional:</strong>
+            <span>${escapeHtml(item.professional || fallbackProfessional || "Sin profesional")}</span>
+          </div>
+          <div class="consultorio-laboratory-entry__line">
+            <strong>Prueba/Examen:</strong>
+            <span>${escapeHtml(item.item || "Sin examen")}</span>
+          </div>
+          <div class="consultorio-laboratory-entry__line">
+            <strong>Cantidad:</strong>
+            <span>${escapeHtml(item.quantity || "1")}</span>
+          </div>
+          <div class="consultorio-laboratory-entry__line">
+            <strong>Resultado:</strong>
+            <span>${buildConsultorioLaboratoryResultLinksMarkup(item.results)}</span>
+          </div>
+        </div>
+      `
+    )
+    .join("");
+}
+
 function getConsultorioLaboratoryDetails(consultation) {
-  const details = parseConsultorioConsultationDetails(consultation);
-  const attachments = parseConsultorioAttachments(consultation?.attachments_summary || "");
-  const related = String(consultation?.referred_to || consultation?.document_reference || "").trim();
+  const details = parseConsultorioLaboratoryDetails(consultation);
+  const fallbackProfessional = String(consultation?.professional_name || "").trim() || "Sin usuario";
   return {
-    date: normalizeDateFieldValue(consultation?.consultation_at) || "Sin fecha",
-    diagnosis: details.interpretation || details.therapeuticPlan || details.diagnosticPlan || "-",
-    examName: getConsultorioLaboratoryExamName(consultation),
-    quantity: "1",
-    related: related || "-",
-    professional: String(consultation?.professional_name || "").trim() || "Sin usuario",
-    resultsMarkup: buildConsultorioLaboratoryResultLinksMarkup(attachments),
+    date: details.examDate || "Sin fecha",
+    diagnosis: details.diagnosis || "-",
+    related: details.related || "-",
+    user: fallbackProfessional,
+    itemsMarkup: buildConsultorioLaboratoryItemsMarkup(details.items, fallbackProfessional),
+    items: details.items,
   };
 }
 
@@ -4829,28 +4931,9 @@ function buildConsultorioLaboratoryWorkspace(patient, profileConfig) {
                     <td>${buildConsultorioLaboratoryActionMenuMarkup(consultation)}</td>
                     <td>${escapeHtml(details.date)}</td>
                     <td>${escapeHtml(truncate(details.diagnosis || "-", 120))}</td>
-                    <td>
-                      <div class="consultorio-laboratory-entry">
-                        <div class="consultorio-laboratory-entry__line">
-                          <strong>Profesional:</strong>
-                          <span>${escapeHtml(details.professional)}</span>
-                        </div>
-                        <div class="consultorio-laboratory-entry__line">
-                          <strong>Prueba/Examen:</strong>
-                          <span>${escapeHtml(details.examName)}</span>
-                        </div>
-                        <div class="consultorio-laboratory-entry__line">
-                          <strong>Cantidad:</strong>
-                          <span>${escapeHtml(details.quantity)}</span>
-                        </div>
-                        <div class="consultorio-laboratory-entry__line">
-                          <strong>Resultado:</strong>
-                          <span>${details.resultsMarkup}</span>
-                        </div>
-                      </div>
-                    </td>
+                    <td>${details.itemsMarkup}</td>
                     <td>${escapeHtml(truncate(details.related, 92))}</td>
-                    <td>${escapeHtml(details.professional)}</td>
+                    <td>${escapeHtml(details.user)}</td>
                   </tr>
                 `;
               })
@@ -7748,11 +7831,14 @@ function syncModalOpenState() {
   document.body?.classList.toggle("modal-open", anyModalOpen);
 }
 
-function openLabTestModal({ index = null, category = "", name = "" } = {}) {
+function openLabTestModal({ index = null, category = "", name = "", target = "order" } = {}) {
   if (!elements.labTestModal) {
     return;
   }
-  pendingLabTestOrderItemIndex = Number.isFinite(index) ? index : null;
+  pendingLabTestContext = {
+    target: target === "laboratory" ? "laboratory" : "order",
+    index: Number.isFinite(index) ? index : null,
+  };
   setLabTestCategoryValue(category);
   if (elements.labTestNameInput) {
     elements.labTestNameInput.value = name;
@@ -7777,7 +7863,7 @@ function closeLabTestModal() {
   }
   elements.labTestModal.classList.add("is-hidden");
   elements.labTestModal.setAttribute("aria-hidden", "true");
-  pendingLabTestOrderItemIndex = null;
+  pendingLabTestContext = null;
   if (elements.labTestForm) {
     elements.labTestForm.reset();
   }
@@ -7845,8 +7931,18 @@ function handleLabTestSubmit(event) {
     return;
   }
   const resolvedLabel = registerConsultorioOrderCatalogEntry("Prueba/Examen", label) || label;
-  const index = pendingLabTestOrderItemIndex;
-  if (Number.isFinite(index)) {
+  const context = pendingLabTestContext || { target: "order", index: null };
+  const index = context.index;
+  if (context.target === "laboratory" && Number.isFinite(index)) {
+    const items = getPatientLaboratoryItems({ includeEmpty: true });
+    if (items[index]) {
+      items[index].item = resolvedLabel;
+      renderPatientLaboratoryItems(items);
+      elements.patientLaboratoryItemsList
+        ?.querySelector(`[data-lab-item="${index}"] [data-lab-item-field="item"]`)
+        ?.focus();
+    }
+  } else if (Number.isFinite(index)) {
     const items = getPatientOrderItems({ includeEmpty: true });
     if (items[index]) {
       items[index].item = resolvedLabel;
@@ -7988,6 +8084,310 @@ function getPatientProcedureNameValue(form) {
     return String(form?.elements?.procedure_name_custom?.value || "").trim();
   }
   return selected;
+}
+
+function getConsultorioLaboratoryProfessionalOptions() {
+  const names = new Set();
+  (state.users || []).forEach((user) => {
+    const name = String(user?.full_name || "").trim();
+    if (name) {
+      names.add(name);
+    }
+  });
+  getProfessionalOptions().forEach((option) => {
+    const name = String(option?.label || option?.id || "").trim();
+    if (name) {
+      names.add(name);
+    }
+  });
+  const defaultName = getDefaultConsultorioProfessionalName();
+  if (defaultName) {
+    names.add(defaultName);
+  }
+  return Array.from(names).sort((left, right) => left.localeCompare(right, "es"));
+}
+
+function normalizeConsultorioLaboratoryResultFile(item) {
+  if (!item) {
+    return null;
+  }
+  if (typeof item === "string") {
+    const value = item.trim();
+    return value
+      ? {
+          name: value,
+          dataUrl: "",
+          mimeType: "text/plain",
+        }
+      : null;
+  }
+  if (typeof item !== "object") {
+    return null;
+  }
+  const dataUrl = String(item.dataUrl || item.url || "").trim();
+  const name = String(item.name || item.label || item.value || "Resultado").trim() || "Resultado";
+  if (dataUrl) {
+    return {
+      name,
+      dataUrl,
+      mimeType: String(item.mimeType || item.mime_type || "application/octet-stream").trim() ||
+        "application/octet-stream",
+    };
+  }
+  return name
+    ? {
+        name,
+        dataUrl: "",
+        mimeType: "text/plain",
+      }
+    : null;
+}
+
+async function buildConsultorioLaboratoryResultFile(file) {
+  if (!file) {
+    return null;
+  }
+  return {
+    name: String(file.name || "resultado").trim() || "resultado",
+    dataUrl: await readConsultorioFileAsDataUrl(file),
+    mimeType: String(file.type || "application/octet-stream").trim() || "application/octet-stream",
+  };
+}
+
+function createConsultorioLaboratoryItem(item = {}) {
+  const professional = String(item.professional || item.professionalName || "").trim();
+  const resolvedItem =
+    registerConsultorioOrderCatalogEntry(
+      "Prueba/Examen",
+      String(item.item || item.name || "").trim()
+    ) || String(item.item || item.name || "").trim();
+  const quantityValue = Number(item.quantity || 1);
+  const results = (Array.isArray(item.results) ? item.results : [])
+    .map((result) => normalizeConsultorioLaboratoryResultFile(result))
+    .filter(Boolean);
+  return {
+    professional,
+    item: resolvedItem,
+    quantity:
+      Number.isFinite(quantityValue) && quantityValue >= 1
+        ? String(Math.max(1, Math.trunc(quantityValue)))
+        : "1",
+    results,
+  };
+}
+
+function hasConsultorioLaboratoryItemContent(item = {}) {
+  const normalized = createConsultorioLaboratoryItem(item);
+  return Boolean(normalized.professional || normalized.item || normalized.results.length);
+}
+
+function buildConsultorioLaboratoryItemLabel(item = {}) {
+  const normalized = createConsultorioLaboratoryItem(item);
+  const parts = [];
+  if (normalized.professional) {
+    parts.push(normalized.professional);
+  }
+  if (normalized.item) {
+    parts.push(normalized.item);
+  }
+  if (normalized.quantity) {
+    parts.push(`x${normalized.quantity}`);
+  }
+  return parts.join(" - ").trim();
+}
+
+function buildConsultorioLaboratoryItemsPreview(items = []) {
+  return (Array.isArray(items) ? items : [])
+    .map((item) => buildConsultorioLaboratoryItemLabel(item))
+    .filter(Boolean)
+    .join(" | ");
+}
+
+function buildConsultorioLaboratoryResultsPreview(items = []) {
+  return (Array.isArray(items) ? items : [])
+    .flatMap((item) => createConsultorioLaboratoryItem(item).results)
+    .map((result) => String(result?.name || "").trim())
+    .filter(Boolean)
+    .join(" | ");
+}
+
+function renderPatientLaboratoryItems(items = []) {
+  if (!elements.patientLaboratoryItemsList) {
+    return;
+  }
+  const normalizedItems = (Array.isArray(items) ? items : []).map((item) =>
+    createConsultorioLaboratoryItem(item)
+  );
+  const rows = normalizedItems.length ? normalizedItems : [createConsultorioLaboratoryItem()];
+  const professionalOptions = getConsultorioLaboratoryProfessionalOptions();
+  const examOptions = getConsultorioOrderCatalogOptions("Prueba/Examen").filter(
+    (option) => option.value !== CONSULTORIO_ORDER_ITEM_CUSTOM_OPTION
+  );
+  elements.patientLaboratoryItemsList.innerHTML = rows
+    .map((item, index) => {
+      const resultsJson = JSON.stringify(item.results || []);
+      const resultsMarkup = item.results.length
+        ? item.results
+            .map(
+              (result, resultIndex) => `
+                <span class="consultorio-laboratory-item__result-tag">
+                  <span>${escapeHtml(truncate(result.name || "Resultado", 28))}</span>
+                  <button
+                    type="button"
+                    class="consultorio-laboratory-item__result-remove"
+                    data-remove-lab-item-result="${escapeHtml(String(index))}"
+                    data-lab-item-result-index="${escapeHtml(String(resultIndex))}"
+                    aria-label="Quitar resultado"
+                  >
+                    ×
+                  </button>
+                </span>
+              `
+            )
+            .join("")
+        : `<span class="consultorio-laboratory-item__result-placeholder">Sin archivo seleccionado</span>`;
+      return `
+        <article class="consultorio-order-item consultorio-laboratory-item" data-lab-item="${escapeHtml(
+          String(index)
+        )}">
+          <div class="consultorio-order-item__header">
+            <div class="consultorio-order-item__title">
+              <span class="consultorio-order-item__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M10 2v7.31"></path>
+                  <path d="M14 9.3V2"></path>
+                  <path d="M8.5 2h7"></path>
+                  <path d="M14 9.3 19.74 19a2 2 0 0 1-1.72 3H5.98a2 2 0 0 1-1.72-3L10 9.3"></path>
+                  <path d="M6.85 15h10.3"></path>
+                </svg>
+              </span>
+              <strong>${rows.length > 1 ? `Prueba ${index + 1}` : "Prueba de laboratorio"}</strong>
+            </div>
+            <div class="consultorio-order-item__actions">
+              <button
+                class="inline-link consultorio-order-item__remove"
+                type="button"
+                data-remove-patient-laboratory-item="${escapeHtml(String(index))}"
+              >
+                Eliminar
+              </button>
+            </div>
+          </div>
+
+          <div class="consultorio-laboratory-item__grid">
+            <label class="consultorio-consultation-form__field">
+              <div class="consultorio-order-item__label-row">
+                <span>Profesional</span>
+                <button
+                  class="inline-link consultorio-order-item__link"
+                  type="button"
+                  data-lab-item-add-user="${escapeHtml(String(index))}"
+                >
+                  + Agregar usuario
+                </button>
+              </div>
+              <select data-lab-item-field="professional">
+                <option value="">Selecciona un profesional</option>
+                ${professionalOptions
+                  .map(
+                    (option) =>
+                      `<option value="${escapeHtml(option)}"${
+                        option === item.professional ? " selected" : ""
+                      }>${escapeHtml(option)}</option>`
+                  )
+                  .join("")}
+              </select>
+            </label>
+
+            <label class="consultorio-consultation-form__field">
+              <div class="consultorio-order-item__label-row">
+                <span>Prueba/Examen</span>
+                <button
+                  class="inline-link consultorio-order-item__link"
+                  type="button"
+                  data-lab-item-register-custom="${escapeHtml(String(index))}"
+                >
+                  + Registrar nuevo
+                </button>
+              </div>
+              <select data-lab-item-field="item">
+                <option value="">Selecciona un examen</option>
+                ${examOptions
+                  .map(
+                    (option) =>
+                      `<option value="${escapeHtml(option.value)}"${
+                        option.value === item.item ? " selected" : ""
+                      }>${escapeHtml(option.label)}</option>`
+                  )
+                  .join("")}
+              </select>
+            </label>
+
+            <label class="consultorio-consultation-form__field consultorio-laboratory-item__quantity">
+              <span>Cantidad</span>
+              <input
+                data-lab-item-field="quantity"
+                type="number"
+                min="1"
+                step="1"
+                value="${escapeHtml(String(item.quantity || "1"))}"
+              />
+            </label>
+
+            <div class="consultorio-consultation-form__field consultorio-laboratory-item__results-field">
+              <span>Resultado</span>
+              <div class="consultorio-consultation-form__attachment-row">
+                <input
+                  class="is-hidden"
+                  type="file"
+                  accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt"
+                  multiple
+                  data-lab-item-result-input="${escapeHtml(String(index))}"
+                />
+                <button
+                  class="consultorio-consultation-form__add consultorio-consultation-form__add--file"
+                  type="button"
+                  data-lab-item-select-result="${escapeHtml(String(index))}"
+                >
+                  Seleccionar
+                </button>
+              </div>
+              <div class="consultorio-laboratory-item__results">${resultsMarkup}</div>
+              <input
+                data-lab-item-field="results"
+                type="hidden"
+                value="${escapeHtml(resultsJson)}"
+              />
+            </div>
+          </div>
+        </article>
+      `;
+    })
+    .join("");
+}
+
+function getPatientLaboratoryItems({ includeEmpty = false } = {}) {
+  const rows = Array.from(
+    elements.patientLaboratoryItemsList?.querySelectorAll("[data-lab-item]") || []
+  ).map((row) => {
+    let results = [];
+    const rawResults = String(row.querySelector('[data-lab-item-field="results"]')?.value || "").trim();
+    if (rawResults) {
+      try {
+        const parsed = JSON.parse(rawResults);
+        results = Array.isArray(parsed) ? parsed : [];
+      } catch (error) {
+        results = [];
+      }
+    }
+    return createConsultorioLaboratoryItem({
+      professional: row.querySelector('[data-lab-item-field="professional"]')?.value || "",
+      item: row.querySelector('[data-lab-item-field="item"]')?.value || "",
+      quantity: row.querySelector('[data-lab-item-field="quantity"]')?.value || "1",
+      results,
+    });
+  });
+  return includeEmpty ? rows : rows.filter((item) => hasConsultorioLaboratoryItemContent(item));
 }
 
 function renderConsultorioOrderNameField({
@@ -8781,6 +9181,8 @@ function openPatientConsultationModal(consultation = null) {
     isProcedureConsultationType(defaultConsultationType) || profileConfig?.value === "cirugia";
   const isHospAmbMode =
     isHospAmbConsultationType(defaultConsultationType) || profileConfig?.value === "hospamb";
+  const isLaboratoryMode =
+    isLaboratoryConsultationType(defaultConsultationType) || profileConfig?.value === "laboratorio";
   const isOrderMode =
     (defaultConsultationType === "Documento" && profileConfig?.value === "orders") ||
     false;
@@ -8793,6 +9195,8 @@ function openPatientConsultationModal(consultation = null) {
     ? "procedure"
     : isHospAmbMode
     ? "hospamb"
+    : isLaboratoryMode
+    ? "laboratory"
     : isVaccinationMode
     ? "vaccination"
     : isFormulaMode
@@ -8806,6 +9210,7 @@ function openPatientConsultationModal(consultation = null) {
   const dewormingDetails = parseConsultorioDewormingDetails(consultation);
   const procedureDetails = parseConsultorioProcedureDetails(consultation);
   const hospAmbDetails = parseConsultorioHospAmbDetails(consultation);
+  const laboratoryDetails = parseConsultorioLaboratoryDetails(consultation);
   const orderDetails = parseConsultorioOrderDetails(consultation);
   form.elements.id.value = consultation?.id || "";
   form.elements.record_id.value = record?.id || "";
@@ -8879,6 +9284,14 @@ function openPatientConsultationModal(consultation = null) {
     form.elements.order_reason.value = orderDetails.reason || "";
   }
   renderPatientOrderItems(orderDetails.items);
+  if (form.elements.laboratory_date) {
+    form.elements.laboratory_date.value =
+      laboratoryDetails.examDate || normalizeDateFieldValue(new Date().toISOString());
+  }
+  if (form.elements.laboratory_diagnosis) {
+    form.elements.laboratory_diagnosis.value = laboratoryDetails.diagnosis || "";
+  }
+  renderPatientLaboratoryItems(laboratoryDetails.items);
   if (form.elements.vaccination_date) {
     form.elements.vaccination_date.value =
       vaccinationDetails.vaccinationDate || normalizeDateFieldValue(new Date().toISOString());
@@ -8994,6 +9407,9 @@ function openPatientConsultationModal(consultation = null) {
   if (elements.patientOrderFields) {
     elements.patientOrderFields.classList.toggle("is-hidden", !isOrderMode);
   }
+  if (elements.patientLaboratoryFields) {
+    elements.patientLaboratoryFields.classList.toggle("is-hidden", !isLaboratoryMode);
+  }
   if (elements.patientConsultationClinicalFields) {
     elements.patientConsultationClinicalFields.classList.toggle(
       "is-hidden",
@@ -9002,6 +9418,7 @@ function openPatientConsultationModal(consultation = null) {
         isDewormingMode ||
         isHospAmbMode ||
         isProcedureMode ||
+        isLaboratoryMode ||
         isOrderMode
     );
   }
@@ -9037,18 +9454,31 @@ function openPatientConsultationModal(consultation = null) {
       <path d="M12 9v6"></path>
     </svg>
   `;
+  const laboratoryModalIconSvg = `
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M10 2v7.5"></path>
+      <path d="M14 9.5V2"></path>
+      <path d="M8.5 2h7"></path>
+      <path d="M9.2 9.5 4.36 18a2 2 0 0 0 1.74 3h11.8a2 2 0 0 0 1.74-3L14.8 9.5"></path>
+      <path d="M7.5 14h9"></path>
+    </svg>
+  `;
   elements.patientConsultationModal.classList.toggle("modal-shell--hospamb", isHospAmbMode);
   elements.patientConsultationModal.classList.toggle("modal-shell--procedure", isProcedureMode);
   elements.patientConsultationModal.classList.toggle("modal-shell--orders", isOrderMode);
+  elements.patientConsultationModal.classList.toggle("modal-shell--laboratory", isLaboratoryMode);
   modalCard?.classList.toggle("consultorio-consultation-modal--hospamb", isHospAmbMode);
   modalCard?.classList.toggle("consultorio-consultation-modal--procedure", isProcedureMode);
   modalCard?.classList.toggle("consultorio-consultation-modal--orders", isOrderMode);
+  modalCard?.classList.toggle("consultorio-consultation-modal--laboratory", isLaboratoryMode);
   modalCard?.classList.toggle("consultorio-consultation-modal--vaccination", isVaccinationMode);
   modalCard?.classList.toggle("consultorio-consultation-modal--formula", isFormulaMode);
   modalCard?.classList.toggle("consultorio-consultation-modal--deworming", isDewormingMode);
   if (elements.patientConsultationModalIcon) {
     elements.patientConsultationModalIcon.innerHTML = isOrderMode
       ? orderModalIconSvg
+      : isLaboratoryMode
+      ? laboratoryModalIconSvg
       : isProcedureMode
       ? procedureModalIconSvg
       : defaultModalIconSvg;
@@ -9064,6 +9494,7 @@ function openPatientConsultationModal(consultation = null) {
       isDewormingMode ||
       isHospAmbMode ||
       isProcedureMode ||
+      isLaboratoryMode ||
       isOrderMode
         ? ""
         : record
@@ -9076,6 +9507,7 @@ function openPatientConsultationModal(consultation = null) {
         isDewormingMode ||
         isHospAmbMode ||
         isProcedureMode ||
+        isLaboratoryMode ||
         isOrderMode
     );
   }
@@ -9088,6 +9520,7 @@ function openPatientConsultationModal(consultation = null) {
         isDewormingMode ||
         isHospAmbMode ||
         isProcedureMode ||
+        isLaboratoryMode ||
         isOrderMode
     );
   elements.patientConsultationModal.classList.remove("is-hidden");
@@ -9104,6 +9537,8 @@ function openPatientConsultationModal(consultation = null) {
     form.elements.procedure_date.focus();
   } else if (isHospAmbMode && form.elements.hospamb_type) {
     form.elements.hospamb_type.focus();
+  } else if (isLaboratoryMode && form.elements.laboratory_date) {
+    form.elements.laboratory_date.focus();
   } else if (isOrderMode && form.elements.order_date) {
     form.elements.order_date.focus();
   } else {
@@ -9751,6 +10186,7 @@ async function handlePatientConsultationSubmit(event) {
   const examGeneralSummary = buildConsultorioExamGeneralSummary(payload);
   const examSpecialSummary = buildConsultorioExamSpecialSummary(payload);
   const isOrderMode = form.dataset.consultationMode === "orders";
+  const isLaboratoryMode = form.dataset.consultationMode === "laboratory";
   payload.consultation_type =
     payload.consultation_type ||
     getConsultorioProfileViewConfig()?.formConsultationType ||
@@ -9800,6 +10236,51 @@ async function handlePatientConsultationSubmit(event) {
         quantity: item.quantity,
         priority: item.priority,
         notes: item.notes,
+      })),
+    });
+  } else if (isLaboratoryMode) {
+    const laboratoryItems = getPatientLaboratoryItems({ includeEmpty: true }).filter((item) =>
+      hasConsultorioLaboratoryItemContent(item)
+    );
+    if (!payload.laboratory_date) {
+      throw new Error("Selecciona la fecha del examen de laboratorio.");
+    }
+    if (!laboratoryItems.length) {
+      throw new Error("Agrega al menos una prueba de laboratorio.");
+    }
+    const invalidItemIndex = laboratoryItems.findIndex((item) => {
+      const quantity = Number(item.quantity || 1);
+      return (
+        !String(item.professional || "").trim() ||
+        !String(item.item || "").trim() ||
+        Number.isNaN(quantity) ||
+        quantity < 1
+      );
+    });
+    if (invalidItemIndex !== -1) {
+      throw new Error(
+        `Completa profesional, prueba/examen y cantidad valida en la prueba ${invalidItemIndex + 1}.`
+      );
+    }
+    payload.consultation_type = "Examen de laboratorio";
+    payload.title = laboratoryItems[0]?.item || "Examen de laboratorio";
+    payload.consultation_at = `${payload.laboratory_date}T12:00`;
+    payload.next_control = "";
+    payload.summary = buildConsultorioLaboratorySummary(payload, laboratoryItems);
+    payload.indications = buildConsultorioLaboratoryIndications(payload, laboratoryItems);
+    payload.attachments_summary = "";
+    payload.document_reference = JSON.stringify({
+      kind: "laboratory",
+      examDate: String(payload.laboratory_date || "").trim(),
+      diagnosis: String(payload.laboratory_diagnosis || "").trim(),
+      related: String(payload.referred_to || "").trim(),
+      items: laboratoryItems.map((item) => ({
+        professional: String(item.professional || "").trim(),
+        item: String(item.item || "").trim(),
+        quantity: String(item.quantity || "1").trim() || "1",
+        results: (Array.isArray(item.results) ? item.results : [])
+          .map((result) => normalizeConsultorioLaboratoryResultFile(result))
+          .filter(Boolean),
       })),
     });
   } else if (isHospAmbConsultationType(payload.consultation_type)) {
@@ -9969,6 +10450,8 @@ async function handlePatientConsultationSubmit(event) {
   closePatientConsultationModal();
   const entityLabel = isOrderMode
     ? "Orden"
+    : isLaboratoryMode
+    ? "Examen de laboratorio"
     : getConsultorioProfileModalEntityLabel(payload.consultation_type);
   let statusMessage = payload.id
     ? `${entityLabel} actualizada.`
@@ -10851,6 +11334,100 @@ function bindForms() {
         }
       }
     });
+  }
+  if (elements.patientLaboratoryAddButton) {
+    elements.patientLaboratoryAddButton.addEventListener("click", () => {
+      const items = getPatientLaboratoryItems({ includeEmpty: true });
+      items.push(createConsultorioLaboratoryItem());
+      renderPatientLaboratoryItems(items);
+      elements.patientLaboratoryItemsList
+        ?.querySelector('[data-lab-item]:last-child [data-lab-item-field="professional"]')
+        ?.focus();
+    });
+  }
+  if (elements.patientLaboratoryItemsList) {
+    elements.patientLaboratoryItemsList.addEventListener("click", (event) => {
+      const addUserButton = event.target.closest("[data-lab-item-add-user]");
+      if (addUserButton) {
+        showStatus(
+          "Si necesitas crear un usuario nuevo, hazlo desde Administracion > Usuarios.",
+          "info"
+        );
+        return;
+      }
+      const registerCustomButton = event.target.closest("[data-lab-item-register-custom]");
+      if (registerCustomButton) {
+        const index = Number(registerCustomButton.dataset.labItemRegisterCustom);
+        const items = getPatientLaboratoryItems({ includeEmpty: true });
+        if (!items[index]) {
+          return;
+        }
+        const parsed = parseOrderCatalogLabel(items[index].item || "");
+        openLabTestModal({
+          index,
+          category: parsed.category,
+          name: parsed.name,
+          target: "laboratory",
+        });
+        return;
+      }
+      const selectResultButton = event.target.closest("[data-lab-item-select-result]");
+      if (selectResultButton) {
+        const index = Number(selectResultButton.dataset.labItemSelectResult);
+        elements.patientLaboratoryItemsList
+          ?.querySelector(`[data-lab-item-result-input="${index}"]`)
+          ?.click();
+        return;
+      }
+      const removeResultButton = event.target.closest("[data-remove-lab-item-result]");
+      if (removeResultButton) {
+        const index = Number(removeResultButton.dataset.removeLabItemResult);
+        const resultIndex = Number(removeResultButton.dataset.labItemResultIndex);
+        const items = getPatientLaboratoryItems({ includeEmpty: true });
+        if (!items[index]) {
+          return;
+        }
+        items[index].results.splice(resultIndex, 1);
+        renderPatientLaboratoryItems(items);
+        return;
+      }
+      const removeButton = event.target.closest("[data-remove-patient-laboratory-item]");
+      if (!removeButton) {
+        return;
+      }
+      const index = Number(removeButton.dataset.removePatientLaboratoryItem);
+      const items = getPatientLaboratoryItems({ includeEmpty: true });
+      items.splice(index, 1);
+      renderPatientLaboratoryItems(items);
+    });
+    elements.patientLaboratoryItemsList.addEventListener(
+      "change",
+      wrapAsync(async (event) => {
+        const resultInput = event.target.closest("[data-lab-item-result-input]");
+        if (!resultInput) {
+          return;
+        }
+        const files = Array.from(resultInput.files || []);
+        if (!files.length) {
+          return;
+        }
+        const index = Number(resultInput.dataset.labItemResultInput);
+        const items = getPatientLaboratoryItems({ includeEmpty: true });
+        if (!items[index]) {
+          resultInput.value = "";
+          return;
+        }
+        try {
+          const resultFiles = (
+            await Promise.all(files.map((file) => buildConsultorioLaboratoryResultFile(file)))
+          ).filter(Boolean);
+          items[index].results = [...items[index].results, ...resultFiles];
+          renderPatientLaboratoryItems(items);
+        } finally {
+          resultInput.value = "";
+        }
+      })
+    );
   }
   if (elements.patientConsultationAttachmentFileButton && elements.patientConsultationAttachmentFileInput) {
     elements.patientConsultationAttachmentFileButton.addEventListener("click", () => {
