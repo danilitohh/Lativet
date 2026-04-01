@@ -329,6 +329,7 @@ const CONSULTORIO_HOSPITALIZATION_PRIORITY_OPTIONS = [
   },
 ];
 const CONSULTORIO_ORDER_TYPE_OPTIONS = [
+  "Consulta",
   "Cirugia/procedimiento",
   "Prueba/Examen",
   "Imagen diagnostica",
@@ -338,10 +339,44 @@ const CONSULTORIO_ORDER_TYPE_OPTIONS = [
   "Otro",
 ];
 const CONSULTORIO_ORDER_SEARCHABLE_TYPES = [
+  "Consulta",
   "Cirugia/procedimiento",
   "Prueba/Examen",
 ];
 const CONSULTORIO_ORDER_CATALOG = {
+  Consulta: [
+    "General",
+    "Revision/Chequeo",
+    "Alergologia",
+    "Anestesiologia",
+    "Cardiologia",
+    "Dermatologia",
+    "Urgencias",
+    "Endocrinologia",
+    "Etologia",
+    "Gastroenterologia",
+    "Hospitalizacion",
+    "Cuidados criticos o intensivos",
+    "Cirugia laser",
+    "Nefrologia",
+    "Neurologia",
+    "Nutricion",
+    "Reproduccion u obstetricia",
+    "Odontologia",
+    "Oncologia",
+    "Oftalmologia",
+    "Ortopedia",
+    "Fisioterapia",
+    "Neumologia",
+    "Consulta preanestesica",
+    "Consulta prequirurgica",
+    "Psicologia",
+    "Cirugia tejidos blandos",
+    "Esterilizacion",
+    "Otro",
+    "Acupuntura",
+    "Consulta no programada",
+  ],
   "Cirugia/procedimiento": [
     "ABDOMINOCENTESIS ECOGUIDA",
     "ABLACION DEL CONDUCTO AUDITIVO EXTERNO BILATERAL",
@@ -3107,6 +3142,12 @@ function isConsultorioOrderSearchableType(type) {
 
 function isConsultorioHospitalizationOrderType(type) {
   return normalizeConsultorioOrderType(type) === "Hospitalizacion";
+}
+
+function isConsultorioOrderCustomRegistrableType(type) {
+  return ["Cirugia/procedimiento", "Prueba/Examen"].includes(
+    normalizeConsultorioOrderType(type)
+  );
 }
 
 function getConsultorioOrderPriorityOptions(type) {
@@ -7671,10 +7712,14 @@ function renderConsultorioOrderNameField({
   isSearchableType,
 }) {
   if (isSearchableType) {
+    const canRegisterCustom = isConsultorioOrderCustomRegistrableType(orderType);
     return `
       <div class="consultorio-consultation-form__field consultorio-order-item__picker-field">
         <div class="consultorio-order-item__label-row">
           <span>${escapeHtml(getConsultorioOrderTypeLabel(orderType))}</span>
+          ${
+            canRegisterCustom
+              ? `
           <button
             class="inline-link consultorio-order-item__link"
             type="button"
@@ -7682,6 +7727,9 @@ function renderConsultorioOrderNameField({
           >
             + Registrar nuevo
           </button>
+          `
+              : ""
+          }
         </div>
         <div class="consultorio-order-picker" data-order-picker="${escapeHtml(String(index))}">
           <button
