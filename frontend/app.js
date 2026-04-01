@@ -8208,7 +8208,16 @@ function positionConsultorioOrderActionMenu(menu, button) {
   if (!menu || !button) {
     return;
   }
+  const shell =
+    button.closest(".consultorio-orders-shell") || elements.consultorioPatientProfileSummary;
+  if (!shell) {
+    return;
+  }
+  if (menu.parentElement !== shell) {
+    shell.appendChild(menu);
+  }
   const buttonRect = button.getBoundingClientRect();
+  const shellRect = shell.getBoundingClientRect();
   const spacing = 8;
   const viewportPadding = 12;
   const menuWidth = menu.offsetWidth || 168;
@@ -8217,16 +8226,14 @@ function positionConsultorioOrderActionMenu(menu, button) {
   const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 0;
   const availableBelow = viewportHeight - buttonRect.bottom - viewportPadding;
   const shouldOpenUpward = menuHeight > availableBelow && buttonRect.top > menuHeight + viewportPadding;
+  const shellWidth = shell.clientWidth || shellRect.width || viewportWidth;
   const resolvedTop = shouldOpenUpward
-    ? Math.max(viewportPadding, buttonRect.top - menuHeight - spacing)
-    : Math.min(
-        viewportHeight - menuHeight - viewportPadding,
-        buttonRect.bottom + spacing
-      );
-  const preferredLeft = buttonRect.right - menuWidth;
+    ? Math.max(viewportPadding, buttonRect.top - shellRect.top - menuHeight - spacing)
+    : Math.max(viewportPadding, buttonRect.bottom - shellRect.top + spacing);
+  const preferredLeft = buttonRect.right - shellRect.left - menuWidth;
   const resolvedLeft = Math.min(
     Math.max(viewportPadding, preferredLeft),
-    Math.max(viewportPadding, viewportWidth - menuWidth - viewportPadding)
+    Math.max(viewportPadding, shellWidth - menuWidth - viewportPadding)
   );
   menu.style.top = `${Math.max(viewportPadding, resolvedTop)}px`;
   menu.style.left = `${resolvedLeft}px`;

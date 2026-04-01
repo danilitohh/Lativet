@@ -1347,10 +1347,10 @@ button:active {
 }
 
 .consultorio-order-actions__menu {
-  position: fixed;
+  position: absolute;
   top: 0;
   left: 0;
-  z-index: 1200;
+  z-index: 120;
   min-width: 168px;
   max-width: min(220px, calc(100vw - 24px));
   max-height: min(320px, calc(100vh - 24px));
@@ -1394,6 +1394,11 @@ button:active {
 }
 
 .consultorio-orders-table-wrapper {
+  overflow: visible;
+}
+
+.consultorio-orders-shell {
+  position: relative;
   overflow: visible;
 }
 
