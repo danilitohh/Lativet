@@ -1234,6 +1234,7 @@ button:active {
 .consultorio-deworming-shell,
 .consultorio-hospamb-shell,
 .consultorio-procedures-shell,
+.consultorio-laboratory-shell,
 .consultorio-orders-shell {
   min-height: 340px;
 }
@@ -1384,11 +1385,13 @@ button:active {
   color: #4862dd;
 }
 
-.consultorio-order-actions__menu button[data-order-action="delete"] {
+.consultorio-order-actions__menu button[data-order-action="delete"],
+.consultorio-order-actions__menu button[data-lab-action="delete"] {
   color: #c2576d;
 }
 
-.consultorio-order-actions__menu button[data-order-action="delete"]:hover {
+.consultorio-order-actions__menu button[data-order-action="delete"]:hover,
+.consultorio-order-actions__menu button[data-lab-action="delete"]:hover {
   background: rgba(194, 87, 109, 0.1);
   color: #c2576d;
 }
@@ -1397,9 +1400,52 @@ button:active {
   overflow: visible;
 }
 
+.consultorio-laboratory-table-wrapper {
+  overflow: visible;
+}
+
+.consultorio-laboratory-shell,
 .consultorio-orders-shell {
   position: relative;
   overflow: visible;
+}
+
+.consultorio-laboratory-entry {
+  display: grid;
+  gap: 4px;
+  min-width: 320px;
+  line-height: 1.4;
+}
+
+.consultorio-laboratory-entry__line {
+  color: #4e5b75;
+  font-size: 0.78rem;
+}
+
+.consultorio-laboratory-entry__line strong {
+  color: #1f2c45;
+}
+
+.consultorio-laboratory-entry__muted {
+  color: #8592ac;
+}
+
+.consultorio-laboratory-entry__result-link,
+.consultorio-laboratory-entry__result-text {
+  color: #4f66e8;
+  word-break: break-word;
+}
+
+.consultorio-laboratory-entry__result-link {
+  text-decoration: none;
+}
+
+.consultorio-laboratory-entry__result-link:hover {
+  text-decoration: underline;
+}
+
+.consultorio-laboratory-entry__separator {
+  color: #8592ac;
 }
 
 .consultorio-consultation-modal {
