@@ -888,6 +888,10 @@ button:active {
   gap: 8px;
 }
 
+.consultorio-profile-nav__label {
+  min-width: 0;
+}
+
 .consultorio-profile-nav__item {
   display: flex;
   align-items: center;
@@ -922,8 +926,229 @@ button:active {
   color: var(--brand);
 }
 
+.consultorio-profile-panel--diagnostic {
+  padding: 14px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: none;
+  box-shadow: 0 16px 32px rgba(11, 39, 49, 0.08);
+}
+
+.consultorio-profile-panel--diagnostic > .panel-heading {
+  display: none;
+}
+
+.consultorio-profile-layout--diagnostic {
+  display: block;
+}
+
+.consultorio-profile-layout--diagnostic .consultorio-profile-sidebar {
+  display: none;
+}
+
 .consultorio-profile-summary {
   display: block;
+}
+
+.consultorio-diagnostic-profile {
+  display: grid;
+  gap: 14px;
+}
+
+.consultorio-diagnostic-profile__top {
+  display: grid;
+  grid-template-columns: minmax(320px, 0.8fr) minmax(0, 1.2fr);
+  gap: 12px;
+}
+
+.consultorio-diagnostic-card {
+  border: 1px solid #e6ebf5;
+  border-radius: 10px;
+  background: #fff;
+  overflow: hidden;
+}
+
+.consultorio-diagnostic-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+  border-bottom: 1px solid #edf1f8;
+}
+
+.consultorio-diagnostic-card__title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: #526487;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.consultorio-diagnostic-card__icon {
+  width: 14px;
+  height: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #566589;
+  flex: 0 0 auto;
+}
+
+.consultorio-diagnostic-card__icon svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.consultorio-diagnostic-card__actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.consultorio-diagnostic-card__button {
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: 1px solid #e2e8f5;
+  background: #fff;
+  color: #6980ab;
+  font-size: 0.68rem;
+  box-shadow: none;
+}
+
+.consultorio-diagnostic-card__button--danger {
+  border-color: rgba(211, 82, 100, 0.45);
+  color: #d35264;
+}
+
+.consultorio-diagnostic-card__button--primary {
+  border-color: transparent;
+  background: linear-gradient(135deg, #24c9a3, #16ae8a);
+  box-shadow: none;
+}
+
+.consultorio-diagnostic-card__body {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+}
+
+.consultorio-diagnostic-card__body strong {
+  color: #24334f;
+  font-size: 0.9rem;
+}
+
+.consultorio-diagnostic-card__body span {
+  color: #6d7c98;
+  font-size: 0.76rem;
+}
+
+.consultorio-diagnostic-card__notes {
+  padding: 10px 12px 12px;
+  border-top: 1px solid #edf1f8;
+  background: #fbfcff;
+}
+
+.consultorio-diagnostic-card__notes strong {
+  display: block;
+  margin-bottom: 4px;
+  color: #51607d;
+  font-size: 0.74rem;
+}
+
+.consultorio-diagnostic-card__notes p {
+  margin: 0;
+  color: #6a7693;
+  font-size: 0.74rem;
+  line-height: 1.45;
+}
+
+.consultorio-diagnostic-card__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px;
+}
+
+.consultorio-diagnostic-chip {
+  min-width: 130px;
+  padding: 9px 11px;
+  border: 1px solid #e5ebf7;
+  border-radius: 8px;
+  background: #f8fbff;
+  color: #607093;
+  text-align: left;
+  box-shadow: none;
+}
+
+.consultorio-diagnostic-chip strong,
+.consultorio-diagnostic-chip span {
+  display: block;
+}
+
+.consultorio-diagnostic-chip strong {
+  color: #30415f;
+  font-size: 0.78rem;
+}
+
+.consultorio-diagnostic-chip span {
+  margin-top: 2px;
+  font-size: 0.7rem;
+}
+
+.consultorio-diagnostic-chip.is-active {
+  border-color: #c6dcff;
+  background: #edf5ff;
+}
+
+.consultorio-diagnostic-profile__body {
+  display: grid;
+  grid-template-columns: 420px minmax(0, 1fr);
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid #e6ebf5;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.consultorio-diagnostic-profile__sidebar {
+  padding-right: 12px;
+  border-right: 1px solid #edf1f8;
+}
+
+.consultorio-profile-nav--diagnostic {
+  gap: 4px;
+}
+
+.consultorio-profile-nav__item--diagnostic {
+  padding: 7px 10px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: #5f7298;
+}
+
+.consultorio-profile-nav__item--diagnostic strong {
+  min-width: 18px;
+  padding: 1px 6px;
+  background: #3b82f61a;
+  color: #2f7ae5;
+  font-size: 0.66rem;
+}
+
+.consultorio-profile-nav__item--diagnostic.is-active {
+  border-color: #d8e6fb;
+  background: #edf4ff;
+  color: #2f72db;
+}
+
+.consultorio-diagnostic-profile__content {
+  min-width: 0;
 }
 
 .consultorio-profile-card {
@@ -1311,6 +1536,26 @@ button:active {
   color: #6270aa;
 }
 
+.consultorio-module-empty--imaging {
+  min-height: 320px;
+  margin-top: 0;
+  border: 0;
+  background: transparent;
+}
+
+.consultorio-module-empty--imaging .consultorio-module-empty__icon {
+  width: 58px;
+  height: 58px;
+  color: #6673ab;
+}
+
+.consultorio-module-empty--imaging strong {
+  font-family: var(--font-head);
+  font-size: 1.22rem;
+  font-weight: 600;
+  color: #6573a9;
+}
+
 .consultorio-vaccinations-table-wrapper {
   margin-top: 16px;
 }
@@ -1408,6 +1653,85 @@ button:active {
 .consultorio-orders-shell {
   position: relative;
   overflow: visible;
+}
+
+.consultorio-imaging-shell {
+  min-height: 340px;
+  padding: 0;
+  border: 1px solid #e6ebf5;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: none;
+}
+
+.consultorio-imaging-shell__toolbar {
+  padding: 12px 14px 10px;
+  border-bottom: 1px solid #edf1f8;
+}
+
+.consultorio-imaging-shell__button {
+  padding: 5px 10px;
+  border-radius: 4px;
+  background: linear-gradient(135deg, #24c9a3, #18b18d);
+  box-shadow: none;
+}
+
+.consultorio-imaging-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px;
+  padding: 14px;
+}
+
+.consultorio-imaging-card {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid #e6ebf5;
+  border-radius: 12px;
+  background: #fbfdff;
+}
+
+.consultorio-imaging-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.consultorio-imaging-card__date,
+.consultorio-imaging-card__meta,
+.consultorio-imaging-card__footer {
+  color: #6e7b98;
+  font-size: 0.74rem;
+}
+
+.consultorio-imaging-card__header h5 {
+  margin: 4px 0 0;
+  color: #263655;
+  font-family: var(--font-head);
+  font-size: 0.92rem;
+}
+
+.consultorio-imaging-card__action {
+  padding: 5px 9px;
+  border-radius: 6px;
+  box-shadow: none;
+}
+
+.consultorio-imaging-card__summary,
+.consultorio-imaging-card__meta {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.consultorio-imaging-card__gallery .consultorio-attachment-gallery {
+  justify-content: flex-start;
+}
+
+.consultorio-imaging-card__footer {
+  padding-top: 2px;
+  border-top: 1px solid #eef2f8;
 }
 
 .consultorio-laboratory-entry {
@@ -4138,6 +4462,10 @@ textarea:focus {
   padding: 24px;
 }
 
+#userModal {
+  z-index: 95;
+}
+
 .modal-shell.is-hidden {
   display: none;
 }
@@ -4706,6 +5034,18 @@ body.auth-locked .page-shell > :not(#loginModal) {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .consultorio-diagnostic-profile__top,
+  .consultorio-diagnostic-profile__body {
+    grid-template-columns: 1fr;
+  }
+
+  .consultorio-diagnostic-profile__sidebar {
+    padding-right: 0;
+    padding-bottom: 12px;
+    border-right: 0;
+    border-bottom: 1px solid #edf1f8;
+  }
+
   .consultorio-procedure-fields__top,
   .consultorio-procedure-fields__pair,
   .consultorio-procedure-fields__trio {
@@ -4763,6 +5103,12 @@ body.auth-locked .page-shell > :not(#loginModal) {
   .agenda-view-tabs {
     flex-wrap: wrap;
     justify-content: center;
+  }
+
+  .consultorio-diagnostic-card__header,
+  .consultorio-imaging-card__header {
+    flex-direction: column;
+    align-items: flex-start;
   }
 
   .agenda-timeline__day-label {

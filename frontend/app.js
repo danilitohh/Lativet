@@ -51,6 +51,7 @@ let consultorioPatientId = "";
 let consultorioProfileView = "records";
 let consultorioPatientEditorVisible = false;
 let consultorioPatientProfileOpen = false;
+let consultorioPatientProfileNotesVisible = false;
 let pendingLabTestContext = null;
 let pendingProcedureOrderItemIndex = null;
 let activeSectionId = "dashboard";
@@ -78,6 +79,8 @@ const usersFilters = { query: "", pageSize: 10, showInactive: false };
 const ownersFilters = { query: "", petQuery: "" };
 const consultorioPatientsFilters = { query: "" };
 const authState = { requiresLogin: false, authenticated: false, currentUser: null };
+const defaultUserModalContext = { source: "administration", labItemIndex: null };
+let userModalContext = { ...defaultUserModalContext };
 const AUTH_SESSION_KEY = "lativet_auth_session";
 const APP_VIEW_STATE_KEY = "lativet_app_view_v1";
 const BOOTSTRAP_CACHE_KEY = "lativet_bootstrap_v3";
@@ -166,7 +169,7 @@ const CONSULTORIO_PROFILE_VIEWS = [
   },
   {
     value: "imagenes",
-    label: "Imagenes diagnosticas",
+    label: "Im\u00e1genes diagn\u00f3sticas",
     panels: ["consultorioConsultationFormPanel", "consultorioConsultationsPanel"],
     dataRequirements: ["owners", "patients", "records", "consultations"],
     consultationTypes: ["Imagen diagnostica"],
@@ -2641,6 +2644,24 @@ function getConsultorioProfileCount(option) {
   return getConsultorioScopedConsultations(option.consultationTypes).length;
 }
 
+function buildConsultorioProfileNavMarkup(options = {}) {
+  const { diagnosticMode = false } = options;
+  return CONSULTORIO_PROFILE_VIEWS.map(
+    (option) => `
+      <button
+        class="consultorio-profile-nav__item${diagnosticMode ? " consultorio-profile-nav__item--diagnostic" : ""}${
+          option.value === consultorioProfileView ? " is-active" : ""
+        }"
+        type="button"
+        data-consultorio-profile-view="${escapeHtml(option.value)}"
+      >
+        <span class="consultorio-profile-nav__label">${escapeHtml(option.label)}</span>
+        <strong>${getConsultorioProfileCount(option)}</strong>
+      </button>
+    `
+  ).join("");
+}
+
 function getConsultorioPrimaryRecord() {
   return getConsultorioScopedRecords()
     .slice()
@@ -3900,6 +3921,7 @@ function setConsultorioProfileView(value) {
     return;
   }
   consultorioProfileView = value;
+  consultorioPatientProfileNotesVisible = false;
   applySectionSubsection("consultorio");
   const targetSectionId = isConsultorioPatientProfileActive()
     ? CONSULTORIO_PATIENT_PROFILE_SECTION_ID
@@ -3918,6 +3940,7 @@ function openConsultorioPatientProfile(patient) {
   consultorioPatientId = patient.id;
   consultorioOwnerId = patient.owner_id || consultorioOwnerId;
   consultorioPatientProfileOpen = true;
+  consultorioPatientProfileNotesVisible = false;
   consultorioProfileView = consultorioProfileView || "records";
   setSectionSubsection("consultorio", "patients");
   setActiveSection(CONSULTORIO_PATIENT_PROFILE_SECTION_ID);
@@ -3928,6 +3951,7 @@ function closeConsultorioPatientProfile(options = {}) {
   const { preservePatient = false } = options;
   closePatientConsultationModal();
   consultorioPatientProfileOpen = false;
+  consultorioPatientProfileNotesVisible = false;
   if (!preservePatient) {
     consultorioPatientId = "";
     consultorioProfileView = "records";
@@ -4209,6 +4233,130 @@ function buildConsultorioProfileOverviewMarkup({
           .join("")}
       </dl>
     </article>
+  `;
+}
+
+function buildConsultorioDiagnosticImagingProfile({ owner, patient, ownerPatients, profileConfig }) {
+  const patientNotes = [
+    patient?.notes ? `Notas: ${patient.notes}` : "",
+    patient?.allergies ? `Alergias: ${patient.allergies}` : "",
+    patient?.chronic_conditions ? `Condiciones cronicas: ${patient.chronic_conditions}` : "",
+  ].filter(Boolean);
+  return `
+    <div class="consultorio-diagnostic-profile">
+      <div class="consultorio-diagnostic-profile__top">
+        <article class="consultorio-diagnostic-card">
+          <div class="consultorio-diagnostic-card__header">
+            <div class="consultorio-diagnostic-card__title">
+              <span class="consultorio-diagnostic-card__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"></path>
+                  <path d="M4 20a8 8 0 1 1 16 0Z"></path>
+                </svg>
+              </span>
+              <span>Propietario</span>
+            </div>
+            <div class="consultorio-diagnostic-card__actions">
+              <button
+                class="ghost-button consultorio-diagnostic-card__button consultorio-diagnostic-card__button--danger"
+                type="button"
+                data-consultorio-profile-close="true"
+              >
+                Desvincular
+              </button>
+              <button
+                class="ghost-button consultorio-diagnostic-card__button"
+                type="button"
+                data-consultorio-owner-edit="${escapeHtml(owner?.id || "")}"
+              >
+                Editar
+              </button>
+              <button
+                class="ghost-button consultorio-diagnostic-card__button"
+                type="button"
+                data-consultorio-profile-notes-toggle="true"
+              >
+                ${consultorioPatientProfileNotesVisible ? "Ocultar notas" : "Notas"}
+              </button>
+            </div>
+          </div>
+          <div class="consultorio-diagnostic-card__body consultorio-diagnostic-card__body--owner">
+            <strong>${escapeHtml(owner?.full_name || patient?.owner_name || "Sin propietario")}</strong>
+            <span>${escapeHtml(
+              owner
+                ? [owner.identification_type, owner.identification_number].filter(Boolean).join(" ")
+                : "Sin identificacion"
+            )}</span>
+            <span>${escapeHtml([owner?.phone, owner?.email].filter(Boolean).join(" / ") || "Sin contacto")}</span>
+          </div>
+          ${
+            consultorioPatientProfileNotesVisible
+              ? `
+                <div class="consultorio-diagnostic-card__notes">
+                  <strong>Notas del paciente</strong>
+                  <p>${escapeHtml(
+                    patientNotes.join(" | ") || "No hay notas clinicas registradas para esta mascota."
+                  )}</p>
+                </div>
+              `
+              : ""
+          }
+        </article>
+
+        <article class="consultorio-diagnostic-card">
+          <div class="consultorio-diagnostic-card__header">
+            <div class="consultorio-diagnostic-card__title">
+              <span class="consultorio-diagnostic-card__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M5 7.5A2.5 2.5 0 0 1 7.5 5h2A2.5 2.5 0 0 1 12 7.5v1A2.5 2.5 0 0 1 9.5 11h-2A2.5 2.5 0 0 1 5 8.5Z"></path>
+                  <path d="M12 8.5A2.5 2.5 0 0 1 14.5 6h2A2.5 2.5 0 0 1 19 8.5v1a2.5 2.5 0 0 1-2.5 2.5h-2A2.5 2.5 0 0 1 12 9.5Z"></path>
+                  <path d="M7 15.5A2.5 2.5 0 0 1 9.5 13h5a2.5 2.5 0 0 1 2.5 2.5V16a3 3 0 0 1-3 3H10a3 3 0 0 1-3-3Z"></path>
+                </svg>
+              </span>
+              <span>Mascotas</span>
+            </div>
+            <div class="consultorio-diagnostic-card__actions">
+              <button
+                class="primary-button consultorio-diagnostic-card__button consultorio-diagnostic-card__button--primary"
+                type="button"
+                data-consultorio-new-patient="true"
+              >
+                + Registrar mascota
+              </button>
+            </div>
+          </div>
+          <div class="consultorio-diagnostic-card__chips">
+            ${ownerPatients
+              .map(
+                (item) => `
+                  <button
+                    class="consultorio-diagnostic-chip${item.id === patient?.id ? " is-active" : ""}"
+                    type="button"
+                    data-patient-select="${escapeHtml(item.id)}"
+                  >
+                    <strong>${escapeHtml(item.name || "Mascota")}</strong>
+                    <span>${escapeHtml(item.species || "Paciente")}${
+                      item.breed ? ` / ${escapeHtml(item.breed)}` : ""
+                    }</span>
+                  </button>
+                `
+              )
+              .join("")}
+          </div>
+        </article>
+      </div>
+
+      <div class="consultorio-diagnostic-profile__body">
+        <aside class="consultorio-diagnostic-profile__sidebar">
+          <div class="consultorio-profile-nav consultorio-profile-nav--diagnostic">
+            ${buildConsultorioProfileNavMarkup({ diagnosticMode: true })}
+          </div>
+        </aside>
+        <div class="consultorio-diagnostic-profile__content">
+          ${buildConsultorioImagingWorkspace(patient, profileConfig)}
+        </div>
+      </div>
+    </div>
   `;
 }
 
@@ -4991,13 +5139,139 @@ function buildConsultorioLaboratoryWorkspace(patient, profileConfig) {
   `;
 }
 
+function parseConsultorioImagingDetails(consultation) {
+  const details = parseConsultorioConsultationDetails(consultation);
+  return {
+    studyDate: formatDateTime(consultation?.consultation_at),
+    title: String(consultation?.title || "").trim() || "Imagen diagnostica",
+    summary:
+      details.interpretation ||
+      details.objective ||
+      details.subjective ||
+      truncate(consultation?.summary || "Sin resumen clinico", 180),
+    related:
+      String(consultation?.referred_to || "").trim() ||
+      details.diagnosticPlan ||
+      String(consultation?.document_reference || "").trim(),
+    attachments: parseConsultorioAttachments(consultation?.attachments_summary || ""),
+    professional: String(consultation?.professional_name || "").trim() || "Sin usuario",
+  };
+}
+
+function buildConsultorioImagingWorkspace(patient, profileConfig) {
+  const entries = getConsultorioScopedConsultations(profileConfig?.consultationTypes || null);
+  const content = entries.length
+    ? `
+      <div class="consultorio-imaging-grid">
+        ${entries
+          .map((consultation) => {
+            const details = parseConsultorioImagingDetails(consultation);
+            return `
+              <article class="consultorio-imaging-card">
+                <div class="consultorio-imaging-card__header">
+                  <div>
+                    <span class="consultorio-imaging-card__date">${escapeHtml(details.studyDate)}</span>
+                    <h5>${escapeHtml(details.title)}</h5>
+                  </div>
+                  <button
+                    class="ghost-button consultorio-imaging-card__action"
+                    type="button"
+                    data-edit-patient-consultation="${escapeHtml(consultation.id)}"
+                  >
+                    Editar
+                  </button>
+                </div>
+                <p class="consultorio-imaging-card__summary">${escapeHtml(details.summary)}</p>
+                ${
+                  details.related
+                    ? `<p class="consultorio-imaging-card__meta"><strong>Relacionado:</strong> ${escapeHtml(
+                        truncate(details.related, 140)
+                      )}</p>`
+                    : ""
+                }
+                ${
+                  details.attachments.length
+                    ? `
+                      <div class="consultorio-imaging-card__gallery">
+                        ${buildConsultorioAttachmentPreviewMarkup(details.attachments)}
+                      </div>
+                    `
+                    : `<p class="consultorio-imaging-card__meta">Sin adjuntos cargados.</p>`
+                }
+                <footer class="consultorio-imaging-card__footer">
+                  <span>${escapeHtml(details.professional)}</span>
+                </footer>
+              </article>
+            `;
+          })
+          .join("")}
+      </div>
+    `
+    : `
+      <div class="consultorio-module-empty consultorio-module-empty--imaging">
+        <span class="consultorio-module-empty__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 5h16"></path>
+            <path d="M6 5v14"></path>
+            <path d="M18 5v14"></path>
+            <path d="M8 9h8"></path>
+            <path d="M8 13h8"></path>
+            <path d="M12 9v10"></path>
+          </svg>
+        </span>
+        <strong>No hay registros de imagenologia</strong>
+      </div>
+    `;
+  return `
+    <article class="consultorio-profile-shell consultorio-imaging-shell">
+      <div class="consultorio-profile-table-toolbar consultorio-imaging-shell__toolbar">
+        <div class="consultorio-profile-toolbar__group">
+          <span class="consultorio-profile-toolbar__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 5h16"></path>
+              <path d="M6 5v14"></path>
+              <path d="M18 5v14"></path>
+              <path d="M8 9h8"></path>
+              <path d="M8 13h8"></path>
+              <path d="M12 9v10"></path>
+            </svg>
+          </span>
+          <div class="consultorio-profile-toolbar__title">
+            <h4>Im\u00e1genes diagn\u00f3sticas de <span class="consultorio-profile-toolbar__accent">${escapeHtml(
+              patient?.name || "Paciente"
+            )}</span></h4>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button
+            class="primary-button consultorio-imaging-shell__button"
+            type="button"
+            data-open-patient-consultation-modal="true"
+            data-consultation-profile-view="imagenes"
+          >
+            + Registrar imagenologia
+          </button>
+        </div>
+      </div>
+      ${content}
+    </article>
+  `;
+}
+
 function renderConsultorioPatientProfile() {
   if (!elements.consultorioPatientProfilePanel) {
     return;
   }
+  const profileLayout = elements.consultorioPatientProfilePanel.querySelector(
+    ".consultorio-profile-layout"
+  );
   if (!isConsultorioPatientProfileActive()) {
     elements.consultorioPatientProfilePanel.classList.add("is-hidden");
     elements.consultorioPatientProfilePanel.setAttribute("aria-hidden", "true");
+    elements.consultorioPatientProfilePanel.classList.remove(
+      "consultorio-profile-panel--diagnostic"
+    );
+    profileLayout?.classList.remove("consultorio-profile-layout--diagnostic");
     if (elements.consultorioPatientEditButton) {
       elements.consultorioPatientEditButton.disabled = true;
     }
@@ -5024,6 +5298,7 @@ function renderConsultorioPatientProfile() {
   const patient = getConsultorioPatient();
   const owner = getConsultorioOwner();
   const profileConfig = getConsultorioProfileViewConfig();
+  const isDiagnosticImagingView = profileConfig?.value === "imagenes";
   const ownerPatients = owner ? getOwnerPatients(owner.id) : [];
   const timelineItems = getConsultorioProfileTimelineItems(profileConfig);
   const patientFacts = [
@@ -5042,6 +5317,11 @@ function renderConsultorioPatientProfile() {
   ];
   elements.consultorioPatientProfilePanel.classList.remove("is-hidden");
   elements.consultorioPatientProfilePanel.setAttribute("aria-hidden", "false");
+  elements.consultorioPatientProfilePanel.classList.toggle(
+    "consultorio-profile-panel--diagnostic",
+    isDiagnosticImagingView
+  );
+  profileLayout?.classList.toggle("consultorio-profile-layout--diagnostic", isDiagnosticImagingView);
   if (elements.consultorioPatientEditButton) {
     elements.consultorioPatientEditButton.disabled = false;
   }
@@ -5058,79 +5338,9 @@ function renderConsultorioPatientProfile() {
     } · Tutor: ${ownerLabel} · Vista activa: ${profileConfig?.label || "Historia clinica"}`;
   }
   if (elements.consultorioPatientProfileNav) {
-    elements.consultorioPatientProfileNav.innerHTML = CONSULTORIO_PROFILE_VIEWS.map(
-      (option) => `
-        <button
-          class="consultorio-profile-nav__item${option.value === consultorioProfileView ? " is-active" : ""}"
-          type="button"
-          data-consultorio-profile-view="${escapeHtml(option.value)}"
-        >
-          <span>${escapeHtml(option.label)}</span>
-          <strong>${getConsultorioProfileCount(option)}</strong>
-        </button>
-      `
-    ).join("");
-  }
-  if (elements.consultorioPatientProfileSummary) {
-    const summaryCards = [
-      {
-        title: "Datos del paciente",
-        entries: [
-          ["Especie", patient?.species || "Sin dato"],
-          ["Raza", patient?.breed || "Sin dato"],
-          ["Sexo", patient?.sex || "Sin dato"],
-          ["Edad", patient?.age_years ? `${patient.age_years} anos` : "Sin dato"],
-          ["Peso", patient?.weight_kg ? `${patient.weight_kg} kg` : "Sin dato"],
-          ["Estado reproductivo", patient?.reproductive_status || "Sin dato"],
-        ],
-      },
-      {
-        title: "Tutor responsable",
-        entries: [
-          ["Propietario", owner?.full_name || patient?.owner_name || "Sin dato"],
-          [
-            "Identificacion",
-            owner ? `${owner.identification_type} ${owner.identification_number}` : "Sin dato",
-          ],
-          ["Telefono", owner?.phone || "Sin dato"],
-          ["Correo", owner?.email || "Sin dato"],
-          ["Direccion", owner?.address || "Sin dato"],
-          ["Notas", patient?.notes || "Sin observaciones"],
-        ],
-      },
-      {
-        title: "Contexto clinico",
-        entries: [
-          ["Vacunas", patient?.vaccination_status || "Sin dato"],
-          ["Desparasitaciones", patient?.deworming_status || "Sin dato"],
-          ["Alergias", patient?.allergies || "Sin dato"],
-          ["Condiciones cronicas", patient?.chronic_conditions || "Sin dato"],
-          ["Microchip", patient?.microchip || "Sin dato"],
-          ["Vista abierta", profileConfig?.label || "Historia clinica"],
-        ],
-      },
-    ];
-    elements.consultorioPatientProfileSummary.innerHTML = summaryCards
-      .map(
-        (card) => `
-          <article class="consultorio-profile-card">
-            <h4>${escapeHtml(card.title)}</h4>
-            <dl>
-              ${card.entries
-                .map(
-                  ([label, value]) => `
-                    <div>
-                      <dt>${escapeHtml(label)}</dt>
-                      <dd>${escapeHtml(value)}</dd>
-                    </div>
-                  `
-                )
-                .join("")}
-            </dl>
-          </article>
-        `
-      )
-      .join("");
+    elements.consultorioPatientProfileNav.innerHTML = isDiagnosticImagingView
+      ? ""
+      : buildConsultorioProfileNavMarkup();
   }
   if (elements.consultorioPatientProfileSubtitle) {
     const ownerLabel = owner?.full_name || patient?.owner_name || "Sin propietario";
@@ -5139,6 +5349,15 @@ function renderConsultorioPatientProfile() {
     } | Tutor: ${ownerLabel} | Seccion activa: ${profileConfig?.label || "Historia clinica"}`;
   }
   if (elements.consultorioPatientProfileSummary) {
+    if (isDiagnosticImagingView) {
+      elements.consultorioPatientProfileSummary.innerHTML = buildConsultorioDiagnosticImagingProfile({
+        owner,
+        patient,
+        ownerPatients,
+        profileConfig,
+      });
+      return;
+    }
     const showOverview = !isConsultorioWorkspaceOnlyView(profileConfig);
     const overviewMarkup = showOverview
       ? buildConsultorioProfileOverviewMarkup({
@@ -5166,6 +5385,8 @@ function renderConsultorioPatientProfile() {
         ? buildConsultorioOrdersWorkspace(patient, profileConfig)
         : profileConfig?.value === "laboratorio"
         ? buildConsultorioLaboratoryWorkspace(patient, profileConfig)
+        : profileConfig?.value === "imagenes"
+        ? buildConsultorioImagingWorkspace(patient, profileConfig)
         : buildConsultorioProfileTimelineMarkup(profileConfig, timelineItems);
     elements.consultorioPatientProfileSummary.innerHTML = `
       <div class="consultorio-profile-workspace">
@@ -8086,25 +8307,58 @@ function getPatientProcedureNameValue(form) {
   return selected;
 }
 
-function getConsultorioLaboratoryProfessionalOptions() {
+function resetUserModalContext() {
+  userModalContext = { ...defaultUserModalContext };
+}
+
+function getConsultorioLaboratoryProfessionalOptions(currentProfessional = "") {
   const names = new Set();
   (state.users || []).forEach((user) => {
+    if (!user?.is_active) {
+      return;
+    }
     const name = String(user?.full_name || "").trim();
     if (name) {
       names.add(name);
     }
   });
-  getProfessionalOptions().forEach((option) => {
-    const name = String(option?.label || option?.id || "").trim();
-    if (name) {
-      names.add(name);
-    }
-  });
-  const defaultName = getDefaultConsultorioProfessionalName();
-  if (defaultName) {
-    names.add(defaultName);
+  const currentUserName = String(authState.currentUser?.full_name || "").trim();
+  if (currentUserName) {
+    names.add(currentUserName);
+  }
+  const selectedName = String(currentProfessional || "").trim();
+  if (selectedName) {
+    names.add(selectedName);
   }
   return Array.from(names).sort((left, right) => left.localeCompare(right, "es"));
+}
+
+function loadConsultorioLaboratoryUsersIfNeeded() {
+  if (
+    loadedBootstrapSections.has("users") ||
+    pendingBootstrapSections.has("users") ||
+    !elements.patientConsultationForm ||
+    elements.patientConsultationForm.dataset.consultationMode !== "laboratory"
+  ) {
+    return;
+  }
+  markBootstrapSectionsPending(["users"]);
+  refreshData({ sections: ["users"], render: false })
+    .then(() => {
+      if (
+        !elements.patientConsultationModal ||
+        elements.patientConsultationModal.classList.contains("is-hidden") ||
+        elements.patientConsultationForm?.dataset.consultationMode !== "laboratory"
+      ) {
+        return;
+      }
+      const items = getPatientLaboratoryItems({ includeEmpty: true });
+      renderPatientLaboratoryItems(items);
+    })
+    .catch((error) => {
+      clearBootstrapSectionsPending(["users"]);
+      console.warn("No fue posible cargar los usuarios del laboratorio:", error);
+    });
 }
 
 function normalizeConsultorioLaboratoryResultFile(item) {
@@ -8219,12 +8473,12 @@ function renderPatientLaboratoryItems(items = []) {
     createConsultorioLaboratoryItem(item)
   );
   const rows = normalizedItems.length ? normalizedItems : [createConsultorioLaboratoryItem()];
-  const professionalOptions = getConsultorioLaboratoryProfessionalOptions();
   const examOptions = getConsultorioOrderCatalogOptions("Prueba/Examen").filter(
     (option) => option.value !== CONSULTORIO_ORDER_ITEM_CUSTOM_OPTION
   );
   elements.patientLaboratoryItemsList.innerHTML = rows
     .map((item, index) => {
+      const professionalOptions = getConsultorioLaboratoryProfessionalOptions(item.professional);
       const resultsJson = JSON.stringify(item.results || []);
       const resultsMarkup = item.results.length
         ? item.results
@@ -8283,7 +8537,7 @@ function renderPatientLaboratoryItems(items = []) {
                   type="button"
                   data-lab-item-add-user="${escapeHtml(String(index))}"
                 >
-                  + Agregar usuario
+                  + Registrar usuario
                 </button>
               </div>
               <select data-lab-item-field="professional">
@@ -9292,6 +9546,9 @@ function openPatientConsultationModal(consultation = null) {
     form.elements.laboratory_diagnosis.value = laboratoryDetails.diagnosis || "";
   }
   renderPatientLaboratoryItems(laboratoryDetails.items);
+  if (isLaboratoryMode) {
+    loadConsultorioLaboratoryUsersIfNeeded();
+  }
   if (form.elements.vaccination_date) {
     form.elements.vaccination_date.value =
       vaccinationDetails.vaccinationDate || normalizeDateFieldValue(new Date().toISOString());
@@ -9546,10 +9803,15 @@ function openPatientConsultationModal(consultation = null) {
   }
 }
 
-function openUserModal(user = null) {
+function openUserModal(user = null, options = {}) {
   if (!elements.userModal || !elements.userForm) {
     return;
   }
+  const { source = "administration", labItemIndex = null } = options || {};
+  userModalContext = {
+    source,
+    labItemIndex: Number.isInteger(labItemIndex) ? labItemIndex : null,
+  };
   elements.userForm.reset();
   if (elements.userFormError) {
     elements.userFormError.textContent = "";
@@ -9572,8 +9834,11 @@ function openUserModal(user = null) {
       field.checked = hasAll || permissions.includes(option.key);
     }
   });
+  elements.userModal.parentElement?.appendChild(elements.userModal);
   elements.userModal.classList.remove("is-hidden");
   elements.userModal.setAttribute("aria-hidden", "false");
+  syncModalOpenState();
+  elements.userForm.elements.full_name?.focus();
 }
 
 function setUserFormError(message) {
@@ -9584,12 +9849,17 @@ function setUserFormError(message) {
   elements.userFormError.classList.toggle("is-hidden", !message);
 }
 
-function closeUserModal() {
+function closeUserModal(options = {}) {
   if (!elements.userModal) {
     return;
   }
+  const { preserveContext = false } = options || {};
   elements.userModal.classList.add("is-hidden");
   elements.userModal.setAttribute("aria-hidden", "true");
+  syncModalOpenState();
+  if (!preserveContext) {
+    resetUserModalContext();
+  }
 }
 
 function openAgendaAppointmentsModal() {
@@ -10014,12 +10284,28 @@ function buildUserPayload() {
 
 async function handleUserSubmit(event) {
   event.preventDefault();
+  const modalContext = { ...userModalContext };
+  const laboratoryItems =
+    modalContext.source === "laboratory" ? getPatientLaboratoryItems({ includeEmpty: true }) : null;
   try {
     const payload = buildUserPayload();
     await api.saveUser(payload);
-    closeUserModal();
-    await refreshData("Usuario guardado.");
-    setActiveSection("administration");
+    closeUserModal({ preserveContext: true });
+    await refreshData({ sections: ["users"], render: false, message: "Usuario guardado." });
+    renderUsers();
+    if (
+      modalContext.source === "laboratory" &&
+      laboratoryItems &&
+      Number.isInteger(modalContext.labItemIndex) &&
+      laboratoryItems[modalContext.labItemIndex]
+    ) {
+      laboratoryItems[modalContext.labItemIndex].professional = payload.full_name;
+      renderPatientLaboratoryItems(laboratoryItems);
+      elements.patientLaboratoryItemsList
+        ?.querySelector(`[data-lab-item="${modalContext.labItemIndex}"] [data-lab-item-field="professional"]`)
+        ?.focus();
+    }
+    resetUserModalContext();
   } catch (error) {
     setUserFormError(error.message || "No fue posible guardar el usuario.");
     throw error;
@@ -10982,6 +11268,36 @@ function bindForms() {
         closeConsultorioOrderActionMenus();
         closeConsultorioLaboratoryActionMenus();
       }
+      const profileViewButton = event.target.closest("[data-consultorio-profile-view]");
+      if (profileViewButton) {
+        setConsultorioProfileView(profileViewButton.dataset.consultorioProfileView || "records");
+        return;
+      }
+      const closeProfileButton = event.target.closest("[data-consultorio-profile-close]");
+      if (closeProfileButton) {
+        closeConsultorioPatientProfile({ preservePatient: true });
+        return;
+      }
+      const ownerEditButton = event.target.closest("[data-consultorio-owner-edit]");
+      if (ownerEditButton) {
+        const owner = getConsultorioOwner();
+        if (owner) {
+          openOwnerModal(owner);
+        }
+        return;
+      }
+      const toggleNotesButton = event.target.closest("[data-consultorio-profile-notes-toggle]");
+      if (toggleNotesButton) {
+        consultorioPatientProfileNotesVisible = !consultorioPatientProfileNotesVisible;
+        renderConsultorioPatientProfile();
+        return;
+      }
+      const newPatientButton = event.target.closest("[data-consultorio-new-patient]");
+      if (newPatientButton) {
+        closeConsultorioPatientProfile({ preservePatient: true });
+        openNewPatientEditor();
+        return;
+      }
       const openConsultationButton = event.target.closest("[data-open-patient-consultation-modal]");
       if (openConsultationButton) {
         const targetProfileView =
@@ -11349,10 +11665,14 @@ function bindForms() {
     elements.patientLaboratoryItemsList.addEventListener("click", (event) => {
       const addUserButton = event.target.closest("[data-lab-item-add-user]");
       if (addUserButton) {
-        showStatus(
-          "Si necesitas crear un usuario nuevo, hazlo desde Administracion > Usuarios.",
-          "info"
-        );
+        const index = Number(addUserButton.dataset.labItemAddUser);
+        openUserModal(null, {
+          source: "laboratory",
+          labItemIndex: Number.isFinite(index) ? index : null,
+        });
+        if (!isAdminUser()) {
+          setUserFormError("Solo los administradores pueden registrar usuarios.");
+        }
         return;
       }
       const registerCustomButton = event.target.closest("[data-lab-item-register-custom]");
