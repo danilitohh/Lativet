@@ -1848,12 +1848,63 @@
             </label>
           </div>
 
+          <div id="patientFollowupFields" class="consultorio-followup-fields is-hidden">
+            <div class="consultorio-followup-fields__top">
+              <label class="consultorio-consultation-form__field consultorio-followup-fields__date">
+                <span>Fecha y hora</span>
+                <input id="patientFollowupDateInput" name="followup_date" type="datetime-local" />
+              </label>
+
+              <label class="consultorio-consultation-form__field">
+                <span>Tipo de seguimiento</span>
+                <select id="patientFollowupTypeSelect" name="followup_type">
+                  <option value="">Seleccione una opci&oacute;n</option>
+                  <option value="Control">Control</option>
+                  <option value="Evolucion">Evoluci&oacute;n</option>
+                  <option value="Posoperatorio">Posoperatorio</option>
+                  <option value="Hospitalario">Hospitalario</option>
+                  <option value="Telefonico">Telef&oacute;nico</option>
+                  <option value="Domiciliario">Domiciliario</option>
+                  <option value="Otro">Otro</option>
+                </select>
+              </label>
+
+              <label class="consultorio-consultation-form__field">
+                <span>Motivo</span>
+                <select id="patientFollowupReasonSelect" name="followup_reason">
+                  <option value="No especificado">No especificado</option>
+                  <option value="Valoracion clinica">Valoraci&oacute;n cl&iacute;nica</option>
+                  <option value="Control de tratamiento">Control de tratamiento</option>
+                  <option value="Revision de examenes">Revisi&oacute;n de ex&aacute;menes</option>
+                  <option value="Seguimiento posquirurgico">Seguimiento posquir&uacute;rgico</option>
+                  <option value="Alta y cierre">Alta y cierre</option>
+                  <option value="Otro">Otro</option>
+                </select>
+              </label>
+            </div>
+
+            <label class="full consultorio-consultation-form__field">
+              <span>Detalles del seguimiento</span>
+              <textarea
+                id="patientFollowupDetailsInput"
+                name="followup_details"
+                rows="5"
+                placeholder="Detalles del seguimiento"
+              ></textarea>
+            </label>
+
+            <label class="consultorio-consultation-form__field consultorio-followup-fields__next">
+              <span>Pr&oacute;ximo control</span>
+              <input id="patientFollowupNextControlInput" name="followup_next_control" type="date" />
+            </label>
+          </div>
+
           <div id="patientConsultationClinicalFields" class="consultorio-consultation-mode consultorio-consultation-mode--clinical">
-            <label class="consultorio-consultation-form__field">
+            <label class="consultorio-consultation-form__field consultorio-consultation-form__field--clinical-only">
               <span>Fecha consulta</span>
               <input name="consultation_at" type="datetime-local" required />
             </label>
-            <label class="consultorio-consultation-form__field">
+            <label class="consultorio-consultation-form__field consultorio-consultation-form__field--clinical-only">
               <span>Motivo</span>
               <select id="patientConsultationReasonSelect" name="title" required>
                 <option value="">Selecciona una opcion</option>
@@ -1868,33 +1919,36 @@
               </select>
             </label>
 
-            <label class="consultorio-consultation-form__field">
+            <label class="consultorio-consultation-form__field consultorio-consultation-form__field--clinical-only">
               <span>S: Subjetivo (Anamnesis)</span>
               <textarea name="subjective" rows="2" placeholder="Subjetivo: Motivo"></textarea>
             </label>
-            <label class="consultorio-consultation-form__field">
+            <label class="consultorio-consultation-form__field consultorio-consultation-form__field--clinical-only">
               <span>O: Objetivo (Detalles del examen)</span>
               <textarea name="objective" rows="2" placeholder="Objetivo: Detalles del examen, listado de problemas"></textarea>
             </label>
-            <label class="full consultorio-consultation-form__field consultorio-consultation-form__field--full">
+            <label class="full consultorio-consultation-form__field consultorio-consultation-form__field--full consultorio-consultation-form__field--clinical-only">
               <span>I: Interpretacion (Diagnostico presuntivo/final)</span>
               <textarea name="interpretation" rows="2" placeholder="Interpretacion: diagnostico presuntivo, diferencial y final"></textarea>
             </label>
 
-            <label class="consultorio-consultation-form__field">
+            <label class="consultorio-consultation-form__field consultorio-consultation-form__field--clinical-only">
               <span>P: Plan terapeutico</span>
               <textarea name="therapeutic_plan" rows="2" placeholder="Plan terapeutico y tratamiento"></textarea>
             </label>
-            <label class="consultorio-consultation-form__field">
+            <label class="consultorio-consultation-form__field consultorio-consultation-form__field--clinical-only">
               <span>P: Plan diagnostico</span>
               <textarea name="diagnostic_plan" rows="2" placeholder="Plan diagnostico"></textarea>
             </label>
 
-            <label class="consultorio-consultation-form__field">
+            <label class="consultorio-consultation-form__field consultorio-consultation-form__field--clinical-only">
               <span>Proximo control</span>
               <input name="next_control" type="date" />
             </label>
-            <div class="consultorio-consultation-form__field consultorio-consultation-form__attachments">
+            <div
+              id="patientConsultationAttachmentsField"
+              class="consultorio-consultation-form__field consultorio-consultation-form__attachments consultorio-consultation-form__attachments--shared"
+            >
               <span>Imagenes/Fotos/Adjuntos</span>
               <div class="consultorio-consultation-form__attachment-row">
                 <input
@@ -1911,13 +1965,13 @@
                 >
                   Adjuntar archivo
                 </button>
-                <span class="consultorio-consultation-form__attachment-hint">JPG, PNG o WEBP. Se mostrara como miniatura.</span>
+                <span id="patientConsultationAttachmentHint" class="consultorio-consultation-form__attachment-hint">JPG, PNG o WEBP. Se mostrara como miniatura.</span>
               </div>
               <div id="patientConsultationAttachmentsList" class="consultorio-consultation-attachments"></div>
               <textarea id="patientConsultationAttachmentsValue" name="attachments_summary" class="is-hidden"></textarea>
             </div>
 
-            <details class="consultorio-consultation-section full">
+            <details id="patientConsultationExamGeneralSection" class="consultorio-consultation-section full">
               <summary>Examen fisico general</summary>
               <div class="consultorio-consultation-exam-grid">
               <label class="consultorio-consultation-form__field">
@@ -2006,7 +2060,7 @@
               </label>
             </div>
           </details>
-          <details class="consultorio-consultation-section full">
+          <details id="patientConsultationExamSpecialSection" class="consultorio-consultation-section full">
             <summary>Examen fisico especial</summary>
             <div class="consultorio-consultation-exam-grid consultorio-consultation-exam-grid--special">
               <label class="consultorio-consultation-form__field">
@@ -2131,6 +2185,26 @@
               </label>
               </div>
             </details>
+          </div>
+
+          <div id="patientFollowupMessageFields" class="consultorio-followup-message is-hidden">
+            <div class="consultorio-followup-message__row">
+              <div class="consultorio-followup-message__label">
+                <span class="consultorio-followup-message__icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"></path>
+                    <path d="M8 9h8"></path>
+                    <path d="M8 13h5"></path>
+                  </svg>
+                </span>
+                <span>Mensaje al propietario</span>
+              </div>
+              <label class="consultorio-followup-message__toggle">
+                <span>Enviar notificaci&oacute;n</span>
+                <input id="patientFollowupNotifyOwnerInput" name="followup_notify_owner" type="checkbox" />
+                <span class="consultorio-followup-message__switch" aria-hidden="true"></span>
+              </label>
+            </div>
           </div>
 
           <div class="full consultorio-consultation-form__footer">

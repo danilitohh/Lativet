@@ -1322,7 +1322,18 @@ function cacheElements() {
     "patientConsultationModalBadge",
     "patientConsultationModalIcon",
     "patientConsultationForm",
+    "patientFollowupFields",
+    "patientFollowupDateInput",
+    "patientFollowupTypeSelect",
+    "patientFollowupReasonSelect",
+    "patientFollowupDetailsInput",
+    "patientFollowupNextControlInput",
+    "patientFollowupMessageFields",
+    "patientFollowupNotifyOwnerInput",
     "patientConsultationClinicalFields",
+    "patientConsultationAttachmentsField",
+    "patientConsultationExamGeneralSection",
+    "patientConsultationExamSpecialSection",
     "patientHospAmbFields",
     "patientHospAmbTypeSelect",
     "patientHospAmbRegisterTypeButton",
@@ -1398,6 +1409,7 @@ function cacheElements() {
     "patientConsultationRecordLabel",
     "patientConsultationAttachmentFileInput",
     "patientConsultationAttachmentFileButton",
+    "patientConsultationAttachmentHint",
     "patientConsultationAttachmentsList",
     "patientConsultationAttachmentsValue",
     "complianceNotes",
@@ -2586,6 +2598,10 @@ function isImagingConsultationType(consultationType) {
   return String(consultationType || "").trim() === "Imagen diagnostica";
 }
 
+function isFollowupConsultationType(consultationType) {
+  return String(consultationType || "").trim() === "Seguimiento";
+}
+
 function isConsultorioPatientsViewActive() {
   return getActiveSectionId() === "consultorio" && getSubsectionOption("consultorio")?.value === "patients";
 }
@@ -2950,6 +2966,51 @@ function parseConsultorioDewormingDetails(consultation) {
     dose: summary.dose || "",
     observations: summary.observations || genericDetails.subjective || "",
     nextControl: normalizeDateFieldValue(indications.nextControl || genericDetails.nextControl || ""),
+  };
+}
+
+function parseConsultorioFollowupDetails(consultation) {
+  const summary = parseConsultorioStructuredText(consultation?.summary || "", {
+    "tipo de seguimiento": "type",
+    motivo: "reason",
+    "detalles del seguimiento": "details",
+    "examen general": "examGeneral",
+  });
+  const indications = parseConsultorioStructuredText(consultation?.indications || "", {
+    "proximo control": "nextControl",
+  });
+  const genericDetails = parseConsultorioConsultationDetails(consultation);
+  let stored = null;
+  const rawReference = String(consultation?.document_reference || "").trim();
+  if (rawReference.startsWith("{")) {
+    try {
+      const parsed = JSON.parse(rawReference);
+      if (parsed?.kind === "followup") {
+        stored = parsed;
+      }
+    } catch (error) {
+      stored = null;
+    }
+  }
+  return {
+    followupDate: toInputDateTime(consultation?.consultation_at || new Date().toISOString()),
+    type: String(stored?.followupType || "").trim() || summary.type || "",
+    reason:
+      String(stored?.reason || "").trim() ||
+      summary.reason ||
+      String(consultation?.title || "").trim() ||
+      "No especificado",
+    details:
+      String(stored?.details || "").trim() ||
+      summary.details ||
+      genericDetails.objective ||
+      genericDetails.subjective ||
+      genericDetails.interpretation ||
+      "",
+    nextControl:
+      normalizeDateFieldValue(String(stored?.nextControl || "").trim()) ||
+      normalizeDateFieldValue(indications.nextControl || genericDetails.nextControl || ""),
+    notifyOwner: Boolean(stored?.notifyOwner),
   };
 }
 
@@ -3680,6 +3741,19 @@ function buildConsultorioDewormingIndications(payload) {
     ["Ultima desparasitacion", payload.deworming_last_date],
     ["Proximo control", payload.deworming_next_control],
   ]);
+}
+
+function buildConsultorioFollowupSummary(payload, examGeneralSummary = "") {
+  return buildConsultorioStructuredText([
+    ["Tipo de seguimiento", payload.followup_type],
+    ["Motivo", payload.followup_reason],
+    ["Detalles del seguimiento", payload.followup_details],
+    ["Examen general", examGeneralSummary],
+  ]);
+}
+
+function buildConsultorioFollowupIndications(payload) {
+  return buildConsultorioStructuredText([["Proximo control", payload.followup_next_control]]);
 }
 
 function buildConsultorioHospAmbSummary(payload) {
@@ -5246,24 +5320,15 @@ function buildConsultorioFollowupWorkspace(patient, profileConfig) {
       <div class="consultorio-followup-grid">
         ${entries
           .map((consultation) => {
-            const details = parseConsultorioConsultationDetails(consultation);
+            const followupDetails = parseConsultorioFollowupDetails(consultation);
             const attachments = parseConsultorioAttachments(consultation?.attachments_summary || "");
             const summary = truncate(
-              details.interpretation ||
-                details.objective ||
-                details.subjective ||
+              followupDetails.details ||
                 consultation?.summary ||
                 "Sin resumen registrado.",
               200
             );
-            const plan = truncate(
-              details.therapeuticPlan ||
-                details.diagnosticPlan ||
-                consultation?.indications ||
-                "",
-              180
-            );
-            const nextControl = normalizeDateFieldValue(details.nextControl || "");
+            const nextControl = normalizeDateFieldValue(followupDetails.nextControl || "");
             return `
               <article class="consultorio-followup-card">
                 <div class="consultorio-followup-card__header">
@@ -5272,7 +5337,11 @@ function buildConsultorioFollowupWorkspace(patient, profileConfig) {
                       formatDateTime(consultation?.consultation_at)
                     )}</span>
                     <h5>${escapeHtml(
-                      consultation?.title || consultation?.consultation_type || "Seguimiento"
+                      consultation?.title ||
+                        followupDetails.reason ||
+                        followupDetails.type ||
+                        consultation?.consultation_type ||
+                        "Seguimiento"
                     )}</h5>
                   </div>
                   <button
@@ -5285,9 +5354,9 @@ function buildConsultorioFollowupWorkspace(patient, profileConfig) {
                 </div>
                 <p class="consultorio-followup-card__summary">${escapeHtml(summary)}</p>
                 ${
-                  plan
-                    ? `<p class="consultorio-followup-card__meta"><strong>Plan:</strong> ${escapeHtml(
-                        plan
+                  followupDetails.type
+                    ? `<p class="consultorio-followup-card__meta"><strong>Tipo:</strong> ${escapeHtml(
+                        followupDetails.type
                       )}</p>`
                     : ""
                 }
@@ -7807,6 +7876,23 @@ function ensurePatientConsultationReasonOption(value) {
   }
 }
 
+function ensureConsultorioSelectOption(selectElement, value) {
+  if (!selectElement || !value) {
+    return;
+  }
+  const normalized = String(value).trim();
+  if (!normalized) {
+    return;
+  }
+  const exists = Array.from(selectElement.options).some((option) => option.value === normalized);
+  if (!exists) {
+    const dynamicOption = document.createElement("option");
+    dynamicOption.value = normalized;
+    dynamicOption.textContent = normalized;
+    selectElement.appendChild(dynamicOption);
+  }
+}
+
 const CONSULTORIO_IMAGE_ATTACHMENT_MAX_DIMENSION = 1280;
 const CONSULTORIO_IMAGE_ATTACHMENT_MAX_DATA_URL_LENGTH = 1_200_000;
 
@@ -9589,6 +9675,8 @@ function openPatientConsultationModal(consultation = null) {
     isLaboratoryConsultationType(defaultConsultationType) || profileConfig?.value === "laboratorio";
   const isImagingMode =
     isImagingConsultationType(defaultConsultationType) || profileConfig?.value === "imagenes";
+  const isFollowupMode =
+    isFollowupConsultationType(defaultConsultationType) || profileConfig?.value === "seguimiento";
   const isOrderMode =
     (defaultConsultationType === "Documento" && profileConfig?.value === "orders") ||
     false;
@@ -9605,6 +9693,8 @@ function openPatientConsultationModal(consultation = null) {
     ? "laboratory"
     : isImagingMode
     ? "imaging"
+    : isFollowupMode
+    ? "followup"
     : isVaccinationMode
     ? "vaccination"
     : isFormulaMode
@@ -9620,6 +9710,7 @@ function openPatientConsultationModal(consultation = null) {
   const hospAmbDetails = parseConsultorioHospAmbDetails(consultation);
   const laboratoryDetails = parseConsultorioLaboratoryDetails(consultation);
   const imagingDetails = parseConsultorioImagingDetails(consultation);
+  const followupDetails = parseConsultorioFollowupDetails(consultation);
   const orderDetails = parseConsultorioOrderDetails(consultation);
   form.elements.id.value = consultation?.id || "";
   form.elements.record_id.value = record?.id || "";
@@ -9729,6 +9820,27 @@ function openPatientConsultationModal(consultation = null) {
   if (isLaboratoryMode || isImagingMode) {
     loadConsultorioLaboratoryUsersIfNeeded();
   }
+  if (form.elements.followup_date) {
+    form.elements.followup_date.value =
+      followupDetails.followupDate || toInputDateTime(new Date().toISOString());
+  }
+  if (form.elements.followup_type) {
+    ensureConsultorioSelectOption(form.elements.followup_type, followupDetails.type);
+    form.elements.followup_type.value = followupDetails.type || "";
+  }
+  if (form.elements.followup_reason) {
+    ensureConsultorioSelectOption(form.elements.followup_reason, followupDetails.reason);
+    form.elements.followup_reason.value = followupDetails.reason || "No especificado";
+  }
+  if (form.elements.followup_details) {
+    form.elements.followup_details.value = followupDetails.details || "";
+  }
+  if (form.elements.followup_next_control) {
+    form.elements.followup_next_control.value = followupDetails.nextControl || "";
+  }
+  if (form.elements.followup_notify_owner) {
+    form.elements.followup_notify_owner.checked = Boolean(followupDetails.notifyOwner);
+  }
   if (form.elements.vaccination_date) {
     form.elements.vaccination_date.value =
       vaccinationDetails.vaccinationDate || normalizeDateFieldValue(new Date().toISOString());
@@ -9831,6 +9943,14 @@ function openPatientConsultationModal(consultation = null) {
     elements.patientConsultationModalBadge.textContent = badgeText;
     elements.patientConsultationModalBadge.classList.toggle("is-hidden", !badgeText);
   }
+  if (elements.patientConsultationAttachmentFileButton) {
+    elements.patientConsultationAttachmentFileButton.textContent = isFollowupMode
+      ? "+ Agregar"
+      : "Adjuntar archivo";
+  }
+  if (elements.patientConsultationAttachmentHint) {
+    elements.patientConsultationAttachmentHint.classList.toggle("is-hidden", isFollowupMode);
+  }
   if (elements.patientHospAmbFields) {
     elements.patientHospAmbFields.classList.toggle("is-hidden", !isHospAmbMode);
   }
@@ -9855,7 +9975,14 @@ function openPatientConsultationModal(consultation = null) {
   if (elements.patientImagingFields) {
     elements.patientImagingFields.classList.toggle("is-hidden", !isImagingMode);
   }
+  if (elements.patientFollowupFields) {
+    elements.patientFollowupFields.classList.toggle("is-hidden", !isFollowupMode);
+  }
   if (elements.patientConsultationClinicalFields) {
+    elements.patientConsultationClinicalFields.classList.toggle(
+      "consultorio-consultation-mode--followup",
+      isFollowupMode
+    );
     elements.patientConsultationClinicalFields.classList.toggle(
       "is-hidden",
       isVaccinationMode ||
@@ -9867,6 +9994,9 @@ function openPatientConsultationModal(consultation = null) {
         isImagingMode ||
         isOrderMode
     );
+  }
+  if (elements.patientFollowupMessageFields) {
+    elements.patientFollowupMessageFields.classList.toggle("is-hidden", !isFollowupMode);
   }
   const modalCard = elements.patientConsultationModal.querySelector(".modal-card");
   const defaultModalIconSvg = `
@@ -9919,16 +10049,24 @@ function openPatientConsultationModal(consultation = null) {
       <path d="M12 9v10"></path>
     </svg>
   `;
+  const followupModalIconSvg = `
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 21s-6.5-4.35-6.5-10A3.5 3.5 0 0 1 9 7.5c1.28 0 2.42.69 3 1.72A3.34 3.34 0 0 1 15 7.5a3.5 3.5 0 0 1 3.5 3.5c0 5.65-6.5 10-6.5 10Z"></path>
+      <path d="M8 13h2l1.1-2 1.8 4 1.1-2H16"></path>
+    </svg>
+  `;
   elements.patientConsultationModal.classList.toggle("modal-shell--hospamb", isHospAmbMode);
   elements.patientConsultationModal.classList.toggle("modal-shell--procedure", isProcedureMode);
   elements.patientConsultationModal.classList.toggle("modal-shell--orders", isOrderMode);
   elements.patientConsultationModal.classList.toggle("modal-shell--laboratory", isLaboratoryMode);
   elements.patientConsultationModal.classList.toggle("modal-shell--imaging", isImagingMode);
+  elements.patientConsultationModal.classList.toggle("modal-shell--followup", isFollowupMode);
   modalCard?.classList.toggle("consultorio-consultation-modal--hospamb", isHospAmbMode);
   modalCard?.classList.toggle("consultorio-consultation-modal--procedure", isProcedureMode);
   modalCard?.classList.toggle("consultorio-consultation-modal--orders", isOrderMode);
   modalCard?.classList.toggle("consultorio-consultation-modal--laboratory", isLaboratoryMode);
   modalCard?.classList.toggle("consultorio-consultation-modal--imaging", isImagingMode);
+  modalCard?.classList.toggle("consultorio-consultation-modal--followup", isFollowupMode);
   modalCard?.classList.toggle("consultorio-consultation-modal--vaccination", isVaccinationMode);
   modalCard?.classList.toggle("consultorio-consultation-modal--formula", isFormulaMode);
   modalCard?.classList.toggle("consultorio-consultation-modal--deworming", isDewormingMode);
@@ -9937,6 +10075,8 @@ function openPatientConsultationModal(consultation = null) {
       ? orderModalIconSvg
       : isImagingMode
       ? imagingModalIconSvg
+      : isFollowupMode
+      ? followupModalIconSvg
       : isLaboratoryMode
       ? laboratoryModalIconSvg
       : isProcedureMode
@@ -9956,6 +10096,7 @@ function openPatientConsultationModal(consultation = null) {
       isProcedureMode ||
       isLaboratoryMode ||
       isImagingMode ||
+      isFollowupMode ||
       isOrderMode
         ? ""
         : record
@@ -9970,6 +10111,7 @@ function openPatientConsultationModal(consultation = null) {
         isProcedureMode ||
         isLaboratoryMode ||
         isImagingMode ||
+        isFollowupMode ||
         isOrderMode
     );
   }
@@ -9984,6 +10126,7 @@ function openPatientConsultationModal(consultation = null) {
         isProcedureMode ||
         isLaboratoryMode ||
         isImagingMode ||
+        isFollowupMode ||
         isOrderMode
     );
   elements.patientConsultationModal.classList.remove("is-hidden");
@@ -10004,6 +10147,8 @@ function openPatientConsultationModal(consultation = null) {
     form.elements.laboratory_date.focus();
   } else if (isImagingMode && form.elements.imaging_date) {
     form.elements.imaging_date.focus();
+  } else if (isFollowupMode && form.elements.followup_date) {
+    form.elements.followup_date.focus();
   } else if (isOrderMode && form.elements.order_date) {
     form.elements.order_date.focus();
   } else {
@@ -10687,6 +10832,7 @@ async function handlePatientConsultationSubmit(event) {
   const isOrderMode = form.dataset.consultationMode === "orders";
   const isLaboratoryMode = form.dataset.consultationMode === "laboratory";
   const isImagingMode = form.dataset.consultationMode === "imaging";
+  const isFollowupMode = form.dataset.consultationMode === "followup";
   payload.consultation_type =
     payload.consultation_type ||
     getConsultorioProfileViewConfig()?.formConsultationType ||
@@ -10815,6 +10961,37 @@ async function handlePatientConsultationSubmit(event) {
       studyType: String(payload.imaging_study_type || "").trim(),
       observations: String(payload.imaging_observations || "").trim(),
       professional: String(payload.imaging_professional || "").trim(),
+    });
+  } else if (isFollowupMode) {
+    if (!payload.followup_date) {
+      throw new Error("Selecciona la fecha y hora del seguimiento.");
+    }
+    if (!String(payload.followup_type || "").trim()) {
+      throw new Error("Selecciona el tipo de seguimiento.");
+    }
+    if (!String(payload.followup_details || "").trim()) {
+      throw new Error("Escribe los detalles del seguimiento.");
+    }
+    payload.consultation_type = "Seguimiento";
+    payload.followup_reason = String(payload.followup_reason || "").trim() || "No especificado";
+    payload.title =
+      payload.followup_reason && payload.followup_reason !== "No especificado"
+        ? payload.followup_reason
+        : String(payload.followup_type || "").trim();
+    payload.consultation_at = payload.followup_date;
+    payload.next_control = payload.followup_next_control || "";
+    payload.summary = buildConsultorioFollowupSummary(payload, examGeneralSummary);
+    payload.indications = buildConsultorioFollowupIndications(payload);
+    payload.attachments_summary = serializeConsultorioAttachments(
+      getPatientConsultationAttachments()
+    );
+    payload.document_reference = JSON.stringify({
+      kind: "followup",
+      followupType: String(payload.followup_type || "").trim(),
+      reason: payload.followup_reason,
+      details: String(payload.followup_details || "").trim(),
+      nextControl: String(payload.followup_next_control || "").trim(),
+      notifyOwner: Boolean(payload.followup_notify_owner),
     });
   } else if (isHospAmbConsultationType(payload.consultation_type)) {
     const selectedType = String(payload.hospamb_type || payload.consultation_type || "").trim();
@@ -10991,6 +11168,15 @@ async function handlePatientConsultationSubmit(event) {
   let statusMessage = payload.id
     ? `${entityLabel} actualizada.`
     : `${entityLabel} registrada.`;
+  if (isFollowupMode && payload.followup_notify_owner) {
+    const owner = getConsultorioOwner();
+    const ownerLabel = owner?.full_name || patient?.owner_name || "el propietario";
+    addNotification(
+      `Seguimiento de ${patient?.name || "la mascota"} listo para notificar a ${ownerLabel}.`,
+      "info"
+    );
+    statusMessage += " Se genero una notificacion para el propietario.";
+  }
   const reminder = consultation?.control_reminder;
   if (reminder?.scheduled) {
     const reminderLabel =

@@ -3087,7 +3087,8 @@ button:active {
 
 .consultorio-consultation-modal--orders,
 .consultorio-consultation-modal--laboratory,
-.consultorio-consultation-modal--imaging {
+.consultorio-consultation-modal--imaging,
+.consultorio-consultation-modal--followup {
   width: min(820px, 100%);
   max-height: min(88vh, 760px);
   border-radius: 6px;
@@ -3098,18 +3099,21 @@ button:active {
 
 #patientConsultationModal.modal-shell--orders,
 #patientConsultationModal.modal-shell--laboratory,
-#patientConsultationModal.modal-shell--imaging {
+#patientConsultationModal.modal-shell--imaging,
+#patientConsultationModal.modal-shell--followup {
   padding: 22px 24px;
 }
 
-#patientConsultationModal.modal-shell--imaging .modal-backdrop {
+#patientConsultationModal.modal-shell--imaging .modal-backdrop,
+#patientConsultationModal.modal-shell--followup .modal-backdrop {
   background: rgba(15, 24, 39, 0.42);
   backdrop-filter: blur(4px);
 }
 
 .consultorio-consultation-modal--orders .consultorio-consultation-modal__header,
 .consultorio-consultation-modal--laboratory .consultorio-consultation-modal__header,
-.consultorio-consultation-modal--imaging .consultorio-consultation-modal__header {
+.consultorio-consultation-modal--imaging .consultorio-consultation-modal__header,
+.consultorio-consultation-modal--followup .consultorio-consultation-modal__header {
   margin-bottom: 0;
   padding: 12px 14px 11px;
   border-bottom: 1px solid #e4e8f4;
@@ -3117,13 +3121,15 @@ button:active {
 
 .consultorio-consultation-modal--orders .consultorio-consultation-modal__heading,
 .consultorio-consultation-modal--laboratory .consultorio-consultation-modal__heading,
-.consultorio-consultation-modal--imaging .consultorio-consultation-modal__heading {
+.consultorio-consultation-modal--imaging .consultorio-consultation-modal__heading,
+.consultorio-consultation-modal--followup .consultorio-consultation-modal__heading {
   gap: 8px;
 }
 
 .consultorio-consultation-modal--orders .consultorio-consultation-modal__heading-icon,
 .consultorio-consultation-modal--laboratory .consultorio-consultation-modal__heading-icon,
-.consultorio-consultation-modal--imaging .consultorio-consultation-modal__heading-icon {
+.consultorio-consultation-modal--imaging .consultorio-consultation-modal__heading-icon,
+.consultorio-consultation-modal--followup .consultorio-consultation-modal__heading-icon {
   width: 16px;
   height: 16px;
   color: #5c6cf0;
@@ -3131,14 +3137,16 @@ button:active {
 
 .consultorio-consultation-modal--orders .consultorio-consultation-modal__title,
 .consultorio-consultation-modal--laboratory .consultorio-consultation-modal__title,
-.consultorio-consultation-modal--imaging .consultorio-consultation-modal__title {
+.consultorio-consultation-modal--imaging .consultorio-consultation-modal__title,
+.consultorio-consultation-modal--followup .consultorio-consultation-modal__title {
   font-size: 0.9rem;
   color: #4a4f69;
 }
 
 .consultorio-consultation-modal--orders .consultorio-consultation-modal__close,
 .consultorio-consultation-modal--laboratory .consultorio-consultation-modal__close,
-.consultorio-consultation-modal--imaging .consultorio-consultation-modal__close {
+.consultorio-consultation-modal--imaging .consultorio-consultation-modal__close,
+.consultorio-consultation-modal--followup .consultorio-consultation-modal__close {
   width: 28px;
   height: 28px;
   color: #c4c8d5;
@@ -3147,20 +3155,23 @@ button:active {
 
 .consultorio-consultation-modal--orders .consultorio-consultation-form,
 .consultorio-consultation-modal--laboratory .consultorio-consultation-form,
-.consultorio-consultation-modal--imaging .consultorio-consultation-form {
+.consultorio-consultation-modal--imaging .consultorio-consultation-form,
+.consultorio-consultation-modal--followup .consultorio-consultation-form {
   padding: 14px 14px 16px;
   gap: 14px;
 }
 
 .consultorio-consultation-modal--orders .consultorio-consultation-form__field,
 .consultorio-consultation-modal--laboratory .consultorio-consultation-form__field,
-.consultorio-consultation-modal--imaging .consultorio-consultation-form__field {
+.consultorio-consultation-modal--imaging .consultorio-consultation-form__field,
+.consultorio-consultation-modal--followup .consultorio-consultation-form__field {
   gap: 6px;
 }
 
 .consultorio-consultation-modal--orders .consultorio-consultation-form__field > span,
 .consultorio-consultation-modal--laboratory .consultorio-consultation-form__field > span,
-.consultorio-consultation-modal--imaging .consultorio-consultation-form__field > span {
+.consultorio-consultation-modal--imaging .consultorio-consultation-form__field > span,
+.consultorio-consultation-modal--followup .consultorio-consultation-form__field > span {
   font-size: 0.7rem;
   color: #6671b2;
   font-weight: 500;
@@ -3176,7 +3187,10 @@ button:active {
 .consultorio-consultation-modal--laboratory .consultorio-consultation-form textarea,
 .consultorio-consultation-modal--imaging .consultorio-consultation-form input,
 .consultorio-consultation-modal--imaging .consultorio-consultation-form select,
-.consultorio-consultation-modal--imaging .consultorio-consultation-form textarea {
+.consultorio-consultation-modal--imaging .consultorio-consultation-form textarea,
+.consultorio-consultation-modal--followup .consultorio-consultation-form input,
+.consultorio-consultation-modal--followup .consultorio-consultation-form select,
+.consultorio-consultation-modal--followup .consultorio-consultation-form textarea {
   border-color: #d9dff0;
   border-radius: 4px;
   padding: 8px 10px;
@@ -3194,9 +3208,15 @@ button:active {
   min-height: 34px;
 }
 
+.consultorio-consultation-modal--followup .consultorio-consultation-form input,
+.consultorio-consultation-modal--followup .consultorio-consultation-form select {
+  min-height: 34px;
+}
+
 .consultorio-consultation-modal--orders .consultorio-consultation-form textarea,
 .consultorio-consultation-modal--laboratory .consultorio-consultation-form textarea,
-.consultorio-consultation-modal--imaging .consultorio-consultation-form textarea {
+.consultorio-consultation-modal--imaging .consultorio-consultation-form textarea,
+.consultorio-consultation-modal--followup .consultorio-consultation-form textarea {
   min-height: 72px;
   resize: vertical;
 }
@@ -3204,7 +3224,8 @@ button:active {
 .consultorio-consultation-modal--orders #patientOrderReasonInput,
 .consultorio-consultation-modal--laboratory #patientLaboratoryDiagnosisInput,
 .consultorio-consultation-modal--imaging #patientImagingStudyTypeInput,
-.consultorio-consultation-modal--imaging #patientImagingObservationsInput {
+.consultorio-consultation-modal--imaging #patientImagingObservationsInput,
+.consultorio-consultation-modal--followup #patientFollowupDetailsInput {
   min-height: 72px;
 }
 
@@ -3213,7 +3234,9 @@ button:active {
 .consultorio-consultation-modal--laboratory .consultorio-consultation-form input::placeholder,
 .consultorio-consultation-modal--laboratory .consultorio-consultation-form textarea::placeholder,
 .consultorio-consultation-modal--imaging .consultorio-consultation-form input::placeholder,
-.consultorio-consultation-modal--imaging .consultorio-consultation-form textarea::placeholder {
+.consultorio-consultation-modal--imaging .consultorio-consultation-form textarea::placeholder,
+.consultorio-consultation-modal--followup .consultorio-consultation-form input::placeholder,
+.consultorio-consultation-modal--followup .consultorio-consultation-form textarea::placeholder {
   color: #7c8296;
 }
 
@@ -3225,7 +3248,10 @@ button:active {
 .consultorio-consultation-modal--laboratory .consultorio-consultation-form textarea:focus,
 .consultorio-consultation-modal--imaging .consultorio-consultation-form input:focus,
 .consultorio-consultation-modal--imaging .consultorio-consultation-form select:focus,
-.consultorio-consultation-modal--imaging .consultorio-consultation-form textarea:focus {
+.consultorio-consultation-modal--imaging .consultorio-consultation-form textarea:focus,
+.consultorio-consultation-modal--followup .consultorio-consultation-form input:focus,
+.consultorio-consultation-modal--followup .consultorio-consultation-form select:focus,
+.consultorio-consultation-modal--followup .consultorio-consultation-form textarea:focus {
   outline: none;
   border-color: rgba(90, 103, 232, 0.36);
   box-shadow: 0 0 0 2px rgba(90, 103, 232, 0.08);
@@ -3233,7 +3259,8 @@ button:active {
 
 .consultorio-consultation-modal--orders .consultorio-consultation-form__footer,
 .consultorio-consultation-modal--laboratory .consultorio-consultation-form__footer,
-.consultorio-consultation-modal--imaging .consultorio-consultation-form__footer {
+.consultorio-consultation-modal--imaging .consultorio-consultation-form__footer,
+.consultorio-consultation-modal--followup .consultorio-consultation-form__footer {
   justify-content: flex-end;
   gap: 8px;
   padding-top: 12px;
@@ -3245,7 +3272,9 @@ button:active {
 .consultorio-consultation-modal--laboratory .consultorio-consultation-form__cancel,
 .consultorio-consultation-modal--laboratory .consultorio-consultation-form__submit,
 .consultorio-consultation-modal--imaging .consultorio-consultation-form__cancel,
-.consultorio-consultation-modal--imaging .consultorio-consultation-form__submit {
+.consultorio-consultation-modal--imaging .consultorio-consultation-form__submit,
+.consultorio-consultation-modal--followup .consultorio-consultation-form__cancel,
+.consultorio-consultation-modal--followup .consultorio-consultation-form__submit {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -3258,7 +3287,8 @@ button:active {
 
 .consultorio-consultation-modal--orders .consultorio-consultation-form__cancel,
 .consultorio-consultation-modal--laboratory .consultorio-consultation-form__cancel,
-.consultorio-consultation-modal--imaging .consultorio-consultation-form__cancel {
+.consultorio-consultation-modal--imaging .consultorio-consultation-form__cancel,
+.consultorio-consultation-modal--followup .consultorio-consultation-form__cancel {
   border: 1px solid #d9dff0;
   background: #fff;
   color: #5b6478;
@@ -3266,7 +3296,8 @@ button:active {
 
 .consultorio-consultation-modal--orders .consultorio-consultation-form__submit,
 .consultorio-consultation-modal--laboratory .consultorio-consultation-form__submit,
-.consultorio-consultation-modal--imaging .consultorio-consultation-form__submit {
+.consultorio-consultation-modal--imaging .consultorio-consultation-form__submit,
+.consultorio-consultation-modal--followup .consultorio-consultation-form__submit {
   border: 1px solid #5a67e8;
   background: #5a67e8;
   color: #fff;
@@ -3274,7 +3305,8 @@ button:active {
 
 .consultorio-consultation-modal--orders .consultorio-consultation-form__submit-icon,
 .consultorio-consultation-modal--laboratory .consultorio-consultation-form__submit-icon,
-.consultorio-consultation-modal--imaging .consultorio-consultation-form__submit-icon {
+.consultorio-consultation-modal--imaging .consultorio-consultation-form__submit-icon,
+.consultorio-consultation-modal--followup .consultorio-consultation-form__submit-icon {
   width: 12px;
   height: 12px;
   display: inline-flex;
@@ -3285,10 +3317,135 @@ button:active {
 
 .consultorio-consultation-modal--orders .consultorio-consultation-form__submit-icon svg,
 .consultorio-consultation-modal--laboratory .consultorio-consultation-form__submit-icon svg,
-.consultorio-consultation-modal--imaging .consultorio-consultation-form__submit-icon svg {
+.consultorio-consultation-modal--imaging .consultorio-consultation-form__submit-icon svg,
+.consultorio-consultation-modal--followup .consultorio-consultation-form__submit-icon svg {
   width: 100%;
   height: 100%;
   display: block;
+}
+
+.consultorio-followup-fields {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 14px;
+}
+
+.consultorio-followup-fields__top {
+  display: grid;
+  grid-template-columns: minmax(190px, 0.95fr) minmax(180px, 1fr) minmax(180px, 1fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.consultorio-followup-fields__date,
+.consultorio-followup-fields__next {
+  max-width: 190px;
+}
+
+.consultorio-followup-message {
+  grid-column: 1 / -1;
+  padding: 10px 12px;
+  border: 1px solid #edf1f8;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.consultorio-followup-message__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.consultorio-followup-message__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #5667eb;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.consultorio-followup-message__icon {
+  width: 14px;
+  height: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #6b769d;
+}
+
+.consultorio-followup-message__icon svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.consultorio-followup-message__toggle {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: #8b93b0;
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+
+.consultorio-followup-message__toggle input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.consultorio-followup-message__switch {
+  position: relative;
+  width: 34px;
+  height: 20px;
+  border-radius: 999px;
+  background: #e3e7f3;
+  transition: background-color 0.18s ease;
+}
+
+.consultorio-followup-message__switch::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(16, 24, 40, 0.18);
+  transition: transform 0.18s ease;
+}
+
+.consultorio-followup-message__toggle input:checked + .consultorio-followup-message__switch {
+  background: #7f8cff;
+}
+
+.consultorio-followup-message__toggle input:checked + .consultorio-followup-message__switch::after {
+  transform: translateX(14px);
+}
+
+.consultorio-consultation-mode--followup {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 14px;
+}
+
+.consultorio-consultation-mode--followup .consultorio-consultation-form__field--clinical-only,
+.consultorio-consultation-mode--followup #patientConsultationExamSpecialSection {
+  display: none;
+}
+
+.consultorio-consultation-modal--followup #patientConsultationAttachmentsField,
+.consultorio-consultation-modal--followup #patientConsultationExamGeneralSection {
+  grid-column: 1 / -1;
+}
+
+.consultorio-consultation-modal--followup .consultorio-consultation-form__attachment-row {
+  align-items: center;
 }
 
 .consultorio-imaging-fields {
@@ -5380,7 +5537,9 @@ body.auth-locked .page-shell > :not(#loginModal) {
   .consultorio-consultation-modal--laboratory .consultorio-consultation-modal__header,
   .consultorio-consultation-modal--laboratory .consultorio-consultation-form,
   .consultorio-consultation-modal--imaging .consultorio-consultation-modal__header,
-  .consultorio-consultation-modal--imaging .consultorio-consultation-form {
+  .consultorio-consultation-modal--imaging .consultorio-consultation-form,
+  .consultorio-consultation-modal--followup .consultorio-consultation-modal__header,
+  .consultorio-consultation-modal--followup .consultorio-consultation-form {
     padding-inline: 12px;
   }
 
@@ -5404,11 +5563,16 @@ body.auth-locked .page-shell > :not(#loginModal) {
     padding: 16px;
   }
 
+  #patientConsultationModal.modal-shell--followup {
+    padding: 16px;
+  }
+
   .consultorio-order-fields__top,
   .consultorio-order-item__grid,
   .consultorio-laboratory-item__grid,
   .consultorio-imaging-fields__top,
-  .consultorio-imaging-fields__pair {
+  .consultorio-imaging-fields__pair,
+  .consultorio-followup-fields__top {
     grid-template-columns: 1fr;
   }
 
