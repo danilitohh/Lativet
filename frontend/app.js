@@ -2515,6 +2515,7 @@ function isConsultorioWorkspaceOnlyView(profileConfig) {
     "cirugia",
     "orders",
     "laboratorio",
+    "seguimiento",
   ].includes(profileConfig?.value || "");
 }
 
@@ -5238,6 +5239,126 @@ function buildConsultorioImagingWorkspace(patient, profileConfig) {
   `;
 }
 
+function buildConsultorioFollowupWorkspace(patient, profileConfig) {
+  const entries = getConsultorioScopedConsultations(profileConfig?.consultationTypes || null);
+  const content = entries.length
+    ? `
+      <div class="consultorio-followup-grid">
+        ${entries
+          .map((consultation) => {
+            const details = parseConsultorioConsultationDetails(consultation);
+            const attachments = parseConsultorioAttachments(consultation?.attachments_summary || "");
+            const summary = truncate(
+              details.interpretation ||
+                details.objective ||
+                details.subjective ||
+                consultation?.summary ||
+                "Sin resumen registrado.",
+              200
+            );
+            const plan = truncate(
+              details.therapeuticPlan ||
+                details.diagnosticPlan ||
+                consultation?.indications ||
+                "",
+              180
+            );
+            const nextControl = normalizeDateFieldValue(details.nextControl || "");
+            return `
+              <article class="consultorio-followup-card">
+                <div class="consultorio-followup-card__header">
+                  <div>
+                    <span class="consultorio-followup-card__date">${escapeHtml(
+                      formatDateTime(consultation?.consultation_at)
+                    )}</span>
+                    <h5>${escapeHtml(
+                      consultation?.title || consultation?.consultation_type || "Seguimiento"
+                    )}</h5>
+                  </div>
+                  <button
+                    class="ghost-button consultorio-followup-card__action"
+                    type="button"
+                    data-edit-patient-consultation="${escapeHtml(consultation.id)}"
+                  >
+                    Editar
+                  </button>
+                </div>
+                <p class="consultorio-followup-card__summary">${escapeHtml(summary)}</p>
+                ${
+                  plan
+                    ? `<p class="consultorio-followup-card__meta"><strong>Plan:</strong> ${escapeHtml(
+                        plan
+                      )}</p>`
+                    : ""
+                }
+                ${
+                  nextControl
+                    ? `<p class="consultorio-followup-card__meta"><strong>Proximo control:</strong> ${escapeHtml(
+                        nextControl
+                      )}</p>`
+                    : ""
+                }
+                ${
+                  attachments.length
+                    ? `
+                      <div class="consultorio-followup-card__gallery">
+                        ${buildConsultorioAttachmentPreviewMarkup(attachments)}
+                      </div>
+                    `
+                    : `<p class="consultorio-followup-card__meta">Sin adjuntos cargados.</p>`
+                }
+                <footer class="consultorio-followup-card__footer">
+                  <span>${escapeHtml(consultation?.professional_name || "Sin usuario")}</span>
+                </footer>
+              </article>
+            `;
+          })
+          .join("")}
+      </div>
+    `
+    : `
+      <div class="consultorio-module-empty consultorio-module-empty--followup">
+        <span class="consultorio-module-empty__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 21s-6.5-4.35-6.5-10A3.5 3.5 0 0 1 9 7.5c1.28 0 2.42.69 3 1.72A3.34 3.34 0 0 1 15 7.5a3.5 3.5 0 0 1 3.5 3.5c0 5.65-6.5 10-6.5 10Z"></path>
+            <path d="M8 13h2l1.1-2 1.8 4 1.1-2H16"></path>
+          </svg>
+        </span>
+        <strong>No hay registros de seguimiento</strong>
+      </div>
+    `;
+  return `
+    <article class="consultorio-profile-shell consultorio-followup-shell">
+      <div class="consultorio-profile-table-toolbar consultorio-followup-shell__toolbar">
+        <div class="consultorio-profile-toolbar__group">
+          <span class="consultorio-profile-toolbar__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 21s-6.5-4.35-6.5-10A3.5 3.5 0 0 1 9 7.5c1.28 0 2.42.69 3 1.72A3.34 3.34 0 0 1 15 7.5a3.5 3.5 0 0 1 3.5 3.5c0 5.65-6.5 10-6.5 10Z"></path>
+              <path d="M8 13h2l1.1-2 1.8 4 1.1-2H16"></path>
+            </svg>
+          </span>
+          <div class="consultorio-profile-toolbar__title">
+            <h4>Seguimiento de <span class="consultorio-profile-toolbar__accent">${escapeHtml(
+              patient?.name || "Paciente"
+            )}</span></h4>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button
+            class="primary-button consultorio-followup-shell__button"
+            type="button"
+            data-open-patient-consultation-modal="true"
+            data-consultation-profile-view="seguimiento"
+          >
+            + Registrar seguimiento
+          </button>
+        </div>
+      </div>
+      ${content}
+    </article>
+  `;
+}
+
 function renderConsultorioPatientProfile() {
   if (!elements.consultorioPatientProfilePanel) {
     return;
@@ -5367,6 +5488,8 @@ function renderConsultorioPatientProfile() {
         ? buildConsultorioLaboratoryWorkspace(patient, profileConfig)
         : profileConfig?.value === "imagenes"
         ? buildConsultorioImagingWorkspace(patient, profileConfig)
+        : profileConfig?.value === "seguimiento"
+        ? buildConsultorioFollowupWorkspace(patient, profileConfig)
         : buildConsultorioProfileTimelineMarkup(profileConfig, timelineItems);
     elements.consultorioPatientProfileSummary.innerHTML = `
       <div class="consultorio-profile-workspace">

@@ -1460,6 +1460,7 @@ button:active {
 .consultorio-hospamb-shell,
 .consultorio-procedures-shell,
 .consultorio-laboratory-shell,
+.consultorio-followup-shell,
 .consultorio-orders-shell {
   min-height: 340px;
 }
@@ -1550,6 +1551,26 @@ button:active {
 }
 
 .consultorio-module-empty--imaging strong {
+  font-family: var(--font-head);
+  font-size: 1.22rem;
+  font-weight: 600;
+  color: #6573a9;
+}
+
+.consultorio-module-empty--followup {
+  min-height: 320px;
+  margin-top: 0;
+  border: 0;
+  background: transparent;
+}
+
+.consultorio-module-empty--followup .consultorio-module-empty__icon {
+  width: 58px;
+  height: 58px;
+  color: #6673ab;
+}
+
+.consultorio-module-empty--followup strong {
   font-family: var(--font-head);
   font-size: 1.22rem;
   font-weight: 600;
@@ -1730,6 +1751,94 @@ button:active {
 }
 
 .consultorio-imaging-card__footer {
+  padding-top: 2px;
+  border-top: 1px solid #eef2f8;
+}
+
+.consultorio-followup-shell {
+  min-height: 340px;
+  padding: 0;
+  border: 1px solid #e6ebf5;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: none;
+}
+
+.consultorio-followup-shell__toolbar {
+  padding: 12px 14px 10px;
+  border-bottom: 1px solid #edf1f8;
+}
+
+.consultorio-followup-shell__button {
+  padding: 5px 10px;
+  border-radius: 4px;
+  background: linear-gradient(135deg, #24c9a3, #18b18d);
+  box-shadow: none;
+}
+
+.consultorio-followup-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px;
+  padding: 14px;
+}
+
+.consultorio-followup-card {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid #e6ebf5;
+  border-radius: 12px;
+  background: #fbfdff;
+}
+
+.consultorio-followup-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.consultorio-followup-card__date,
+.consultorio-followup-card__meta,
+.consultorio-followup-card__footer {
+  color: #6e7b98;
+  font-size: 0.74rem;
+}
+
+.consultorio-followup-card__header h5 {
+  margin: 4px 0 0;
+  color: #263655;
+  font-family: var(--font-head);
+  font-size: 0.92rem;
+}
+
+.consultorio-followup-card__action {
+  padding: 5px 9px;
+  border-radius: 6px;
+  box-shadow: none;
+}
+
+.consultorio-followup-card__summary,
+.consultorio-followup-card__meta {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.consultorio-followup-card__summary {
+  color: #42516e;
+  font-size: 0.8rem;
+}
+
+.consultorio-followup-card__meta strong {
+  color: #43516d;
+}
+
+.consultorio-followup-card__gallery .consultorio-attachment-gallery {
+  justify-content: flex-start;
+}
+
+.consultorio-followup-card__footer {
   padding-top: 2px;
   border-top: 1px solid #eef2f8;
 }
