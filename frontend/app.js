@@ -1376,6 +1376,19 @@ function cacheElements() {
     "patientLaboratoryItemsList",
     "patientLaboratoryAddButton",
     "patientLaboratoryDiagnosisInput",
+    "patientImagingFields",
+    "patientImagingDateInput",
+    "patientImagingAidSelect",
+    "patientImagingProfessionalSelect",
+    "patientImagingAddUserButton",
+    "patientImagingSignsInput",
+    "patientImagingDiagnosisInput",
+    "patientImagingStudyTypeInput",
+    "patientImagingAttachmentFileInput",
+    "patientImagingAttachmentFileButton",
+    "patientImagingAttachmentsList",
+    "patientImagingAttachmentsValue",
+    "patientImagingObservationsInput",
     "patientOrderFields",
     "patientOrderDateInput",
     "patientOrderItemsList",
@@ -2566,6 +2579,10 @@ function isProcedureConsultationType(consultationType) {
 
 function isLaboratoryConsultationType(consultationType) {
   return String(consultationType || "").trim() === "Examen de laboratorio";
+}
+
+function isImagingConsultationType(consultationType) {
+  return String(consultationType || "").trim() === "Imagen diagnostica";
 }
 
 function isConsultorioPatientsViewActive() {
@@ -5034,21 +5051,91 @@ function buildConsultorioLaboratoryWorkspace(patient, profileConfig) {
 
 function parseConsultorioImagingDetails(consultation) {
   const details = parseConsultorioConsultationDetails(consultation);
+  const summary = parseConsultorioStructuredText(consultation?.summary || "", {
+    "ayuda diagnostica": "aid",
+    "signos clinicos": "signs",
+    "diagnostico presuntivo": "diagnosis",
+    "tipo de estudio": "studyType",
+    observaciones: "observations",
+  });
+  let stored = null;
+  const rawReference = String(consultation?.document_reference || "").trim();
+  if (rawReference.startsWith("{")) {
+    try {
+      const parsed = JSON.parse(rawReference);
+      if (parsed?.kind === "imaging") {
+        stored = parsed;
+      }
+    } catch (error) {
+      stored = null;
+    }
+  }
   return {
+    imagingDate:
+      normalizeDateFieldValue(stored?.imagingDate || "") ||
+      normalizeDateFieldValue(consultation?.consultation_at),
     studyDate: formatDateTime(consultation?.consultation_at),
-    title: String(consultation?.title || "").trim() || "Imagen diagnostica",
-    summary:
-      details.interpretation ||
-      details.objective ||
+    aid: String(stored?.aid || "").trim() || summary.aid || "",
+    signs:
+      String(stored?.signs || "").trim() ||
+      summary.signs ||
       details.subjective ||
-      truncate(consultation?.summary || "Sin resumen clinico", 180),
+      "",
+    diagnosis:
+      String(stored?.diagnosis || "").trim() ||
+      summary.diagnosis ||
+      details.interpretation ||
+      "",
+    studyType:
+      String(stored?.studyType || "").trim() ||
+      summary.studyType ||
+      String(consultation?.title || "").trim() ||
+      "Imagen diagnostica",
+    observations:
+      String(stored?.observations || "").trim() ||
+      summary.observations ||
+      details.objective ||
+      details.diagnosticPlan ||
+      "",
+    title:
+      String(consultation?.title || "").trim() ||
+      String(stored?.studyType || "").trim() ||
+      summary.studyType ||
+      "Imagen diagnostica",
+    summary: truncate(
+      String(stored?.diagnosis || "").trim() ||
+        summary.diagnosis ||
+        details.interpretation ||
+        String(stored?.observations || "").trim() ||
+        summary.observations ||
+        details.objective ||
+        details.subjective ||
+        consultation?.summary ||
+        "Sin resumen clinico",
+      180
+    ),
     related:
+      String(stored?.aid || "").trim() ||
+      summary.aid ||
       String(consultation?.referred_to || "").trim() ||
       details.diagnosticPlan ||
-      String(consultation?.document_reference || "").trim(),
+      (!stored ? String(consultation?.document_reference || "").trim() : ""),
     attachments: parseConsultorioAttachments(consultation?.attachments_summary || ""),
-    professional: String(consultation?.professional_name || "").trim() || "Sin usuario",
+    professional:
+      String(stored?.professional || "").trim() ||
+      String(consultation?.professional_name || "").trim() ||
+      "Sin usuario",
   };
+}
+
+function buildConsultorioImagingSummary(payload) {
+  return buildConsultorioStructuredText([
+    ["Ayuda diagnostica", payload.imaging_aid],
+    ["Signos clinicos", payload.imaging_signs],
+    ["Diagnostico presuntivo", payload.imaging_diagnosis],
+    ["Tipo de estudio", payload.imaging_study_type],
+    ["Observaciones", payload.imaging_observations],
+  ]);
 }
 
 function buildConsultorioImagingWorkspace(patient, profileConfig) {
@@ -5064,7 +5151,7 @@ function buildConsultorioImagingWorkspace(patient, profileConfig) {
                 <div class="consultorio-imaging-card__header">
                   <div>
                     <span class="consultorio-imaging-card__date">${escapeHtml(details.studyDate)}</span>
-                    <h5>${escapeHtml(details.title)}</h5>
+                    <h5>${escapeHtml(details.studyType || details.title)}</h5>
                   </div>
                   <button
                     class="ghost-button consultorio-imaging-card__action"
@@ -7881,6 +7968,30 @@ function getPatientConsultationAttachments() {
   return getConsultorioAttachmentFieldItems(elements.patientConsultationAttachmentsValue);
 }
 
+async function addPatientImagingAttachmentImages(fileList) {
+  const files = Array.from(fileList || []);
+  if (!files.length) {
+    return;
+  }
+  const currentItems = getPatientImagingAttachments();
+  for (const file of files) {
+    currentItems.push(await buildConsultorioImageAttachment(file));
+  }
+  setPatientImagingAttachments(currentItems);
+}
+
+function setPatientImagingAttachments(items = []) {
+  renderConsultorioAttachmentFieldState(
+    elements.patientImagingAttachmentsValue,
+    elements.patientImagingAttachmentsList,
+    items
+  );
+}
+
+function getPatientImagingAttachments() {
+  return getConsultorioAttachmentFieldItems(elements.patientImagingAttachmentsValue);
+}
+
 async function addPatientDewormingAttachmentImages(fileList) {
   const files = Array.from(fileList || []);
   if (!files.length) {
@@ -8226,12 +8337,27 @@ function getConsultorioLaboratoryProfessionalOptions(currentProfessional = "") {
   return Array.from(names).sort((left, right) => left.localeCompare(right, "es"));
 }
 
+function renderPatientImagingProfessionalOptions(currentProfessional = "") {
+  if (!elements.patientImagingProfessionalSelect) {
+    return;
+  }
+  const selected = String(currentProfessional || "").trim();
+  const options = getConsultorioLaboratoryProfessionalOptions(selected);
+  elements.patientImagingProfessionalSelect.innerHTML = [
+    '<option value="">Selecciona un profesional</option>',
+    ...options.map(
+      (name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`
+    ),
+  ].join("");
+  elements.patientImagingProfessionalSelect.value = selected;
+}
+
 function loadConsultorioLaboratoryUsersIfNeeded() {
   if (
     loadedBootstrapSections.has("users") ||
     pendingBootstrapSections.has("users") ||
     !elements.patientConsultationForm ||
-    elements.patientConsultationForm.dataset.consultationMode !== "laboratory"
+    !["laboratory", "imaging"].includes(elements.patientConsultationForm.dataset.consultationMode)
   ) {
     return;
   }
@@ -8241,16 +8367,24 @@ function loadConsultorioLaboratoryUsersIfNeeded() {
       if (
         !elements.patientConsultationModal ||
         elements.patientConsultationModal.classList.contains("is-hidden") ||
-        elements.patientConsultationForm?.dataset.consultationMode !== "laboratory"
+        !["laboratory", "imaging"].includes(elements.patientConsultationForm?.dataset.consultationMode)
       ) {
         return;
       }
-      const items = getPatientLaboratoryItems({ includeEmpty: true });
-      renderPatientLaboratoryItems(items);
+      if (elements.patientConsultationForm?.dataset.consultationMode === "laboratory") {
+        const items = getPatientLaboratoryItems({ includeEmpty: true });
+        renderPatientLaboratoryItems(items);
+        return;
+      }
+      renderPatientImagingProfessionalOptions(
+        elements.patientImagingProfessionalSelect?.value ||
+          elements.patientConsultationForm?.elements?.imaging_professional?.value ||
+          ""
+      );
     })
     .catch((error) => {
       clearBootstrapSectionsPending(["users"]);
-      console.warn("No fue posible cargar los usuarios del laboratorio:", error);
+      console.warn("No fue posible cargar los usuarios del consultorio:", error);
     });
 }
 
@@ -9330,6 +9464,8 @@ function openPatientConsultationModal(consultation = null) {
     isHospAmbConsultationType(defaultConsultationType) || profileConfig?.value === "hospamb";
   const isLaboratoryMode =
     isLaboratoryConsultationType(defaultConsultationType) || profileConfig?.value === "laboratorio";
+  const isImagingMode =
+    isImagingConsultationType(defaultConsultationType) || profileConfig?.value === "imagenes";
   const isOrderMode =
     (defaultConsultationType === "Documento" && profileConfig?.value === "orders") ||
     false;
@@ -9344,6 +9480,8 @@ function openPatientConsultationModal(consultation = null) {
     ? "hospamb"
     : isLaboratoryMode
     ? "laboratory"
+    : isImagingMode
+    ? "imaging"
     : isVaccinationMode
     ? "vaccination"
     : isFormulaMode
@@ -9358,6 +9496,7 @@ function openPatientConsultationModal(consultation = null) {
   const procedureDetails = parseConsultorioProcedureDetails(consultation);
   const hospAmbDetails = parseConsultorioHospAmbDetails(consultation);
   const laboratoryDetails = parseConsultorioLaboratoryDetails(consultation);
+  const imagingDetails = parseConsultorioImagingDetails(consultation);
   const orderDetails = parseConsultorioOrderDetails(consultation);
   form.elements.id.value = consultation?.id || "";
   form.elements.record_id.value = record?.id || "";
@@ -9439,7 +9578,32 @@ function openPatientConsultationModal(consultation = null) {
     form.elements.laboratory_diagnosis.value = laboratoryDetails.diagnosis || "";
   }
   renderPatientLaboratoryItems(laboratoryDetails.items);
-  if (isLaboratoryMode) {
+  if (form.elements.imaging_date) {
+    form.elements.imaging_date.value =
+      imagingDetails.imagingDate || normalizeDateFieldValue(new Date().toISOString());
+  }
+  if (form.elements.imaging_aid) {
+    form.elements.imaging_aid.value = imagingDetails.aid || "";
+  }
+  renderPatientImagingProfessionalOptions(
+    imagingDetails.professional ||
+      consultation?.professional_name ||
+      getDefaultConsultorioProfessionalName()
+  );
+  if (form.elements.imaging_signs) {
+    form.elements.imaging_signs.value = imagingDetails.signs || "";
+  }
+  if (form.elements.imaging_diagnosis) {
+    form.elements.imaging_diagnosis.value = imagingDetails.diagnosis || "";
+  }
+  if (form.elements.imaging_study_type) {
+    form.elements.imaging_study_type.value = imagingDetails.studyType || "";
+  }
+  if (form.elements.imaging_observations) {
+    form.elements.imaging_observations.value = imagingDetails.observations || "";
+  }
+  setPatientImagingAttachments(imagingDetails.attachments || []);
+  if (isLaboratoryMode || isImagingMode) {
     loadConsultorioLaboratoryUsersIfNeeded();
   }
   if (form.elements.vaccination_date) {
@@ -9513,12 +9677,17 @@ function openPatientConsultationModal(consultation = null) {
   if (elements.patientProcedureAttachmentFileInput) {
     elements.patientProcedureAttachmentFileInput.value = "";
   }
+  if (elements.patientImagingAttachmentFileInput) {
+    elements.patientImagingAttachmentFileInput.value = "";
+  }
   setPatientConsultationAttachments(parseConsultorioAttachments(consultation?.attachments_summary || ""));
   setPatientDewormingAttachments(parseConsultorioAttachments(consultation?.attachments_summary || ""));
   setPatientProcedureAttachments(parseConsultorioAttachments(consultation?.attachments_summary || ""));
   setPatientProcedureNameValue(procedureDetails.name || "");
   if (elements.patientConsultationModalTitle) {
-    const entityLabel = isHospAmbMode
+    const entityLabel = isImagingMode
+      ? "Imagenologia"
+      : isHospAmbMode
       ? "Hospitalizaci\u00f3n/ambulatorio"
       : profileConfig?.value === "orders" && defaultConsultationType === "Documento"
       ? "Orden"
@@ -9560,6 +9729,9 @@ function openPatientConsultationModal(consultation = null) {
   if (elements.patientLaboratoryFields) {
     elements.patientLaboratoryFields.classList.toggle("is-hidden", !isLaboratoryMode);
   }
+  if (elements.patientImagingFields) {
+    elements.patientImagingFields.classList.toggle("is-hidden", !isImagingMode);
+  }
   if (elements.patientConsultationClinicalFields) {
     elements.patientConsultationClinicalFields.classList.toggle(
       "is-hidden",
@@ -9569,6 +9741,7 @@ function openPatientConsultationModal(consultation = null) {
         isHospAmbMode ||
         isProcedureMode ||
         isLaboratoryMode ||
+        isImagingMode ||
         isOrderMode
     );
   }
@@ -9613,20 +9786,34 @@ function openPatientConsultationModal(consultation = null) {
       <path d="M7.5 14h9"></path>
     </svg>
   `;
+  const imagingModalIconSvg = `
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4 5h16"></path>
+      <path d="M6 5v14"></path>
+      <path d="M18 5v14"></path>
+      <path d="M8 9h8"></path>
+      <path d="M8 13h8"></path>
+      <path d="M12 9v10"></path>
+    </svg>
+  `;
   elements.patientConsultationModal.classList.toggle("modal-shell--hospamb", isHospAmbMode);
   elements.patientConsultationModal.classList.toggle("modal-shell--procedure", isProcedureMode);
   elements.patientConsultationModal.classList.toggle("modal-shell--orders", isOrderMode);
   elements.patientConsultationModal.classList.toggle("modal-shell--laboratory", isLaboratoryMode);
+  elements.patientConsultationModal.classList.toggle("modal-shell--imaging", isImagingMode);
   modalCard?.classList.toggle("consultorio-consultation-modal--hospamb", isHospAmbMode);
   modalCard?.classList.toggle("consultorio-consultation-modal--procedure", isProcedureMode);
   modalCard?.classList.toggle("consultorio-consultation-modal--orders", isOrderMode);
   modalCard?.classList.toggle("consultorio-consultation-modal--laboratory", isLaboratoryMode);
+  modalCard?.classList.toggle("consultorio-consultation-modal--imaging", isImagingMode);
   modalCard?.classList.toggle("consultorio-consultation-modal--vaccination", isVaccinationMode);
   modalCard?.classList.toggle("consultorio-consultation-modal--formula", isFormulaMode);
   modalCard?.classList.toggle("consultorio-consultation-modal--deworming", isDewormingMode);
   if (elements.patientConsultationModalIcon) {
     elements.patientConsultationModalIcon.innerHTML = isOrderMode
       ? orderModalIconSvg
+      : isImagingMode
+      ? imagingModalIconSvg
       : isLaboratoryMode
       ? laboratoryModalIconSvg
       : isProcedureMode
@@ -9645,6 +9832,7 @@ function openPatientConsultationModal(consultation = null) {
       isHospAmbMode ||
       isProcedureMode ||
       isLaboratoryMode ||
+      isImagingMode ||
       isOrderMode
         ? ""
         : record
@@ -9658,6 +9846,7 @@ function openPatientConsultationModal(consultation = null) {
         isHospAmbMode ||
         isProcedureMode ||
         isLaboratoryMode ||
+        isImagingMode ||
         isOrderMode
     );
   }
@@ -9671,6 +9860,7 @@ function openPatientConsultationModal(consultation = null) {
         isHospAmbMode ||
         isProcedureMode ||
         isLaboratoryMode ||
+        isImagingMode ||
         isOrderMode
     );
   elements.patientConsultationModal.classList.remove("is-hidden");
@@ -9689,6 +9879,8 @@ function openPatientConsultationModal(consultation = null) {
     form.elements.hospamb_type.focus();
   } else if (isLaboratoryMode && form.elements.laboratory_date) {
     form.elements.laboratory_date.focus();
+  } else if (isImagingMode && form.elements.imaging_date) {
+    form.elements.imaging_date.focus();
   } else if (isOrderMode && form.elements.order_date) {
     form.elements.order_date.focus();
   } else {
@@ -10198,6 +10390,11 @@ async function handleUserSubmit(event) {
         ?.querySelector(`[data-lab-item="${modalContext.labItemIndex}"] [data-lab-item-field="professional"]`)
         ?.focus();
     }
+    if (modalContext.source === "imaging" && elements.patientImagingProfessionalSelect) {
+      renderPatientImagingProfessionalOptions(payload.full_name);
+      elements.patientImagingProfessionalSelect.value = payload.full_name;
+      elements.patientImagingProfessionalSelect.focus();
+    }
     resetUserModalContext();
   } catch (error) {
     setUserFormError(error.message || "No fue posible guardar el usuario.");
@@ -10366,6 +10563,7 @@ async function handlePatientConsultationSubmit(event) {
   const examSpecialSummary = buildConsultorioExamSpecialSummary(payload);
   const isOrderMode = form.dataset.consultationMode === "orders";
   const isLaboratoryMode = form.dataset.consultationMode === "laboratory";
+  const isImagingMode = form.dataset.consultationMode === "imaging";
   payload.consultation_type =
     payload.consultation_type ||
     getConsultorioProfileViewConfig()?.formConsultationType ||
@@ -10461,6 +10659,39 @@ async function handlePatientConsultationSubmit(event) {
           .map((result) => normalizeConsultorioLaboratoryResultFile(result))
           .filter(Boolean),
       })),
+    });
+  } else if (isImagingMode) {
+    if (!payload.imaging_date) {
+      throw new Error("Selecciona la fecha del registro de imagenologia.");
+    }
+    if (!String(payload.imaging_aid || "").trim()) {
+      throw new Error("Selecciona la ayuda diagnostica.");
+    }
+    if (!String(payload.imaging_professional || "").trim()) {
+      throw new Error("Selecciona el profesional.");
+    }
+    if (!String(payload.imaging_study_type || "").trim()) {
+      throw new Error("Escribe el tipo de estudio.");
+    }
+    payload.consultation_type = "Imagen diagnostica";
+    payload.title = String(payload.imaging_study_type || payload.imaging_aid || "").trim();
+    payload.consultation_at = `${payload.imaging_date}T12:00`;
+    payload.professional_name = String(payload.imaging_professional || "").trim();
+    payload.next_control = "";
+    payload.summary = buildConsultorioImagingSummary(payload);
+    payload.indications = "";
+    payload.attachments_summary = serializeConsultorioAttachments(
+      getPatientImagingAttachments()
+    );
+    payload.document_reference = JSON.stringify({
+      kind: "imaging",
+      imagingDate: String(payload.imaging_date || "").trim(),
+      aid: String(payload.imaging_aid || "").trim(),
+      signs: String(payload.imaging_signs || "").trim(),
+      diagnosis: String(payload.imaging_diagnosis || "").trim(),
+      studyType: String(payload.imaging_study_type || "").trim(),
+      observations: String(payload.imaging_observations || "").trim(),
+      professional: String(payload.imaging_professional || "").trim(),
     });
   } else if (isHospAmbConsultationType(payload.consultation_type)) {
     const selectedType = String(payload.hospamb_type || payload.consultation_type || "").trim();
@@ -10629,6 +10860,8 @@ async function handlePatientConsultationSubmit(event) {
   closePatientConsultationModal();
   const entityLabel = isOrderMode
     ? "Orden"
+    : isImagingMode
+    ? "Imagenologia"
     : isLaboratoryMode
     ? "Examen de laboratorio"
     : getConsultorioProfileModalEntityLabel(payload.consultation_type);
@@ -11641,6 +11874,41 @@ function bindForms() {
         }
       })
     );
+  }
+  if (elements.patientImagingAddUserButton) {
+    elements.patientImagingAddUserButton.addEventListener("click", () => {
+      openUserModal(null, { source: "imaging" });
+      if (!isAdminUser()) {
+        setUserFormError("Solo los administradores pueden registrar usuarios.");
+      }
+    });
+  }
+  if (elements.patientImagingAttachmentFileButton && elements.patientImagingAttachmentFileInput) {
+    elements.patientImagingAttachmentFileButton.addEventListener("click", () => {
+      elements.patientImagingAttachmentFileInput.click();
+    });
+    elements.patientImagingAttachmentFileInput.addEventListener(
+      "change",
+      wrapAsync(async (event) => {
+        try {
+          await addPatientImagingAttachmentImages(event.currentTarget.files);
+        } finally {
+          event.currentTarget.value = "";
+        }
+      })
+    );
+  }
+  if (elements.patientImagingAttachmentsList) {
+    elements.patientImagingAttachmentsList.addEventListener("click", (event) => {
+      const removeButton = event.target.closest("[data-remove-patient-consultation-attachment]");
+      if (!removeButton) {
+        return;
+      }
+      const index = Number(removeButton.dataset.removePatientConsultationAttachment);
+      const items = getPatientImagingAttachments();
+      items.splice(index, 1);
+      setPatientImagingAttachments(items);
+    });
   }
   if (elements.patientConsultationAttachmentFileButton && elements.patientConsultationAttachmentFileInput) {
     elements.patientConsultationAttachmentFileButton.addEventListener("click", () => {

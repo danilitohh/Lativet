@@ -1745,6 +1745,109 @@
             </label>
           </div>
 
+          <div id="patientImagingFields" class="consultorio-imaging-fields is-hidden">
+            <div class="consultorio-imaging-fields__top">
+              <label class="consultorio-consultation-form__field consultorio-imaging-fields__date">
+                <span>Fecha</span>
+                <input id="patientImagingDateInput" name="imaging_date" type="date" />
+              </label>
+
+              <label class="consultorio-consultation-form__field">
+                <span>Ayuda diagnostica</span>
+                <select id="patientImagingAidSelect" name="imaging_aid">
+                  <option value="">Seleccione ayuda diagnostica</option>
+                  <option value="Radiografia">Radiografia</option>
+                  <option value="Ecografia">Ecografia</option>
+                  <option value="Tomografia">Tomografia</option>
+                  <option value="Resonancia magnetica">Resonancia magnetica</option>
+                  <option value="Fluoroscopia">Fluoroscopia</option>
+                  <option value="Endoscopia">Endoscopia</option>
+                  <option value="Otra">Otra</option>
+                </select>
+              </label>
+
+              <div class="consultorio-consultation-form__field consultorio-imaging-fields__professional">
+                <div class="consultorio-imaging-fields__label-row">
+                  <span>Profesional</span>
+                  <button
+                    id="patientImagingAddUserButton"
+                    class="inline-link consultorio-imaging-fields__link"
+                    type="button"
+                  >
+                    + Agregar usuario
+                  </button>
+                </div>
+                <select id="patientImagingProfessionalSelect" name="imaging_professional">
+                  <option value="">Selecciona un profesional</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="consultorio-imaging-fields__pair">
+              <label class="consultorio-consultation-form__field">
+                <span>Signos clinicos</span>
+                <textarea
+                  id="patientImagingSignsInput"
+                  name="imaging_signs"
+                  rows="4"
+                  placeholder="Signos clinicos"
+                ></textarea>
+              </label>
+
+              <label class="consultorio-consultation-form__field">
+                <span>Diagnostico presuntivo</span>
+                <textarea
+                  id="patientImagingDiagnosisInput"
+                  name="imaging_diagnosis"
+                  rows="4"
+                  placeholder="Diagnostico presuntivo"
+                ></textarea>
+              </label>
+            </div>
+
+            <label class="full consultorio-consultation-form__field">
+              <span>Tipo de estudio</span>
+              <textarea
+                id="patientImagingStudyTypeInput"
+                name="imaging_study_type"
+                rows="4"
+                placeholder="Tipo de estudio"
+              ></textarea>
+            </label>
+
+            <div class="consultorio-consultation-form__field consultorio-imaging-fields__attachments">
+              <span>Adjuntos/Resultados</span>
+              <div class="consultorio-consultation-form__attachment-row">
+                <input
+                  id="patientImagingAttachmentFileInput"
+                  class="is-hidden"
+                  type="file"
+                  accept="image/*"
+                  multiple
+                />
+                <button
+                  id="patientImagingAttachmentFileButton"
+                  class="consultorio-consultation-form__add consultorio-consultation-form__add--file"
+                  type="button"
+                >
+                  + Agregar
+                </button>
+              </div>
+              <div id="patientImagingAttachmentsList" class="consultorio-consultation-attachments"></div>
+              <textarea id="patientImagingAttachmentsValue" name="imaging_attachments_summary" class="is-hidden"></textarea>
+            </div>
+
+            <label class="full consultorio-consultation-form__field">
+              <span>Observaciones</span>
+              <textarea
+                id="patientImagingObservationsInput"
+                name="imaging_observations"
+                rows="4"
+                placeholder="Observaciones"
+              ></textarea>
+            </label>
+          </div>
+
           <div id="patientConsultationClinicalFields" class="consultorio-consultation-mode consultorio-consultation-mode--clinical">
             <label class="consultorio-consultation-form__field">
               <span>Fecha consulta</span>
