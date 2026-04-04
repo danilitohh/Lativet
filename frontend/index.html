@@ -1859,13 +1859,18 @@
                 <span>Tipo de seguimiento</span>
                 <select id="patientFollowupTypeSelect" name="followup_type">
                   <option value="">Seleccione una opci&oacute;n</option>
-                  <option value="Control">Control</option>
-                  <option value="Evolucion">Evoluci&oacute;n</option>
-                  <option value="Posoperatorio">Posoperatorio</option>
+                  <option value="Revisi&oacute;n de consulta">Revisi&oacute;n de consulta</option>
+                  <option value="Reporte de evoluci&oacute;n">Reporte de evoluci&oacute;n</option>
+                  <option value="Carga de anexos">Carga de anexos</option>
+                  <option value="Evaluaci&oacute;n f&iacute;sica">Evaluaci&oacute;n f&iacute;sica</option>
                   <option value="Hospitalario">Hospitalario</option>
-                  <option value="Telefonico">Telef&oacute;nico</option>
-                  <option value="Domiciliario">Domiciliario</option>
-                  <option value="Otro">Otro</option>
+                  <option value="Control interno">Control interno</option>
+                  <option value="Procedimiento no quir&uacute;rgico">Procedimiento no quir&uacute;rgico</option>
+                  <option value="Aplicaci&oacute;n de medicamentos">Aplicaci&oacute;n de medicamentos</option>
+                  <option value="Guarder&iacute;a/Hotel">Guarder&iacute;a/Hotel</option>
+                  <option value="Ambulatorio">Ambulatorio</option>
+                  <option value="Ambulatorio en casa">Ambulatorio en casa</option>
+                  <option value="No especificado">No especificado</option>
                 </select>
               </label>
 
@@ -1873,11 +1878,52 @@
                 <span>Motivo</span>
                 <select id="patientFollowupReasonSelect" name="followup_reason">
                   <option value="No especificado">No especificado</option>
-                  <option value="Valoracion clinica">Valoraci&oacute;n cl&iacute;nica</option>
-                  <option value="Control de tratamiento">Control de tratamiento</option>
-                  <option value="Revision de examenes">Revisi&oacute;n de ex&aacute;menes</option>
-                  <option value="Seguimiento posquirurgico">Seguimiento posquir&uacute;rgico</option>
-                  <option value="Alta y cierre">Alta y cierre</option>
+                  <option value="Consulta general">Consulta general</option>
+                  <option value="Especialidades">Especialidades</option>
+                  <option value="Acupuntura">Acupuntura</option>
+                  <option value="Alergolog&iacute;a">Alergolog&iacute;a</option>
+                  <option value="Anestesiolog&iacute;a">Anestesiolog&iacute;a</option>
+                  <option value="Cardiolog&iacute;a">Cardiolog&iacute;a</option>
+                  <option value="Cirug&iacute;a laser">Cirug&iacute;a laser</option>
+                  <option value="Cirug&iacute;a tejidos blandos">Cirug&iacute;a tejidos blandos</option>
+                  <option value="Consulta en casa">Consulta en casa</option>
+                  <option value="Consulta no programada">Consulta no programada</option>
+                  <option value="Consulta preanest&eacute;sica">Consulta preanest&eacute;sica</option>
+                  <option value="Consulta prequir&uacute;rgica">Consulta prequir&uacute;rgica</option>
+                  <option value="Cuidados cr&iacute;ticos o intensivos">Cuidados cr&iacute;ticos o intensivos</option>
+                  <option value="Dermatolog&iacute;a">Dermatolog&iacute;a</option>
+                  <option value="Endocrinolog&iacute;a">Endocrinolog&iacute;a</option>
+                  <option value="Esterilizaci&oacute;n">Esterilizaci&oacute;n</option>
+                  <option value="Etolog&iacute;a">Etolog&iacute;a</option>
+                  <option value="Evaluaci&oacute;n postquir&uacute;rgica">Evaluaci&oacute;n postquir&uacute;rgica</option>
+                  <option value="Fisioterapia">Fisioterapia</option>
+                  <option value="Gastroenterolog&iacute;a">Gastroenterolog&iacute;a</option>
+                  <option value="Hospitalizaci&oacute;n">Hospitalizaci&oacute;n</option>
+                  <option value="Internista">Internista</option>
+                  <option value="Medicina felina">Medicina felina</option>
+                  <option value="Nefrolog&iacute;a">Nefrolog&iacute;a</option>
+                  <option value="Neumolog&iacute;a">Neumolog&iacute;a</option>
+                  <option value="Neurolog&iacute;a">Neurolog&iacute;a</option>
+                  <option value="Nutrici&oacute;n">Nutrici&oacute;n</option>
+                  <option value="Odontolog&iacute;a">Odontolog&iacute;a</option>
+                  <option value="Oftalmolog&iacute;a">Oftalmolog&iacute;a</option>
+                  <option value="Oncolog&iacute;a">Oncolog&iacute;a</option>
+                  <option value="Ortopedia">Ortopedia</option>
+                  <option value="Psicolog&iacute;a">Psicolog&iacute;a</option>
+                  <option value="Reproducci&oacute;n u obstetricia">Reproducci&oacute;n u obstetricia</option>
+                  <option value="Revisi&oacute;n/Chequeo">Revisi&oacute;n/Chequeo</option>
+                  <option value="Urgencias">Urgencias</option>
+                  <option value="Vacunaci&oacute;n">Vacunaci&oacute;n</option>
+                  <option value="Desparasitaci&oacute;n">Desparasitaci&oacute;n</option>
+                  <option value="Cirug&iacute;a">Cirug&iacute;a</option>
+                  <option value="Examen de laboratorio">Examen de laboratorio</option>
+                  <option value="Ayudas diagn&oacute;sticas">Ayudas diagn&oacute;sticas</option>
+                  <option value="Ecograf&iacute;a">Ecograf&iacute;a</option>
+                  <option value="Laboratorio cl&iacute;nico">Laboratorio cl&iacute;nico</option>
+                  <option value="Radiograf&iacute;a (Rayos X)">Radiograf&iacute;a (Rayos X)</option>
+                  <option value="Resonancia magn&eacute;tica">Resonancia magn&eacute;tica</option>
+                  <option value="Tomograf&iacute;a">Tomograf&iacute;a</option>
+                  <option value="Peluquer&iacute;a o Spa">Peluquer&iacute;a o Spa</option>
                   <option value="Otro">Otro</option>
                 </select>
               </label>
