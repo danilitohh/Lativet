@@ -1848,6 +1848,113 @@
             </label>
           </div>
 
+          <div id="patientDocumentFields" class="consultorio-document-fields is-hidden">
+            <div class="consultorio-document-fields__top">
+              <div class="consultorio-consultation-form__field consultorio-document-fields__format">
+                <div class="consultorio-document-fields__label-row">
+                  <span>Tipo de documento</span>
+                  <button
+                    id="patientDocumentAddFormatButton"
+                    class="inline-link consultorio-document-fields__link"
+                    type="button"
+                  >
+                    + Crear nuevo formato
+                  </button>
+                </div>
+                <select id="patientDocumentFormatSelect" name="document_format">
+                  <option value="">Selecciona un formato</option>
+                </select>
+              </div>
+
+              <label class="consultorio-consultation-form__field">
+                <span>Nombre del documento</span>
+                <input
+                  id="patientDocumentNameInput"
+                  name="document_name"
+                  type="text"
+                  placeholder="Nombre del documento"
+                />
+              </label>
+
+              <label class="consultorio-consultation-form__field">
+                <span>&iquest;Requiere firma?</span>
+                <select id="patientDocumentSignatureSelect" name="document_requires_signature">
+                  <option value="required">Si requiere</option>
+                  <option value="optional">No requiere</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="consultorio-consultation-form__field consultorio-document-fields__editor-field">
+              <span>Documento</span>
+              <div class="consultorio-document-editor">
+                <div id="patientDocumentToolbar" class="consultorio-document-editor__toolbar">
+                  <select
+                    id="patientDocumentStyleSelect"
+                    class="consultorio-document-editor__select"
+                    aria-label="Estilo"
+                  >
+                    <option value="p">Estilo</option>
+                    <option value="h1">Titulo 1</option>
+                    <option value="h2">Titulo 2</option>
+                    <option value="blockquote">Cita</option>
+                  </select>
+                  <select
+                    id="patientDocumentFontSizeSelect"
+                    class="consultorio-document-editor__select"
+                    aria-label="Tamano"
+                  >
+                    <option value="2">Pequeno</option>
+                    <option value="3" selected>Normal</option>
+                    <option value="5">Grande</option>
+                  </select>
+                  <button class="consultorio-document-editor__button" type="button" data-document-command="bold"><strong>B</strong></button>
+                  <button class="consultorio-document-editor__button" type="button" data-document-command="italic"><em>I</em></button>
+                  <button class="consultorio-document-editor__button" type="button" data-document-command="underline"><u>U</u></button>
+                  <button class="consultorio-document-editor__button" type="button" data-document-command="insertUnorderedList">• Lista</button>
+                  <button class="consultorio-document-editor__button" type="button" data-document-command="insertOrderedList">1. Lista</button>
+                  <button class="consultorio-document-editor__button" type="button" data-document-command="justifyLeft">Izq.</button>
+                  <button class="consultorio-document-editor__button" type="button" data-document-command="justifyCenter">Centro</button>
+                  <button class="consultorio-document-editor__button" type="button" data-document-command="justifyRight">Der.</button>
+                  <button class="consultorio-document-editor__button" type="button" data-document-command="createLink">Link</button>
+                  <button class="consultorio-document-editor__button" type="button" data-document-command="removeFormat">Limpiar</button>
+                </div>
+                <div
+                  id="patientDocumentEditor"
+                  class="consultorio-document-editor__surface is-empty"
+                  contenteditable="true"
+                  spellcheck="true"
+                  data-placeholder="Escribe el contenido del documento"
+                ></div>
+                <textarea
+                  id="patientDocumentContentInput"
+                  name="document_content_html"
+                  class="is-hidden"
+                ></textarea>
+              </div>
+            </div>
+
+            <div class="consultorio-followup-message consultorio-document-fields__message">
+              <div class="consultorio-followup-message__row">
+                <div class="consultorio-followup-message__label">
+                  <span class="consultorio-followup-message__icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"></path>
+                      <path d="M8 9h8"></path>
+                      <path d="M8 13h5"></path>
+                    </svg>
+                  </span>
+                  <span>Mensaje al propietario</span>
+                </div>
+                <label class="consultorio-followup-message__toggle">
+                  <span>Enviar notificaci&oacute;n</span>
+                  <input id="patientDocumentNotifyOwnerInput" name="document_notify_owner" type="checkbox" />
+                  <span class="consultorio-followup-message__switch" aria-hidden="true"></span>
+                </label>
+              </div>
+            </div>
+          </div>
+
           <div id="patientFollowupFields" class="consultorio-followup-fields is-hidden">
             <div class="consultorio-followup-fields__top">
               <label class="consultorio-consultation-form__field consultorio-followup-fields__date">

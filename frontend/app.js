@@ -37,6 +37,15 @@ let agendaViewDate = new Date();
 let agendaSelectedDate = new Date().toISOString().slice(0, 10);
 const AGENDA_VIEW_MODES = ["month", "week", "day", "list", "programador"];
 const AGENDA_VIEW_STORAGE_KEY = "lativet_agenda_view";
+const CONSULTORIO_DOCUMENT_FORMATS_STORAGE_KEY = "lativet_document_formats";
+const DEFAULT_CONSULTORIO_DOCUMENT_FORMATS = [
+  "Documento general",
+  "Consentimiento informado",
+  "Certificado",
+  "Remision",
+  "Resumen clinico",
+  "Autorizacion",
+];
 let agendaViewMode = "programador";
 try {
   const storedAgendaView = localStorage.getItem(AGENDA_VIEW_STORAGE_KEY);
@@ -52,6 +61,7 @@ let consultorioProfileView = "records";
 let consultorioPatientEditorVisible = false;
 let consultorioPatientProfileOpen = false;
 let consultorioPatientProfileNotesVisible = false;
+let consultorioDocumentFormats = [];
 let pendingLabTestContext = null;
 let pendingProcedureOrderItemIndex = null;
 let activeSectionId = "dashboard";
@@ -1094,6 +1104,76 @@ function clearBootstrapCache(userIdOverride) {
   }
 }
 
+function loadConsultorioDocumentFormats() {
+  try {
+    const raw = localStorage.getItem(CONSULTORIO_DOCUMENT_FORMATS_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.from(
+      new Set(
+        [...DEFAULT_CONSULTORIO_DOCUMENT_FORMATS, ...(Array.isArray(parsed) ? parsed : [])]
+          .map((item) => String(item || "").trim())
+          .filter(Boolean)
+      )
+    );
+  } catch (error) {
+    return [...DEFAULT_CONSULTORIO_DOCUMENT_FORMATS];
+  }
+}
+
+function saveConsultorioDocumentFormats() {
+  try {
+    localStorage.setItem(
+      CONSULTORIO_DOCUMENT_FORMATS_STORAGE_KEY,
+      JSON.stringify(
+        (Array.isArray(consultorioDocumentFormats) ? consultorioDocumentFormats : [])
+          .map((item) => String(item || "").trim())
+          .filter(Boolean)
+      )
+    );
+  } catch (error) {
+    // ignore storage write errors
+  }
+}
+
+function ensureConsultorioDocumentFormatOption(value, options = {}) {
+  const { persist = false } = options;
+  const normalized = String(value || "").trim();
+  if (!normalized) {
+    return "";
+  }
+  if (!consultorioDocumentFormats.length) {
+    consultorioDocumentFormats = loadConsultorioDocumentFormats();
+  }
+  const exists = consultorioDocumentFormats.some((item) => item === normalized);
+  if (!exists) {
+    consultorioDocumentFormats = [...consultorioDocumentFormats, normalized];
+    if (persist) {
+      saveConsultorioDocumentFormats();
+    }
+  }
+  return normalized;
+}
+
+function renderPatientDocumentFormatOptions(selectedValue = "") {
+  if (!elements.patientDocumentFormatSelect) {
+    return;
+  }
+  if (!consultorioDocumentFormats.length) {
+    consultorioDocumentFormats = loadConsultorioDocumentFormats();
+  }
+  const selected = ensureConsultorioDocumentFormatOption(selectedValue) || String(selectedValue || "").trim();
+  elements.patientDocumentFormatSelect.innerHTML = [
+    '<option value="">Selecciona un formato</option>',
+    ...consultorioDocumentFormats.map(
+      (format) => `<option value="${escapeHtml(format)}">${escapeHtml(format)}</option>`
+    ),
+  ].join("");
+  if (selected) {
+    ensureConsultorioSelectOption(elements.patientDocumentFormatSelect, selected);
+    elements.patientDocumentFormatSelect.value = selected;
+  }
+}
+
 function getAppViewStateKey(userIdOverride) {
   const userId = userIdOverride || authState.currentUser?.id || "anon";
   return `${APP_VIEW_STATE_KEY}_${userId}`;
@@ -1322,6 +1402,17 @@ function cacheElements() {
     "patientConsultationModalBadge",
     "patientConsultationModalIcon",
     "patientConsultationForm",
+    "patientDocumentFields",
+    "patientDocumentFormatSelect",
+    "patientDocumentAddFormatButton",
+    "patientDocumentNameInput",
+    "patientDocumentSignatureSelect",
+    "patientDocumentToolbar",
+    "patientDocumentStyleSelect",
+    "patientDocumentFontSizeSelect",
+    "patientDocumentEditor",
+    "patientDocumentContentInput",
+    "patientDocumentNotifyOwnerInput",
     "patientFollowupFields",
     "patientFollowupDateInput",
     "patientFollowupTypeSelect",
@@ -2545,7 +2636,7 @@ function getConsultorioProfileDefaultConsultationTitle(profileConfig) {
       laboratorio: "Examen de laboratorio",
       imagenes: "Imagen diagnostica",
       seguimiento: "Seguimiento",
-      documents: "Documento clinico",
+      documents: "Documento",
       remisiones: "Remision",
     }[profileConfig?.value || ""] || "Consulta general"
   );
@@ -2564,7 +2655,7 @@ function getConsultorioProfileModalEntityLabel(consultationType) {
       "Examen de laboratorio": "Examen de laboratorio",
       "Imagen diagnostica": "Imagen diagnostica",
       Seguimiento: "Seguimiento",
-      Documento: "Documento clinico",
+      Documento: "Documento",
       Remision: "Remision",
     }[consultationType || ""] || "Consulta"
   );
@@ -2649,6 +2740,18 @@ function getConsultorioScopedConsultations(consultationTypes = null) {
   return consultations;
 }
 
+function getConsultorioScopedOrders() {
+  return getConsultorioScopedConsultations(["Documento"]).filter((item) =>
+    isConsultorioOrderDocument(item)
+  );
+}
+
+function getConsultorioScopedDocuments() {
+  return getConsultorioScopedConsultations(["Documento"]).filter(
+    (item) => !isConsultorioOrderDocument(item)
+  );
+}
+
 function getConsultorioScopedConsents() {
   if (!isConsultorioPatientProfileActive()) {
     return state.consents;
@@ -2675,6 +2778,12 @@ function getConsultorioProfileCount(option) {
   }
   if (option.value === "grooming") {
     return getConsultorioScopedGrooming().length;
+  }
+  if (option.value === "orders") {
+    return getConsultorioScopedOrders().length;
+  }
+  if (option.value === "documents") {
+    return getConsultorioScopedDocuments().length;
   }
   return getConsultorioScopedConsultations(option.consultationTypes).length;
 }
@@ -3400,6 +3509,134 @@ function buildConsultorioOrderNotesPreview(items = []) {
     .join(" | ");
 }
 
+function buildConsultorioDocumentHtmlFromText(value) {
+  return String(value || "")
+    .split(/\n{2,}/)
+    .map((block) => String(block || "").trim())
+    .filter(Boolean)
+    .map((block) => `<p>${escapeHtml(block).replace(/\n/g, "<br>")}</p>`)
+    .join("");
+}
+
+function sanitizeConsultorioDocumentHtml(value) {
+  const rawValue = String(value || "").trim();
+  if (!rawValue || typeof DOMParser === "undefined") {
+    return "";
+  }
+  const parser = new DOMParser();
+  const parsed = parser.parseFromString(`<div>${rawValue}</div>`, "text/html");
+  const root = parsed.body.firstElementChild || parsed.body;
+  const allowedTags = new Set([
+    "P",
+    "BR",
+    "STRONG",
+    "B",
+    "EM",
+    "I",
+    "U",
+    "UL",
+    "OL",
+    "LI",
+    "H1",
+    "H2",
+    "H3",
+    "BLOCKQUOTE",
+    "FONT",
+    "A",
+  ]);
+  const sanitizeNode = (node) => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      return parsed.createTextNode(node.textContent || "");
+    }
+    if (node.nodeType !== Node.ELEMENT_NODE) {
+      return parsed.createDocumentFragment();
+    }
+    const tagName = String(node.tagName || "").toUpperCase();
+    if (!allowedTags.has(tagName)) {
+      const fragment = parsed.createDocumentFragment();
+      Array.from(node.childNodes).forEach((child) => {
+        fragment.appendChild(sanitizeNode(child));
+      });
+      return fragment;
+    }
+    const cleanNode = parsed.createElement(tagName.toLowerCase());
+    if (tagName === "A") {
+      const href = String(node.getAttribute("href") || "").trim();
+      if (/^(https?:|mailto:|tel:)/i.test(href)) {
+        cleanNode.setAttribute("href", href);
+        cleanNode.setAttribute("target", "_blank");
+        cleanNode.setAttribute("rel", "noreferrer");
+      }
+    } else if (tagName === "FONT") {
+      const size = String(node.getAttribute("size") || "").trim();
+      if (/^[1-7]$/.test(size)) {
+        cleanNode.setAttribute("size", size);
+      }
+    }
+    Array.from(node.childNodes).forEach((child) => {
+      cleanNode.appendChild(sanitizeNode(child));
+    });
+    return cleanNode;
+  };
+  const wrapper = parsed.createElement("div");
+  Array.from(root.childNodes).forEach((child) => {
+    wrapper.appendChild(sanitizeNode(child));
+  });
+  return wrapper.innerHTML.trim();
+}
+
+function consultorioDocumentHtmlToText(value) {
+  if (typeof document === "undefined") {
+    return String(value || "").trim();
+  }
+  const container = document.createElement("div");
+  container.innerHTML = sanitizeConsultorioDocumentHtml(value);
+  return String(container.textContent || "").replace(/\s+/g, " ").trim();
+}
+
+function parseConsultorioDocumentDetails(consultation) {
+  const indications = parseConsultorioStructuredText(consultation?.indications || "", {
+    "tipo de documento": "format",
+    formato: "format",
+    "requiere firma": "requiresSignature",
+  });
+  let stored = null;
+  const rawReference = String(consultation?.document_reference || "").trim();
+  if (rawReference.startsWith("{")) {
+    try {
+      const parsed = JSON.parse(rawReference);
+      if (parsed?.kind === "document") {
+        stored = parsed;
+      }
+    } catch (error) {
+      stored = null;
+    }
+  }
+  const fallbackText = String(consultation?.summary || "").trim();
+  const contentHtml = sanitizeConsultorioDocumentHtml(
+    stored?.contentHtml || buildConsultorioDocumentHtmlFromText(stored?.contentText || fallbackText)
+  );
+  const contentText =
+    String(stored?.contentText || "").trim() ||
+    consultorioDocumentHtmlToText(contentHtml) ||
+    fallbackText;
+  const requiresSignature =
+    typeof stored?.requiresSignature === "boolean"
+      ? stored.requiresSignature
+      : /^si/i.test(String(indications.requiresSignature || "").trim());
+  return {
+    kind: stored?.kind || "",
+    format: String(stored?.format || "").trim() || String(indications.format || "").trim(),
+    name: String(stored?.name || consultation?.title || "Documento").trim(),
+    requiresSignature,
+    signatureLabel: requiresSignature ? "Si requiere" : "No requiere",
+    contentHtml,
+    contentText,
+    summary: truncate(contentText || "Sin contenido registrado.", 220),
+    notifyOwner: Boolean(stored?.notifyOwner),
+  };
+}
+
 function isConsultorioOrderDocument(consultation) {
   const rawReference = String(consultation?.document_reference || "").trim();
   if (rawReference.startsWith("{")) {
@@ -3420,7 +3657,11 @@ function isConsultorioOrderDocument(consultation) {
     motivo: "reason",
     ordenes: "itemsPreview",
   });
-  return Boolean(String(consultation?.title || "").trim() || summary.reason || summary.itemsPreview);
+  const indications = parseConsultorioStructuredText(consultation?.indications || "", {
+    solicitudes: "requestsPreview",
+    notas: "notesPreview",
+  });
+  return Boolean(summary.reason || summary.itemsPreview || indications.requestsPreview || indications.notesPreview);
 }
 
 function getConsultorioOrderDisplayData(consultation) {
@@ -4949,7 +5190,7 @@ function buildConsultorioProcedureWorkspace(patient, profileConfig) {
 }
 
 function buildConsultorioOrdersWorkspace(patient, profileConfig) {
-  const orders = getConsultorioScopedConsultations(profileConfig?.consultationTypes || null);
+  const orders = getConsultorioScopedOrders();
   const content = orders.length
     ? `
       <div class="table-wrapper consultorio-consultations-table-wrapper consultorio-orders-table-wrapper">
@@ -5315,17 +5556,13 @@ function buildConsultorioImagingWorkspace(patient, profileConfig) {
 }
 
 function buildConsultorioDocumentsWorkspace(patient, profileConfig) {
-  const entries = getConsultorioScopedConsultations(profileConfig?.consultationTypes || null);
+  const entries = getConsultorioScopedDocuments();
   const content = entries.length
     ? `
       <div class="consultorio-documents-grid">
         ${entries
           .map((consultation) => {
-            const attachments = parseConsultorioAttachments(consultation?.attachments_summary || "");
-            const reference = String(
-              consultation?.document_reference || consultation?.referred_to || ""
-            ).trim();
-            const summary = String(consultation?.summary || "").trim();
+            const details = parseConsultorioDocumentDetails(consultation);
             return `
               <article class="consultorio-document-card">
                 <div class="consultorio-document-card__header">
@@ -5333,7 +5570,7 @@ function buildConsultorioDocumentsWorkspace(patient, profileConfig) {
                     <span class="consultorio-document-card__date">${escapeHtml(
                       formatDateTime(consultation?.consultation_at)
                     )}</span>
-                    <h5>${escapeHtml(consultation?.title || "Documento clinico")}</h5>
+                    <h5>${escapeHtml(details.name || "Documento")}</h5>
                   </div>
                   <button
                     class="ghost-button consultorio-document-card__action"
@@ -5343,25 +5580,19 @@ function buildConsultorioDocumentsWorkspace(patient, profileConfig) {
                     Editar
                   </button>
                 </div>
-                <p class="consultorio-document-card__summary">${escapeHtml(
-                  truncate(summary || "Sin descripcion registrada.", 220)
-                )}</p>
                 ${
-                  reference
-                    ? `<p class="consultorio-document-card__meta"><strong>Referencia:</strong> ${escapeHtml(
-                        truncate(reference, 160)
+                  details.format
+                    ? `<p class="consultorio-document-card__meta"><strong>Formato:</strong> ${escapeHtml(
+                        details.format
                       )}</p>`
                     : ""
                 }
-                ${
-                  attachments.length
-                    ? `
-                      <div class="consultorio-document-card__gallery">
-                        ${buildConsultorioAttachmentPreviewMarkup(attachments)}
-                      </div>
-                    `
-                    : `<p class="consultorio-document-card__meta">Sin adjuntos cargados.</p>`
-                }
+                <p class="consultorio-document-card__summary">${escapeHtml(
+                  details.summary || "Sin descripcion registrada."
+                )}</p>
+                <p class="consultorio-document-card__meta"><strong>Firma:</strong> ${escapeHtml(
+                  details.signatureLabel
+                )}</p>
                 <footer class="consultorio-document-card__footer">
                   <span>${escapeHtml(consultation?.professional_name || "Sin usuario")}</span>
                 </footer>
@@ -8358,6 +8589,91 @@ function getPatientProcedureAttachments() {
   return getConsultorioAttachmentFieldItems(elements.patientProcedureAttachmentsValue);
 }
 
+function syncPatientDocumentEditorState() {
+  if (!elements.patientDocumentEditor || !elements.patientDocumentContentInput) {
+    return;
+  }
+  const sanitized = sanitizeConsultorioDocumentHtml(elements.patientDocumentEditor.innerHTML);
+  const plainText = consultorioDocumentHtmlToText(sanitized);
+  elements.patientDocumentContentInput.value = plainText ? sanitized : "";
+  if (sanitized !== elements.patientDocumentEditor.innerHTML) {
+    elements.patientDocumentEditor.innerHTML = sanitized;
+  }
+  elements.patientDocumentEditor.classList.toggle("is-empty", !plainText);
+}
+
+function setPatientDocumentEditorContent(value) {
+  if (!elements.patientDocumentEditor || !elements.patientDocumentContentInput) {
+    return;
+  }
+  const sanitized = sanitizeConsultorioDocumentHtml(value);
+  elements.patientDocumentEditor.innerHTML = sanitized;
+  elements.patientDocumentContentInput.value = sanitized;
+  elements.patientDocumentEditor.classList.toggle(
+    "is-empty",
+    !consultorioDocumentHtmlToText(sanitized)
+  );
+}
+
+function applyPatientDocumentEditorCommand(command, value = null) {
+  if (!elements.patientDocumentEditor || typeof document?.execCommand !== "function") {
+    return;
+  }
+  elements.patientDocumentEditor.focus();
+  try {
+    if (command === "formatBlock") {
+      const normalizedBlock = String(value || "p")
+        .replace(/[<>]/g, "")
+        .trim()
+        .toLowerCase() || "p";
+      document.execCommand("formatBlock", false, `<${normalizedBlock}>`);
+    } else if (command === "createLink") {
+      document.execCommand("createLink", false, value || "");
+    } else if (value !== null) {
+      document.execCommand(command, false, value);
+    } else {
+      document.execCommand(command, false);
+    }
+  } catch (error) {
+    // ignore editor command errors
+  }
+  syncPatientDocumentEditorState();
+}
+
+function handlePatientDocumentToolbarClick(event) {
+  const button = event.target.closest("[data-document-command]");
+  if (!button) {
+    return;
+  }
+  event.preventDefault();
+  const command = button.dataset.documentCommand || "";
+  if (!command) {
+    return;
+  }
+  if (command === "createLink") {
+    const url = window.prompt("Ingresa la URL del enlace:");
+    if (!url) {
+      return;
+    }
+    applyPatientDocumentEditorCommand(command, url);
+    return;
+  }
+  applyPatientDocumentEditorCommand(command, button.dataset.documentCommandValue || null);
+}
+
+function handlePatientDocumentAddFormatClick() {
+  const formatName = window.prompt("Escribe el nombre del nuevo formato:");
+  const normalized = ensureConsultorioDocumentFormatOption(formatName, { persist: true });
+  if (!normalized) {
+    return;
+  }
+  renderPatientDocumentFormatOptions(normalized);
+  if (elements.patientDocumentNameInput && !elements.patientDocumentNameInput.value.trim()) {
+    elements.patientDocumentNameInput.value = normalized;
+  }
+  showStatus(`Formato "${normalized}" agregado.`, "success");
+}
+
 function closePatientConsultationModal() {
   if (!elements.patientConsultationModal) {
     return;
@@ -9784,11 +10100,16 @@ function openPatientConsultationModal(consultation = null) {
     isLaboratoryConsultationType(defaultConsultationType) || profileConfig?.value === "laboratorio";
   const isImagingMode =
     isImagingConsultationType(defaultConsultationType) || profileConfig?.value === "imagenes";
-  const isFollowupMode =
-    isFollowupConsultationType(defaultConsultationType) || profileConfig?.value === "seguimiento";
   const isOrderMode =
     (defaultConsultationType === "Documento" && profileConfig?.value === "orders") ||
     false;
+  const documentDetails = parseConsultorioDocumentDetails(consultation);
+  const isDocumentMode =
+    !isOrderMode &&
+    defaultConsultationType === "Documento" &&
+    (profileConfig?.value === "documents" || documentDetails.kind === "document");
+  const isFollowupMode =
+    isFollowupConsultationType(defaultConsultationType) || profileConfig?.value === "seguimiento";
   const defaultTitle =
     consultation?.title || getConsultorioProfileDefaultConsultationTitle(profileConfig);
   form.reset();
@@ -9802,6 +10123,8 @@ function openPatientConsultationModal(consultation = null) {
     ? "laboratory"
     : isImagingMode
     ? "imaging"
+    : isDocumentMode
+    ? "documents"
     : isFollowupMode
     ? "followup"
     : isVaccinationMode
@@ -9928,6 +10251,28 @@ function openPatientConsultationModal(consultation = null) {
   setPatientImagingAttachments(imagingDetails.attachments || []);
   if (isLaboratoryMode || isImagingMode) {
     loadConsultorioLaboratoryUsersIfNeeded();
+  }
+  renderPatientDocumentFormatOptions(documentDetails.format || "");
+  if (form.elements.document_format) {
+    form.elements.document_format.value = documentDetails.format || "";
+  }
+  if (form.elements.document_name) {
+    form.elements.document_name.value = documentDetails.name || defaultTitle;
+  }
+  if (form.elements.document_requires_signature) {
+    form.elements.document_requires_signature.value = documentDetails.requiresSignature
+      ? "required"
+      : "optional";
+  }
+  if (elements.patientDocumentStyleSelect) {
+    elements.patientDocumentStyleSelect.value = "p";
+  }
+  if (elements.patientDocumentFontSizeSelect) {
+    elements.patientDocumentFontSizeSelect.value = "3";
+  }
+  setPatientDocumentEditorContent(documentDetails.contentHtml);
+  if (form.elements.document_notify_owner) {
+    form.elements.document_notify_owner.checked = Boolean(documentDetails.notifyOwner);
   }
   if (form.elements.followup_date) {
     form.elements.followup_date.value =
@@ -10084,6 +10429,9 @@ function openPatientConsultationModal(consultation = null) {
   if (elements.patientImagingFields) {
     elements.patientImagingFields.classList.toggle("is-hidden", !isImagingMode);
   }
+  if (elements.patientDocumentFields) {
+    elements.patientDocumentFields.classList.toggle("is-hidden", !isDocumentMode);
+  }
   if (elements.patientFollowupFields) {
     elements.patientFollowupFields.classList.toggle("is-hidden", !isFollowupMode);
   }
@@ -10101,6 +10449,7 @@ function openPatientConsultationModal(consultation = null) {
         isProcedureMode ||
         isLaboratoryMode ||
         isImagingMode ||
+        isDocumentMode ||
         isOrderMode
     );
   }
@@ -10169,12 +10518,14 @@ function openPatientConsultationModal(consultation = null) {
   elements.patientConsultationModal.classList.toggle("modal-shell--orders", isOrderMode);
   elements.patientConsultationModal.classList.toggle("modal-shell--laboratory", isLaboratoryMode);
   elements.patientConsultationModal.classList.toggle("modal-shell--imaging", isImagingMode);
+  elements.patientConsultationModal.classList.toggle("modal-shell--documents", isDocumentMode);
   elements.patientConsultationModal.classList.toggle("modal-shell--followup", isFollowupMode);
   modalCard?.classList.toggle("consultorio-consultation-modal--hospamb", isHospAmbMode);
   modalCard?.classList.toggle("consultorio-consultation-modal--procedure", isProcedureMode);
   modalCard?.classList.toggle("consultorio-consultation-modal--orders", isOrderMode);
   modalCard?.classList.toggle("consultorio-consultation-modal--laboratory", isLaboratoryMode);
   modalCard?.classList.toggle("consultorio-consultation-modal--imaging", isImagingMode);
+  modalCard?.classList.toggle("consultorio-consultation-modal--documents", isDocumentMode);
   modalCard?.classList.toggle("consultorio-consultation-modal--followup", isFollowupMode);
   modalCard?.classList.toggle("consultorio-consultation-modal--vaccination", isVaccinationMode);
   modalCard?.classList.toggle("consultorio-consultation-modal--formula", isFormulaMode);
@@ -10184,6 +10535,8 @@ function openPatientConsultationModal(consultation = null) {
       ? orderModalIconSvg
       : isImagingMode
       ? imagingModalIconSvg
+      : isDocumentMode
+      ? orderModalIconSvg
       : isFollowupMode
       ? followupModalIconSvg
       : isLaboratoryMode
@@ -10205,6 +10558,7 @@ function openPatientConsultationModal(consultation = null) {
       isProcedureMode ||
       isLaboratoryMode ||
       isImagingMode ||
+      isDocumentMode ||
       isFollowupMode ||
       isOrderMode
         ? ""
@@ -10220,6 +10574,7 @@ function openPatientConsultationModal(consultation = null) {
         isProcedureMode ||
         isLaboratoryMode ||
         isImagingMode ||
+        isDocumentMode ||
         isFollowupMode ||
         isOrderMode
     );
@@ -10235,6 +10590,7 @@ function openPatientConsultationModal(consultation = null) {
         isProcedureMode ||
         isLaboratoryMode ||
         isImagingMode ||
+        isDocumentMode ||
         isFollowupMode ||
         isOrderMode
     );
@@ -10256,6 +10612,8 @@ function openPatientConsultationModal(consultation = null) {
     form.elements.laboratory_date.focus();
   } else if (isImagingMode && form.elements.imaging_date) {
     form.elements.imaging_date.focus();
+  } else if (isDocumentMode && form.elements.document_format) {
+    form.elements.document_format.focus();
   } else if (isFollowupMode && form.elements.followup_date) {
     form.elements.followup_date.focus();
   } else if (isOrderMode && form.elements.order_date) {
@@ -10931,6 +11289,9 @@ async function handleConsultationSubmit(event) {
 async function handlePatientConsultationSubmit(event) {
   event.preventDefault();
   const form = event.currentTarget;
+  if (form.dataset.consultationMode === "documents") {
+    syncPatientDocumentEditorState();
+  }
   const payload = serializeForm(form);
   const patient = getConsultorioPatient();
   if (!patient) {
@@ -10941,12 +11302,51 @@ async function handlePatientConsultationSubmit(event) {
   const isOrderMode = form.dataset.consultationMode === "orders";
   const isLaboratoryMode = form.dataset.consultationMode === "laboratory";
   const isImagingMode = form.dataset.consultationMode === "imaging";
+  const isDocumentMode = form.dataset.consultationMode === "documents";
   const isFollowupMode = form.dataset.consultationMode === "followup";
   payload.consultation_type =
     payload.consultation_type ||
     getConsultorioProfileViewConfig()?.formConsultationType ||
     "Consulta";
-  if (isOrderMode) {
+  if (isDocumentMode) {
+    const documentFormat = ensureConsultorioDocumentFormatOption(payload.document_format, {
+      persist: true,
+    });
+    const documentName = String(payload.document_name || "").trim();
+    const documentHtml = sanitizeConsultorioDocumentHtml(payload.document_content_html || "");
+    const documentText = consultorioDocumentHtmlToText(documentHtml);
+    if (!documentFormat) {
+      throw new Error("Selecciona el tipo de documento.");
+    }
+    if (!documentName) {
+      throw new Error("Escribe el nombre del documento.");
+    }
+    if (!documentText) {
+      throw new Error("Escribe el contenido del documento.");
+    }
+    payload.consultation_type = "Documento";
+    payload.title = documentName;
+    payload.consultation_at = payload.consultation_at || toInputDateTime(new Date().toISOString());
+    payload.next_control = "";
+    payload.summary = documentText;
+    payload.indications = buildConsultorioStructuredText([
+      ["Tipo de documento", documentFormat],
+      [
+        "Requiere firma",
+        payload.document_requires_signature === "required" ? "Si requiere" : "No requiere",
+      ],
+    ]);
+    payload.attachments_summary = "";
+    payload.document_reference = JSON.stringify({
+      kind: "document",
+      format: documentFormat,
+      name: documentName,
+      requiresSignature: payload.document_requires_signature === "required",
+      contentHtml: documentHtml,
+      contentText: documentText,
+      notifyOwner: Boolean(payload.document_notify_owner),
+    });
+  } else if (isOrderMode) {
     const orderItems = getPatientOrderItems({ includeEmpty: true }).filter((item) =>
       hasConsultorioOrderItemContent(item)
     );
@@ -11269,6 +11669,8 @@ async function handlePatientConsultationSubmit(event) {
   closePatientConsultationModal();
   const entityLabel = isOrderMode
     ? "Orden"
+    : isDocumentMode
+    ? "Documento"
     : isImagingMode
     ? "Imagenologia"
     : isLaboratoryMode
@@ -11277,6 +11679,15 @@ async function handlePatientConsultationSubmit(event) {
   let statusMessage = payload.id
     ? `${entityLabel} actualizada.`
     : `${entityLabel} registrada.`;
+  if (isDocumentMode && payload.document_notify_owner) {
+    const owner = getConsultorioOwner();
+    const ownerLabel = owner?.full_name || patient?.owner_name || "el propietario";
+    addNotification(
+      `Documento de ${patient?.name || "la mascota"} listo para notificar a ${ownerLabel}.`,
+      "info"
+    );
+    statusMessage += " Se genero una notificacion para el propietario.";
+  }
   if (isFollowupMode && payload.followup_notify_owner) {
     const owner = getConsultorioOwner();
     const ownerLabel = owner?.full_name || patient?.owner_name || "el propietario";
@@ -11307,10 +11718,13 @@ async function handlePatientConsultationSubmit(event) {
     message: statusMessage,
   });
   consultorioPatientProfileOpen = true;
-  consultorioProfileView =
-    CONSULTORIO_PROFILE_VIEWS.find(
-      (option) => option.formConsultationType === payload.consultation_type
-    )?.value || "consultations";
+  consultorioProfileView = isOrderMode
+    ? "orders"
+    : isDocumentMode
+    ? "documents"
+    : CONSULTORIO_PROFILE_VIEWS.find(
+        (option) => option.formConsultationType === payload.consultation_type
+      )?.value || "consultations";
   setActiveSection(CONSULTORIO_PATIENT_PROFILE_SECTION_ID);
 }
 
@@ -11921,6 +12335,51 @@ function bindForms() {
     elements.patientConsultationModal.addEventListener("click", (event) => {
       if (event.target.dataset.closePatientConsultationModal) {
         closePatientConsultationModal();
+      }
+    });
+  }
+  if (elements.patientDocumentAddFormatButton) {
+    elements.patientDocumentAddFormatButton.addEventListener(
+      "click",
+      handlePatientDocumentAddFormatClick
+    );
+  }
+  if (elements.patientDocumentToolbar) {
+    elements.patientDocumentToolbar.addEventListener("mousedown", (event) => {
+      if (event.target.closest("button[data-document-command]")) {
+        event.preventDefault();
+      }
+    });
+    elements.patientDocumentToolbar.addEventListener("click", handlePatientDocumentToolbarClick);
+  }
+  if (elements.patientDocumentStyleSelect) {
+    elements.patientDocumentStyleSelect.addEventListener("change", (event) => {
+      const value = event.target.value || "p";
+      applyPatientDocumentEditorCommand("formatBlock", value);
+    });
+  }
+  if (elements.patientDocumentFontSizeSelect) {
+    elements.patientDocumentFontSizeSelect.addEventListener("change", (event) => {
+      const value = event.target.value || "3";
+      applyPatientDocumentEditorCommand("fontSize", value);
+    });
+  }
+  if (elements.patientDocumentEditor) {
+    elements.patientDocumentEditor.addEventListener("input", syncPatientDocumentEditorState);
+    elements.patientDocumentEditor.addEventListener("blur", syncPatientDocumentEditorState);
+    elements.patientDocumentEditor.addEventListener("paste", (event) => {
+      event.preventDefault();
+      const plainText = event.clipboardData?.getData("text/plain") || "";
+      if (typeof document?.execCommand === "function") {
+        document.execCommand("insertText", false, plainText);
+      }
+      syncPatientDocumentEditorState();
+    });
+  }
+  if (elements.patientDocumentFormatSelect) {
+    elements.patientDocumentFormatSelect.addEventListener("change", (event) => {
+      if (elements.patientDocumentNameInput && !elements.patientDocumentNameInput.value.trim()) {
+        elements.patientDocumentNameInput.value = String(event.target.value || "").trim();
       }
     });
   }
