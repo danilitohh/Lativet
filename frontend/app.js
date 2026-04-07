@@ -1409,6 +1409,7 @@ function cacheElements() {
     "patientDocumentSignatureSelect",
     "patientDocumentToolbar",
     "patientDocumentStyleSelect",
+    "patientDocumentFontFamilySelect",
     "patientDocumentFontSizeSelect",
     "patientDocumentEditor",
     "patientDocumentContentInput",
@@ -3534,6 +3535,10 @@ function sanitizeConsultorioDocumentHtml(value) {
     "EM",
     "I",
     "U",
+    "S",
+    "STRIKE",
+    "SUB",
+    "SUP",
     "UL",
     "OL",
     "LI",
@@ -3569,8 +3574,12 @@ function sanitizeConsultorioDocumentHtml(value) {
       }
     } else if (tagName === "FONT") {
       const size = String(node.getAttribute("size") || "").trim();
+      const face = String(node.getAttribute("face") || "").trim();
       if (/^[1-7]$/.test(size)) {
         cleanNode.setAttribute("size", size);
+      }
+      if (face) {
+        cleanNode.setAttribute("face", face);
       }
     }
     Array.from(node.childNodes).forEach((child) => {
@@ -10267,6 +10276,9 @@ function openPatientConsultationModal(consultation = null) {
   if (elements.patientDocumentStyleSelect) {
     elements.patientDocumentStyleSelect.value = "p";
   }
+  if (elements.patientDocumentFontFamilySelect) {
+    elements.patientDocumentFontFamilySelect.value = "";
+  }
   if (elements.patientDocumentFontSizeSelect) {
     elements.patientDocumentFontSizeSelect.value = "3";
   }
@@ -10507,6 +10519,15 @@ function openPatientConsultationModal(consultation = null) {
       <path d="M12 9v10"></path>
     </svg>
   `;
+  const documentModalIconSvg = `
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"></path>
+      <path d="M14 2v5h5"></path>
+      <path d="M9 11h6"></path>
+      <path d="M9 15h6"></path>
+      <path d="M9 19h4"></path>
+    </svg>
+  `;
   const followupModalIconSvg = `
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
       <path d="M12 21s-6.5-4.35-6.5-10A3.5 3.5 0 0 1 9 7.5c1.28 0 2.42.69 3 1.72A3.34 3.34 0 0 1 15 7.5a3.5 3.5 0 0 1 3.5 3.5c0 5.65-6.5 10-6.5 10Z"></path>
@@ -10536,7 +10557,7 @@ function openPatientConsultationModal(consultation = null) {
       : isImagingMode
       ? imagingModalIconSvg
       : isDocumentMode
-      ? orderModalIconSvg
+      ? documentModalIconSvg
       : isFollowupMode
       ? followupModalIconSvg
       : isLaboratoryMode
@@ -12356,6 +12377,15 @@ function bindForms() {
     elements.patientDocumentStyleSelect.addEventListener("change", (event) => {
       const value = event.target.value || "p";
       applyPatientDocumentEditorCommand("formatBlock", value);
+    });
+  }
+  if (elements.patientDocumentFontFamilySelect) {
+    elements.patientDocumentFontFamilySelect.addEventListener("change", (event) => {
+      const value = String(event.target.value || "").trim();
+      if (!value) {
+        return;
+      }
+      applyPatientDocumentEditorCommand("fontName", value);
     });
   }
   if (elements.patientDocumentFontSizeSelect) {
