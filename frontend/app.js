@@ -2527,6 +2527,7 @@ function isConsultorioWorkspaceOnlyView(profileConfig) {
     "cirugia",
     "orders",
     "laboratorio",
+    "documents",
     "seguimiento",
   ].includes(profileConfig?.value || "");
 }
@@ -5313,6 +5314,112 @@ function buildConsultorioImagingWorkspace(patient, profileConfig) {
   `;
 }
 
+function buildConsultorioDocumentsWorkspace(patient, profileConfig) {
+  const entries = getConsultorioScopedConsultations(profileConfig?.consultationTypes || null);
+  const content = entries.length
+    ? `
+      <div class="consultorio-documents-grid">
+        ${entries
+          .map((consultation) => {
+            const attachments = parseConsultorioAttachments(consultation?.attachments_summary || "");
+            const reference = String(
+              consultation?.document_reference || consultation?.referred_to || ""
+            ).trim();
+            const summary = String(consultation?.summary || "").trim();
+            return `
+              <article class="consultorio-document-card">
+                <div class="consultorio-document-card__header">
+                  <div>
+                    <span class="consultorio-document-card__date">${escapeHtml(
+                      formatDateTime(consultation?.consultation_at)
+                    )}</span>
+                    <h5>${escapeHtml(consultation?.title || "Documento clinico")}</h5>
+                  </div>
+                  <button
+                    class="ghost-button consultorio-document-card__action"
+                    type="button"
+                    data-edit-patient-consultation="${escapeHtml(consultation.id)}"
+                  >
+                    Editar
+                  </button>
+                </div>
+                <p class="consultorio-document-card__summary">${escapeHtml(
+                  truncate(summary || "Sin descripcion registrada.", 220)
+                )}</p>
+                ${
+                  reference
+                    ? `<p class="consultorio-document-card__meta"><strong>Referencia:</strong> ${escapeHtml(
+                        truncate(reference, 160)
+                      )}</p>`
+                    : ""
+                }
+                ${
+                  attachments.length
+                    ? `
+                      <div class="consultorio-document-card__gallery">
+                        ${buildConsultorioAttachmentPreviewMarkup(attachments)}
+                      </div>
+                    `
+                    : `<p class="consultorio-document-card__meta">Sin adjuntos cargados.</p>`
+                }
+                <footer class="consultorio-document-card__footer">
+                  <span>${escapeHtml(consultation?.professional_name || "Sin usuario")}</span>
+                </footer>
+              </article>
+            `;
+          })
+          .join("")}
+      </div>
+    `
+    : `
+      <div class="consultorio-module-empty consultorio-module-empty--documents">
+        <span class="consultorio-module-empty__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"></path>
+            <path d="M14 2v5h5"></path>
+            <path d="M9 13h6"></path>
+            <path d="M9 17h6"></path>
+            <path d="M9 9h2"></path>
+          </svg>
+        </span>
+        <strong>No hay registros de documento</strong>
+      </div>
+    `;
+  return `
+    <article class="consultorio-profile-shell consultorio-documents-shell">
+      <div class="consultorio-profile-table-toolbar consultorio-documents-shell__toolbar">
+        <div class="consultorio-profile-toolbar__group">
+          <span class="consultorio-profile-toolbar__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"></path>
+              <path d="M14 2v5h5"></path>
+              <path d="M9 13h6"></path>
+              <path d="M9 17h6"></path>
+              <path d="M9 9h2"></path>
+            </svg>
+          </span>
+          <div class="consultorio-profile-toolbar__title">
+            <h4>Documentos de <span class="consultorio-profile-toolbar__accent">${escapeHtml(
+              patient?.name || "Paciente"
+            )}</span></h4>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button
+            class="primary-button consultorio-documents-shell__button"
+            type="button"
+            data-open-patient-consultation-modal="true"
+            data-consultation-profile-view="documents"
+          >
+            + Registrar documento
+          </button>
+        </div>
+      </div>
+      ${content}
+    </article>
+  `;
+}
+
 function buildConsultorioFollowupWorkspace(patient, profileConfig) {
   const entries = getConsultorioScopedConsultations(profileConfig?.consultationTypes || null);
   const content = entries.length
@@ -5557,6 +5664,8 @@ function renderConsultorioPatientProfile() {
         ? buildConsultorioLaboratoryWorkspace(patient, profileConfig)
         : profileConfig?.value === "imagenes"
         ? buildConsultorioImagingWorkspace(patient, profileConfig)
+        : profileConfig?.value === "documents"
+        ? buildConsultorioDocumentsWorkspace(patient, profileConfig)
         : profileConfig?.value === "seguimiento"
         ? buildConsultorioFollowupWorkspace(patient, profileConfig)
         : buildConsultorioProfileTimelineMarkup(profileConfig, timelineItems);
