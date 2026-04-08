@@ -2079,6 +2079,7 @@ function getPatientDocumentTemplateContext() {
       "Este documento hace parte del expediente clinico y debe conservarse conforme a la politica documental aplicable.",
     clinicalRecordNumber:
       clinicalRecordNumber || buildConsultorioDocumentPlaceholder("consecutivo de historia clinica"),
+    signatureConfig: getPatientDocumentSignatureConfig(),
     professionalName:
       String(form?.elements?.professional_name?.value || getDefaultConsultorioProfessionalName()).trim() ||
       "Profesional tratante",
@@ -2106,6 +2107,16 @@ function syncPatientDocumentTemplateSuggestedValues(template) {
       ? "required"
       : "optional";
   }
+  if (
+    template.requiresSignature &&
+    elements.patientDocumentOwnerSignatureCheckbox &&
+    elements.patientDocumentProfessionalSignatureCheckbox &&
+    !elements.patientDocumentOwnerSignatureCheckbox.checked &&
+    !elements.patientDocumentProfessionalSignatureCheckbox.checked
+  ) {
+    elements.patientDocumentOwnerSignatureCheckbox.checked = true;
+    elements.patientDocumentProfessionalSignatureCheckbox.checked = true;
+  }
   if (elements.patientDocumentNameInput) {
     const suggestedName = String(template.documentName || template.label || "").trim();
     const currentName = String(elements.patientDocumentNameInput.value || "").trim();
@@ -2114,6 +2125,41 @@ function syncPatientDocumentTemplateSuggestedValues(template) {
       patientDocumentLastSuggestedName = suggestedName;
     }
   }
+}
+
+function getPatientDocumentSignatureConfig() {
+  const requiresSignature =
+    String(elements.patientDocumentSignatureSelect?.value || "").trim() === "required";
+  return {
+    enabled: requiresSignature,
+    owner: requiresSignature ? Boolean(elements.patientDocumentOwnerSignatureCheckbox?.checked) : false,
+    professional: requiresSignature
+      ? Boolean(elements.patientDocumentProfessionalSignatureCheckbox?.checked)
+      : false,
+  };
+}
+
+function syncPatientDocumentSignatureOptionsVisibility(options = {}) {
+  const signatureConfig = getPatientDocumentSignatureConfig();
+  if (elements.patientDocumentSignatureOptions) {
+    elements.patientDocumentSignatureOptions.classList.toggle(
+      "is-hidden",
+      !signatureConfig.enabled
+    );
+  }
+  if (elements.patientDocumentOwnerSignatureCheckbox) {
+    elements.patientDocumentOwnerSignatureCheckbox.disabled = !signatureConfig.enabled;
+  }
+  if (elements.patientDocumentProfessionalSignatureCheckbox) {
+    elements.patientDocumentProfessionalSignatureCheckbox.disabled = !signatureConfig.enabled;
+  }
+  if (options.updateTemplate) {
+    syncPatientDocumentTemplateSelection({
+      forceTemplateReplace: Boolean(options.forceTemplateReplace),
+      syncSuggestedValues: false,
+    });
+  }
+  return signatureConfig;
 }
 
 function canReplacePatientDocumentWithTemplate() {
@@ -2167,6 +2213,7 @@ function syncPatientDocumentTemplateSelection(options = {}) {
   if (options.syncSuggestedValues !== false) {
     syncPatientDocumentTemplateSuggestedValues(template);
   }
+  syncPatientDocumentSignatureOptionsVisibility();
   if (options.applyTemplate === false) {
     return template;
   }
@@ -2179,8 +2226,15 @@ function syncPatientDocumentTemplateSelection(options = {}) {
 function resetPatientDocumentTemplateWorkflowState() {
   patientDocumentLastGeneratedHtml = "";
   patientDocumentLastSuggestedName = "";
+  if (elements.patientDocumentOwnerSignatureCheckbox) {
+    elements.patientDocumentOwnerSignatureCheckbox.checked = true;
+  }
+  if (elements.patientDocumentProfessionalSignatureCheckbox) {
+    elements.patientDocumentProfessionalSignatureCheckbox.checked = true;
+  }
   renderPatientDocumentTemplateOptions("", "");
   renderPatientDocumentTemplateGuide(null, "");
+  syncPatientDocumentSignatureOptionsVisibility();
 }
 
 function loadConsultorioDocumentFormats() {
@@ -2509,6 +2563,9 @@ function cacheElements() {
     "patientDocumentTemplateSelect",
     "patientDocumentNameInput",
     "patientDocumentSignatureSelect",
+    "patientDocumentSignatureOptions",
+    "patientDocumentOwnerSignatureCheckbox",
+    "patientDocumentProfessionalSignatureCheckbox",
     "patientDocumentTemplatePanel",
     "patientDocumentTemplateTitle",
     "patientDocumentTemplateDescription",
@@ -4786,6 +4843,10 @@ function parseConsultorioDocumentDetails(consultation) {
       : /^si/i.test(String(indications.requiresSignature || "").trim());
   const storedTemplate =
     stored?.template && typeof stored.template === "object" ? stored.template : null;
+  const storedSignatureConfig =
+    stored?.signatureConfig && typeof stored.signatureConfig === "object"
+      ? stored.signatureConfig
+      : null;
   return {
     kind: stored?.kind || "",
     format: String(stored?.format || "").trim() || String(indications.format || "").trim(),
@@ -4809,6 +4870,17 @@ function parseConsultorioDocumentDetails(consultation) {
     templateRecommendedSections: Array.isArray(storedTemplate?.recommendedSections)
       ? storedTemplate.recommendedSections
       : [],
+    signatureConfig: {
+      enabled: requiresSignature,
+      owner:
+        typeof storedSignatureConfig?.owner === "boolean"
+          ? storedSignatureConfig.owner
+          : requiresSignature,
+      professional:
+        typeof storedSignatureConfig?.professional === "boolean"
+          ? storedSignatureConfig.professional
+          : requiresSignature,
+    },
   };
 }
 
@@ -6747,13 +6819,22 @@ function buildConsultorioDocumentsWorkspace(patient, profileConfig) {
                     )}</span>
                     <h5>${escapeHtml(details.name || "Documento")}</h5>
                   </div>
-                  <button
-                    class="ghost-button consultorio-document-card__action"
-                    type="button"
-                    data-edit-patient-consultation="${escapeHtml(consultation.id)}"
-                  >
-                    Editar
-                  </button>
+                  <div class="consultorio-document-card__actions">
+                    <button
+                      class="ghost-button consultorio-document-card__action"
+                      type="button"
+                      data-edit-patient-consultation="${escapeHtml(consultation.id)}"
+                    >
+                      Editar
+                    </button>
+                    <button
+                      class="ghost-button consultorio-document-card__action consultorio-document-card__action--danger"
+                      type="button"
+                      data-delete-patient-document="${escapeHtml(consultation.id)}"
+                    >
+                      Eliminar
+                    </button>
+                  </div>
                 </div>
                 ${
                   details.format
@@ -10085,6 +10166,9 @@ function buildConsultorioDocumentProfessionalSignatureSection(
   context,
   label = "Medico veterinario o MVZ"
 ) {
+  if (!context?.signatureConfig?.enabled || !context?.signatureConfig?.professional) {
+    return "";
+  }
   return buildConsultorioDocumentSection(
     "Cierre profesional",
     `
@@ -10123,35 +10207,62 @@ function buildConsultorioDocumentSignatureSection(
     professionalLabel = "Profesional tratante",
   } = {}
 ) {
+  const ownerEnabled = Boolean(context?.signatureConfig?.enabled && context?.signatureConfig?.owner);
+  const professionalEnabled = Boolean(
+    context?.signatureConfig?.enabled && context?.signatureConfig?.professional
+  );
+  const cells = [];
+  const names = [];
+  const details = [];
+  const footer = [];
+  if (ownerEnabled) {
+    cells.push(
+      `<td><strong>Firma ${escapeHtml(ownerLabel)}:</strong><br><br>____________________________</td>`
+    );
+    names.push(
+      `<td><strong>Nombre:</strong> ${escapeHtml(getConsultorioDocumentOwnerName(context))}</td>`
+    );
+    details.push(
+      `<td><strong>Documento:</strong> ${escapeHtml(getConsultorioDocumentOwnerId(context))}</td>`
+    );
+    footer.push(
+      `<td><strong>Fecha:</strong> ${escapeHtml(
+        getConsultorioDocumentValue(context?.documentDate, "fecha del documento")
+      )}</td>`
+    );
+  }
+  if (professionalEnabled) {
+    cells.push(
+      `<td><strong>Firma ${escapeHtml(professionalLabel)}:</strong><br><br>____________________________</td>`
+    );
+    names.push(
+      `<td><strong>Nombre:</strong> ${escapeHtml(
+        getConsultorioDocumentValue(context?.professionalName, "profesional responsable")
+      )}</td>`
+    );
+    details.push(
+      `<td><strong>Matricula / registro:</strong> ${escapeHtml(
+        getConsultorioDocumentValue(context?.professionalLicense, "registro profesional")
+      )}</td>`
+    );
+    footer.push(
+      `<td><strong>Constancia:</strong> ${escapeHtml(
+        buildConsultorioDocumentPlaceholder("si se entrega copia al propietario")
+      )}</td>`
+    );
+  }
+  if (!cells.length) {
+    return "";
+  }
   return buildConsultorioDocumentSection(
     "Firmas",
     `
       <table>
         <tbody>
-          <tr>
-            <td><strong>Firma ${escapeHtml(ownerLabel)}:</strong><br><br>____________________________</td>
-            <td><strong>Firma ${escapeHtml(professionalLabel)}:</strong><br><br>____________________________</td>
-          </tr>
-          <tr>
-            <td><strong>Nombre:</strong> ${escapeHtml(getConsultorioDocumentOwnerName(context))}</td>
-            <td><strong>Nombre:</strong> ${escapeHtml(
-              getConsultorioDocumentValue(context?.professionalName, "profesional responsable")
-            )}</td>
-          </tr>
-          <tr>
-            <td><strong>Documento:</strong> ${escapeHtml(getConsultorioDocumentOwnerId(context))}</td>
-            <td><strong>Matricula / registro:</strong> ${escapeHtml(
-              getConsultorioDocumentValue(context?.professionalLicense, "registro profesional")
-            )}</td>
-          </tr>
-          <tr>
-            <td><strong>Fecha:</strong> ${escapeHtml(
-              getConsultorioDocumentValue(context?.documentDate, "fecha del documento")
-            )}</td>
-            <td><strong>Constancia:</strong> ${escapeHtml(
-              buildConsultorioDocumentPlaceholder("si se entrega copia al propietario")
-            )}</td>
-          </tr>
+          <tr>${cells.join("")}</tr>
+          <tr>${names.join("")}</tr>
+          <tr>${details.join("")}</tr>
+          <tr>${footer.join("")}</tr>
         </tbody>
       </table>
     `
@@ -12747,6 +12858,26 @@ async function handleConsultorioLaboratoryAction(action, consultationId) {
   }
 }
 
+async function handleConsultorioDocumentDeleteAction(consultationId) {
+  const consultation = getConsultationById(consultationId || "");
+  if (!consultation) {
+    showStatus("No se encontro el documento seleccionado.", "error");
+    return;
+  }
+  const confirmed = window.confirm("¿Eliminar este documento? Esta accion no se puede deshacer.");
+  if (!confirmed) {
+    return;
+  }
+  await api.deleteConsultation(consultation.id);
+  await refreshData({
+    sections: ["consultations", "records"],
+    message: "Documento eliminado.",
+  });
+  consultorioPatientProfileOpen = true;
+  consultorioProfileView = "documents";
+  setActiveSection(CONSULTORIO_PATIENT_PROFILE_SECTION_ID);
+}
+
 function openConsultorioOrderPrintView(consultation) {
   const patient = getPatientById(consultation?.patient_id || "") || getConsultorioPatient();
   const owner = getOwnerById(consultation?.owner_id || patient?.owner_id || "");
@@ -13158,6 +13289,17 @@ function openPatientConsultationModal(consultation = null) {
       ? "required"
       : "optional";
   }
+  if (elements.patientDocumentOwnerSignatureCheckbox) {
+    elements.patientDocumentOwnerSignatureCheckbox.checked = Boolean(
+      documentDetails.signatureConfig?.owner
+    );
+  }
+  if (elements.patientDocumentProfessionalSignatureCheckbox) {
+    elements.patientDocumentProfessionalSignatureCheckbox.checked = Boolean(
+      documentDetails.signatureConfig?.professional
+    );
+  }
+  syncPatientDocumentSignatureOptionsVisibility();
   if (elements.patientDocumentStyleSelect) {
     elements.patientDocumentStyleSelect.value = "";
   }
@@ -14235,6 +14377,7 @@ async function handlePatientConsultationSubmit(event) {
       documentTemplateId,
       documentFormat
     );
+    const documentSignatureConfig = getPatientDocumentSignatureConfig();
     const documentName = String(payload.document_name || "").trim();
     const documentHtml = sanitizeConsultorioDocumentHtml(payload.document_content_html || "");
     const documentText = consultorioDocumentHtmlToText(documentHtml);
@@ -14247,6 +14390,13 @@ async function handlePatientConsultationSubmit(event) {
     if (!documentText) {
       throw new Error("Escribe el contenido del documento.");
     }
+    if (
+      documentSignatureConfig.enabled &&
+      !documentSignatureConfig.owner &&
+      !documentSignatureConfig.professional
+    ) {
+      throw new Error("Selecciona al menos una opcion de firma para este documento.");
+    }
     payload.consultation_type = "Documento";
     payload.title = documentName;
     payload.consultation_at = payload.consultation_at || toInputDateTime(new Date().toISOString());
@@ -14257,7 +14407,7 @@ async function handlePatientConsultationSubmit(event) {
       ["Plantilla", documentTemplate?.label || "Plantilla libre"],
       [
         "Requiere firma",
-        payload.document_requires_signature === "required" ? "Si requiere" : "No requiere",
+        documentSignatureConfig.enabled ? "Si requiere" : "No requiere",
       ],
     ]);
     payload.attachments_summary = "";
@@ -14265,7 +14415,8 @@ async function handlePatientConsultationSubmit(event) {
       kind: "document",
       format: documentFormat,
       name: documentName,
-      requiresSignature: payload.document_requires_signature === "required",
+      requiresSignature: documentSignatureConfig.enabled,
+      signatureConfig: documentSignatureConfig,
       template: documentTemplate
         ? {
             id: documentTemplate.id,
@@ -15228,6 +15379,13 @@ function bindForms() {
         );
         return;
       }
+      const deleteDocumentButton = event.target.closest("[data-delete-patient-document]");
+      if (deleteDocumentButton) {
+        await handleConsultorioDocumentDeleteAction(
+          deleteDocumentButton.dataset.deletePatientDocument || ""
+        );
+        return;
+      }
       const editConsultationButton = event.target.closest("[data-edit-patient-consultation]");
       if (editConsultationButton) {
         const consultation = getConsultationById(editConsultationButton.dataset.editPatientConsultation || "");
@@ -15366,6 +15524,27 @@ function bindForms() {
     elements.patientDocumentTemplateSelect.addEventListener("change", (event) => {
       syncPatientDocumentTemplateSelection({
         templateId: String(event.target.value || "").trim(),
+      });
+    });
+  }
+  if (elements.patientDocumentSignatureSelect) {
+    elements.patientDocumentSignatureSelect.addEventListener("change", () => {
+      syncPatientDocumentSignatureOptionsVisibility({
+        updateTemplate: true,
+      });
+    });
+  }
+  if (elements.patientDocumentOwnerSignatureCheckbox) {
+    elements.patientDocumentOwnerSignatureCheckbox.addEventListener("change", () => {
+      syncPatientDocumentSignatureOptionsVisibility({
+        updateTemplate: true,
+      });
+    });
+  }
+  if (elements.patientDocumentProfessionalSignatureCheckbox) {
+    elements.patientDocumentProfessionalSignatureCheckbox.addEventListener("change", () => {
+      syncPatientDocumentSignatureOptionsVisibility({
+        updateTemplate: true,
       });
     });
   }

@@ -1819,6 +1819,14 @@ button:active {
   gap: 12px;
 }
 
+.consultorio-document-card__actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 .consultorio-document-card__date,
 .consultorio-document-card__meta,
 .consultorio-document-card__footer {
@@ -1837,6 +1845,15 @@ button:active {
   padding: 5px 9px;
   border-radius: 6px;
   box-shadow: none;
+}
+
+.consultorio-document-card__action--danger {
+  color: #b42318;
+  border-color: rgba(180, 35, 24, 0.18);
+}
+
+.consultorio-document-card__action--danger:hover {
+  background: rgba(180, 35, 24, 0.06);
 }
 
 .consultorio-document-card__summary,
@@ -3592,6 +3609,54 @@ button:active {
 
 .consultorio-document-template__item--empty::before {
   background: #c5ccda;
+}
+
+.consultorio-document-signatures {
+  display: grid;
+  gap: 12px;
+  padding: 13px 16px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 12px;
+  background: rgba(248, 250, 255, 0.96);
+}
+
+.consultorio-document-signatures__header {
+  display: grid;
+  gap: 4px;
+}
+
+.consultorio-document-signatures__header strong {
+  font-size: 0.9rem;
+  color: #24324a;
+}
+
+.consultorio-document-signatures__header span {
+  font-size: 0.76rem;
+  color: #6b7891;
+}
+
+.consultorio-document-signatures__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.consultorio-document-signatures__option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 10px;
+  background: #fff;
+  font-size: 0.82rem;
+  color: #334155;
+}
+
+.consultorio-document-signatures__option input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
 }
 
 .consultorio-document-editor {
@@ -6298,6 +6363,10 @@ body.auth-locked .page-shell > :not(#loginModal) {
 
   .consultorio-document-template__header {
     flex-direction: column;
+  }
+
+  .consultorio-document-signatures__grid {
+    grid-template-columns: 1fr;
   }
 
   .consultorio-document-template__grid {
