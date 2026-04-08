@@ -1196,6 +1196,23 @@ class Database:
             )
         return self.get_user(user_id)
 
+    def delete_user(self, user_id: str) -> dict:
+        user = self.get_user(user_id)
+        with self._tx():
+            self.connection.execute("DELETE FROM staff_users WHERE id = ?", (user_id,))
+            self._record_audit(
+                "staff_user",
+                user_id,
+                "delete",
+                "admin",
+                {
+                    "full_name": user.get("full_name"),
+                    "email": user.get("email"),
+                    "role": user.get("role"),
+                },
+            )
+        return {"id": user_id, "deleted": True}
+
     def get_user(self, user_id: str) -> dict:
         row = self.connection.execute(
             "SELECT * FROM staff_users WHERE id = ?",

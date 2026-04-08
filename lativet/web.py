@@ -244,6 +244,12 @@ def create_app(base_dir: Path | None = None, data_dir: Path | None = None) -> Fl
             return jsonify({"ok": False, "error": "Solo administradores."}), 403
         return respond(service.save_user(payload()))
 
+    @app.delete("/api/users/<user_id>")
+    def delete_user(user_id: str):
+        if not is_admin():
+            return jsonify({"ok": False, "error": "Solo administradores."}), 403
+        return respond(service.delete_user(user_id))
+
     @app.patch("/api/users/<user_id>/status")
     def update_user_status(user_id: str):
         if not is_admin():

@@ -1726,6 +1726,7 @@ const api = {
   backupDatabase: () => apiRequest("/api/backups", { method: "POST", body: "{}" }),
   saveUser: (payload) =>
     apiRequest("/api/users", { method: "POST", body: JSON.stringify(payload) }),
+  deleteUser: (userId) => apiRequest(`/api/users/${userId}`, { method: "DELETE" }),
   updateUserStatus: (userId, is_active) =>
     apiRequest(`/api/users/${userId}/status`, {
       method: "PATCH",
@@ -8012,6 +8013,9 @@ function renderUsers() {
                 <button type="button" data-user-edit="${escapeHtml(user.id)}">Editar</button>
                 <button type="button" data-user-toggle="${escapeHtml(user.id)}" data-user-active="${user.is_active ? "1" : "0"}">
                   ${user.is_active ? "Desactivar" : "Activar"}
+                </button>
+                <button class="ghost-button ghost-button--danger" type="button" data-user-delete="${escapeHtml(user.id)}">
+                  Eliminar
                 </button>`
                     : "<span class=\"meta-copy\">Solo administrador</span>"
                 }
@@ -14215,6 +14219,27 @@ async function handleUsersTableClick(event) {
     const isActive = toggleButton.dataset.userActive === "1";
     await api.updateUserStatus(userId, !isActive);
     await refreshData(isActive ? "Usuario desactivado." : "Usuario activado.");
+    return;
+  }
+  const deleteButton = event.target.closest("button[data-user-delete]");
+  if (deleteButton) {
+    const userId = deleteButton.dataset.userDelete;
+    const user = state.users.find((item) => item.id === userId);
+    if (!user) {
+      throw new Error("No se encontro el usuario seleccionado.");
+    }
+    const confirmed = window.confirm(
+      `Eliminar al usuario ${user.full_name || user.email || ""}? Esta accion no se puede deshacer.`
+    );
+    if (!confirmed) {
+      return;
+    }
+    await api.deleteUser(userId);
+    if (elements.userForm?.elements?.id?.value === userId) {
+      closeUserModal();
+    }
+    await refreshData({ sections: ["users"], render: false, message: "Usuario eliminado." });
+    renderUsers();
   }
 }
 
