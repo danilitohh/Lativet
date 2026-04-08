@@ -3508,8 +3508,8 @@ button:active {
 
 .consultorio-document-template {
   display: grid;
-  gap: 12px;
-  padding: 14px 16px;
+  gap: 10px;
+  padding: 12px 14px;
   border: 1px solid rgba(90, 103, 232, 0.16);
   border-radius: 12px;
   background: linear-gradient(180deg, rgba(246, 248, 255, 0.98), rgba(255, 255, 255, 0.98));
@@ -3556,16 +3556,18 @@ button:active {
 .consultorio-document-template__grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
+  gap: 10px;
+  align-items: start;
 }
 
 .consultorio-document-template__card {
   display: grid;
-  gap: 8px;
-  padding: 12px;
+  gap: 6px;
+  padding: 10px 12px;
   border: 1px solid rgba(15, 23, 42, 0.08);
   border-radius: 10px;
   background: rgba(255, 255, 255, 0.92);
+  align-content: start;
 }
 
 .consultorio-document-template__card > span {
@@ -3581,15 +3583,16 @@ button:active {
   padding: 0;
   list-style: none;
   display: grid;
-  gap: 8px;
+  gap: 6px;
+  align-content: start;
 }
 
 .consultorio-document-template__item {
   display: flex;
   align-items: flex-start;
   gap: 8px;
-  font-size: 0.8rem;
-  line-height: 1.45;
+  font-size: 0.78rem;
+  line-height: 1.35;
   color: #4b5567;
 }
 
