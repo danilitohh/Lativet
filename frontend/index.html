@@ -1889,7 +1889,7 @@
               <span>Documento</span>
               <div class="consultorio-document-editor">
                 <div id="patientDocumentToolbar" class="consultorio-document-editor__toolbar">
-                  <div class="consultorio-document-editor__toolbar-row">
+                  <div class="consultorio-document-editor__toolbar-row consultorio-document-editor__toolbar-row--actions">
                     <div class="consultorio-document-editor__group" role="group" aria-label="Historial">
                       <button
                         class="consultorio-document-editor__button"
@@ -1910,39 +1910,6 @@
                         &rarr;
                       </button>
                     </div>
-                    <select
-                      id="patientDocumentStyleSelect"
-                      class="consultorio-document-editor__select"
-                      aria-label="Estilo"
-                    >
-                      <option value="p">Estilo</option>
-                      <option value="h1">Titulo 1</option>
-                      <option value="h2">Titulo 2</option>
-                      <option value="h3">Titulo 3</option>
-                      <option value="blockquote">Cita</option>
-                    </select>
-                    <select
-                      id="patientDocumentFontFamilySelect"
-                      class="consultorio-document-editor__select"
-                      aria-label="Fuente"
-                    >
-                      <option value="">Fuente</option>
-                      <option value="Arial">Arial</option>
-                      <option value="Georgia">Georgia</option>
-                      <option value="Tahoma">Tahoma</option>
-                      <option value="Times New Roman">Times</option>
-                      <option value="Verdana">Verdana</option>
-                    </select>
-                    <select
-                      id="patientDocumentFontSizeSelect"
-                      class="consultorio-document-editor__select"
-                      aria-label="Tamano"
-                    >
-                      <option value="3" selected>Tamano</option>
-                      <option value="2">Pequeno</option>
-                      <option value="4">Mediano</option>
-                      <option value="5">Grande</option>
-                    </select>
                     <div class="consultorio-document-editor__group" role="group" aria-label="Texto">
                       <button class="consultorio-document-editor__button" type="button" data-document-command="bold" title="Negrita" aria-label="Negrita"><strong>B</strong></button>
                       <button class="consultorio-document-editor__button" type="button" data-document-command="italic" title="Cursiva" aria-label="Cursiva"><em>I</em></button>
@@ -1955,14 +1922,60 @@
                       <button class="consultorio-document-editor__button" type="button" data-document-command="insertUnorderedList" title="Lista" aria-label="Lista">&bull;</button>
                       <button class="consultorio-document-editor__button" type="button" data-document-command="insertOrderedList" title="Lista numerada" aria-label="Lista numerada">1.</button>
                       <button class="consultorio-document-editor__button" type="button" data-document-command="formatBlock" data-document-command-value="blockquote" title="Cita" aria-label="Cita">"</button>
-                      <button class="consultorio-document-editor__button" type="button" data-document-command="createLink" title="Enlace" aria-label="Enlace">Link</button>
-                      <button class="consultorio-document-editor__button" type="button" data-document-command="removeFormat" title="Limpiar formato" aria-label="Limpiar formato">Tx</button>
+                      <button class="consultorio-document-editor__button consultorio-document-editor__button--wide" type="button" data-document-command="createLink" title="Enlace" aria-label="Enlace">Link</button>
+                      <button class="consultorio-document-editor__button consultorio-document-editor__button--wide" type="button" data-document-command="removeFormat" title="Limpiar formato" aria-label="Limpiar formato">Tx</button>
                     </div>
                     <div class="consultorio-document-editor__group" role="group" aria-label="Alineacion">
                       <button class="consultorio-document-editor__button" type="button" data-document-command="justifyLeft" title="Alinear a la izquierda" aria-label="Alinear a la izquierda">L</button>
                       <button class="consultorio-document-editor__button" type="button" data-document-command="justifyCenter" title="Centrar" aria-label="Centrar">C</button>
                       <button class="consultorio-document-editor__button" type="button" data-document-command="justifyRight" title="Alinear a la derecha" aria-label="Alinear a la derecha">R</button>
                       <button class="consultorio-document-editor__button" type="button" data-document-command="justifyFull" title="Justificar" aria-label="Justificar">J</button>
+                    </div>
+                  </div>
+                  <div class="consultorio-document-editor__toolbar-row consultorio-document-editor__toolbar-row--controls">
+                    <select
+                      class="consultorio-document-editor__select consultorio-document-editor__select--placeholder"
+                      aria-label="Estilo"
+                      disabled
+                    >
+                      <option selected>Estilo</option>
+                    </select>
+                    <select
+                      id="patientDocumentStyleSelect"
+                      class="consultorio-document-editor__select consultorio-document-editor__select--format"
+                      aria-label="Formato"
+                    >
+                      <option value="p">Formato</option>
+                      <option value="h1">Titulo 1</option>
+                      <option value="h2">Titulo 2</option>
+                      <option value="h3">Titulo 3</option>
+                      <option value="blockquote">Cita</option>
+                    </select>
+                    <select
+                      id="patientDocumentFontFamilySelect"
+                      class="consultorio-document-editor__select consultorio-document-editor__select--font"
+                      aria-label="Fuente"
+                    >
+                      <option value="">Fuente</option>
+                      <option value="Arial">Arial</option>
+                      <option value="Georgia">Georgia</option>
+                      <option value="Tahoma">Tahoma</option>
+                      <option value="Times New Roman">Times</option>
+                      <option value="Verdana">Verdana</option>
+                    </select>
+                    <select
+                      id="patientDocumentFontSizeSelect"
+                      class="consultorio-document-editor__select consultorio-document-editor__select--size"
+                      aria-label="Tamano"
+                    >
+                      <option value="3" selected>Tamano</option>
+                      <option value="2">Pequeno</option>
+                      <option value="4">Mediano</option>
+                      <option value="5">Grande</option>
+                    </select>
+                    <div class="consultorio-document-editor__group" role="group" aria-label="Ajustes">
+                      <button class="consultorio-document-editor__button" type="button" data-document-command="decreaseFontSize" title="Reducir tamano" aria-label="Reducir tamano">A-</button>
+                      <button class="consultorio-document-editor__button" type="button" data-document-command="increaseFontSize" title="Aumentar tamano" aria-label="Aumentar tamano">A+</button>
                       <button class="consultorio-document-editor__button" type="button" data-document-command="outdent" title="Reducir sangria" aria-label="Reducir sangria">&lt;</button>
                       <button class="consultorio-document-editor__button" type="button" data-document-command="indent" title="Aumentar sangria" aria-label="Aumentar sangria">&gt;</button>
                     </div>

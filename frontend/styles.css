@@ -3511,9 +3511,28 @@ button:active {
   flex-wrap: wrap;
 }
 
+.consultorio-document-editor__toolbar-row--actions {
+  padding-bottom: 4px;
+  border-bottom: 1px solid #dde1e8;
+}
+
+.consultorio-document-editor__toolbar-row--controls {
+  padding-top: 4px;
+}
+
+.consultorio-document-editor__toolbar-row--controls .consultorio-document-editor__group {
+  margin-left: auto;
+}
+
 .consultorio-document-editor__toolbar-row + .consultorio-document-editor__toolbar-row {
   margin-top: 4px;
-  padding-top: 4px;
+}
+
+.consultorio-document-editor__toolbar-row--actions + .consultorio-document-editor__toolbar-row--controls {
+  border-top: 0;
+}
+
+.consultorio-document-editor__toolbar-row--controls + .consultorio-document-editor__toolbar-row {
   border-top: 1px solid #dde1e8;
 }
 
@@ -3535,6 +3554,27 @@ button:active {
   font-size: 0.66rem;
   box-shadow: none;
   line-height: 1.1;
+}
+
+.consultorio-document-editor__select {
+  min-width: 92px;
+}
+
+.consultorio-document-editor__select--size {
+  min-width: 76px;
+}
+
+.consultorio-document-editor__button {
+  min-width: 24px;
+  justify-content: center;
+}
+
+.consultorio-document-editor__button--wide {
+  min-width: 34px;
+}
+
+.consultorio-document-editor__select--placeholder {
+  color: #7a8291;
 }
 
 .consultorio-document-editor__button:hover {
@@ -3685,6 +3725,10 @@ button:active {
   border-radius: 2px;
   color: #5c6473;
   font-size: 0.66rem;
+}
+
+.consultorio-consultation-modal--documents .consultorio-document-editor__select--placeholder {
+  color: #7a8291;
 }
 
 .consultorio-consultation-modal--documents .consultorio-followup-message {
@@ -5993,6 +6037,10 @@ body.auth-locked .page-shell > :not(#loginModal) {
 
   .consultorio-document-editor__group {
     gap: 3px;
+  }
+
+  .consultorio-document-editor__toolbar-row--controls .consultorio-document-editor__group {
+    margin-left: 0;
   }
 
   .consultorio-consultation-modal--documents .form-actions {
