@@ -3517,11 +3517,15 @@ button:active {
 }
 
 .consultorio-document-editor__toolbar-row--controls {
+  align-items: center;
+  flex-wrap: nowrap;
   padding-top: 4px;
+  overflow-x: auto;
 }
 
 .consultorio-document-editor__toolbar-row--controls .consultorio-document-editor__group {
   margin-left: auto;
+  flex: 0 0 auto;
 }
 
 .consultorio-document-editor__toolbar-row + .consultorio-document-editor__toolbar-row {
@@ -3557,11 +3561,25 @@ button:active {
 }
 
 .consultorio-document-editor__select {
-  min-width: 92px;
+  min-width: 0;
+  width: 78px;
+  flex: 0 0 auto;
+}
+
+.consultorio-document-editor__select--placeholder {
+  width: 64px;
+}
+
+.consultorio-document-editor__select--format {
+  width: 86px;
+}
+
+.consultorio-document-editor__select--font {
+  width: 82px;
 }
 
 .consultorio-document-editor__select--size {
-  min-width: 76px;
+  width: 76px;
 }
 
 .consultorio-document-editor__button {
@@ -6041,6 +6059,11 @@ body.auth-locked .page-shell > :not(#loginModal) {
 
   .consultorio-document-editor__toolbar-row--controls .consultorio-document-editor__group {
     margin-left: 0;
+  }
+
+  .consultorio-document-editor__toolbar-row--controls {
+    flex-wrap: wrap;
+    overflow-x: visible;
   }
 
   .consultorio-consultation-modal--documents .form-actions {
