@@ -3520,12 +3520,15 @@ button:active {
   align-items: center;
   flex-wrap: nowrap;
   padding-top: 4px;
-  overflow-x: auto;
+  gap: 3px;
+  justify-content: flex-start;
+  overflow-x: visible;
 }
 
 .consultorio-document-editor__toolbar-row--controls .consultorio-document-editor__group {
-  margin-left: auto;
+  margin-left: 0;
   flex: 0 0 auto;
+  gap: 2px;
 }
 
 .consultorio-document-editor__toolbar-row + .consultorio-document-editor__toolbar-row {
@@ -3562,24 +3565,32 @@ button:active {
 
 .consultorio-document-editor__select {
   min-width: 0;
-  width: 78px;
+  width: 72px;
   flex: 0 0 auto;
 }
 
 .consultorio-document-editor__select--placeholder {
-  width: 64px;
+  width: 58px;
 }
 
 .consultorio-document-editor__select--format {
-  width: 86px;
-}
-
-.consultorio-document-editor__select--font {
   width: 82px;
 }
 
-.consultorio-document-editor__select--size {
+.consultorio-document-editor__select--font {
   width: 76px;
+}
+
+.consultorio-document-editor__select--size {
+  width: 68px;
+}
+
+.consultorio-document-editor__toolbar-row--controls .consultorio-document-editor__select,
+.consultorio-document-editor__toolbar-row--controls .consultorio-document-editor__button {
+  min-height: 18px;
+  height: 18px;
+  padding: 0 4px;
+  font-size: 0.62rem;
 }
 
 .consultorio-document-editor__button {
@@ -6063,7 +6074,7 @@ body.auth-locked .page-shell > :not(#loginModal) {
 
   .consultorio-document-editor__toolbar-row--controls {
     flex-wrap: wrap;
-    overflow-x: visible;
+    gap: 4px;
   }
 
   .consultorio-consultation-modal--documents .form-actions {
