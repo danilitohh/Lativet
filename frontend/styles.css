@@ -3490,9 +3490,9 @@ button:active {
 }
 
 .consultorio-document-editor {
-  border: 1px solid #d7dbe4;
-  border-radius: 4px;
-  background: #fff;
+  border: 1px solid #cfd4dd;
+  border-radius: 2px;
+  background: #ececec;
   overflow: hidden;
 }
 
@@ -3506,22 +3506,22 @@ button:active {
 .consultorio-document-editor__toolbar {
   display: grid;
   gap: 0;
-  padding: 6px 8px;
-  border-bottom: 1px solid #d7dbe4;
-  background: #f1f2f4;
+  padding: 4px;
+  border-bottom: 1px solid #d4d9e2;
+  background: #ececec;
 }
 
 .consultorio-document-editor__toolbar-row {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
   flex-wrap: wrap;
 }
 
 .consultorio-document-editor__toolbar-row--actions {
   flex-wrap: nowrap;
   padding-bottom: 4px;
-  border-bottom: 1px solid #dde1e8;
+  border-bottom: 1px solid #d8dde6;
   overflow-x: auto;
   scrollbar-width: thin;
 }
@@ -3556,7 +3556,7 @@ button:active {
 .consultorio-document-editor__group {
   display: inline-flex;
   align-items: center;
-  gap: 3px;
+  gap: 2px;
   flex-wrap: wrap;
 }
 
@@ -3566,70 +3566,85 @@ button:active {
 
 .consultorio-document-editor__select,
 .consultorio-document-editor__button {
-  min-height: 22px;
-  padding: 1px 6px;
-  border: 1px solid #cfd4dd;
+  min-height: 23px;
+  padding: 0 6px;
+  border: 1px solid #cbd2dc;
   border-radius: 2px;
   background: #fff;
-  color: #5c6473;
-  font-size: 0.66rem;
+  color: #596579;
+  font-size: 0.65rem;
   box-shadow: none;
-  line-height: 1.1;
+  line-height: 1;
 }
 
 .consultorio-document-editor__select {
   min-width: 0;
-  width: 84px;
+  width: 86px;
   flex: 0 0 auto;
 }
 
-.consultorio-document-editor__select--mode {
-  width: 112px;
-}
-
 .consultorio-document-editor__select--style {
-  width: 82px;
+  width: 96px;
 }
 
 .consultorio-document-editor__select--format {
-  width: 94px;
+  width: 128px;
 }
 
 .consultorio-document-editor__select--font {
-  width: 88px;
+  width: 128px;
 }
 
 .consultorio-document-editor__select--size {
-  width: 92px;
+  width: 110px;
 }
 
 .consultorio-document-editor__toolbar-row--controls .consultorio-document-editor__select,
 .consultorio-document-editor__toolbar-row--controls .consultorio-document-editor__button {
-  min-height: 18px;
-  height: 18px;
-  padding: 0 4px;
-  font-size: 0.62rem;
+  min-height: 23px;
+  height: 23px;
+  padding: 0 6px;
+  font-size: 0.66rem;
 }
 
 .consultorio-document-editor__toolbar-row--controls .consultorio-document-editor__select {
-  padding-right: 14px;
-  font-size: 0.56rem;
-  letter-spacing: -0.01em;
+  padding-right: 18px;
+  font-size: 0.64rem;
+  letter-spacing: 0;
 }
 
 .consultorio-document-editor__button {
   min-width: 24px;
+  height: 23px;
   justify-content: center;
 }
 
 .consultorio-document-editor__button--wide {
-  min-width: 40px;
+  min-width: 26px;
+}
+
+.consultorio-document-editor__button--source {
+  min-width: 104px;
+  justify-content: flex-start;
+  gap: 5px;
+  padding-inline: 8px;
+}
+
+.consultorio-document-editor__button--source.is-active {
+  background: #d9e6fb;
+  border-color: #95b3e7;
+  color: #315e97;
+}
+
+.consultorio-document-editor__button-icon {
+  font-size: 0.7rem;
+  line-height: 1;
 }
 
 .consultorio-document-editor__button:hover {
   transform: none;
-  background: #eef1f7;
-  color: #3f4655;
+  background: #f5f8fc;
+  color: #405066;
 }
 
 .consultorio-document-editor__button:active {
@@ -3643,11 +3658,11 @@ button:active {
 }
 
 .consultorio-document-editor__surface {
-  min-height: clamp(300px, 44vh, 480px);
-  padding: 14px 16px;
-  color: #4d5668;
-  font-size: 0.8rem;
-  line-height: 1.58;
+  min-height: 186px;
+  padding: 10px 12px;
+  color: #394657;
+  font-size: 0.78rem;
+  line-height: 1.55;
   outline: none;
   overflow: auto;
   background: #fff;
@@ -3655,14 +3670,23 @@ button:active {
 
 .consultorio-document-editor__source {
   width: 100%;
-  min-height: clamp(300px, 44vh, 480px);
-  padding: 14px 16px;
+  min-height: 186px;
+  padding: 10px 12px;
   border: 0;
   outline: none;
   resize: vertical;
   background: #fff;
   color: #334155;
   font: 0.76rem/1.55 "Courier New", monospace;
+}
+
+.consultorio-document-editor__statusbar {
+  padding: 2px 8px;
+  border-top: 1px solid #d4d9e2;
+  background: #ececec;
+  color: #616d80;
+  font-size: 0.64rem;
+  line-height: 1.2;
 }
 
 .consultorio-document-editor__surface.is-empty::before {

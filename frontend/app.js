@@ -62,6 +62,7 @@ let consultorioPatientEditorVisible = false;
 let consultorioPatientProfileOpen = false;
 let consultorioPatientProfileNotesVisible = false;
 let consultorioDocumentFormats = [];
+let patientDocumentEditorMode = "visual";
 let pendingLabTestContext = null;
 let pendingProcedureOrderItemIndex = null;
 let activeSectionId = "dashboard";
@@ -1499,7 +1500,7 @@ function cacheElements() {
     "patientDocumentNameInput",
     "patientDocumentSignatureSelect",
     "patientDocumentToolbar",
-    "patientDocumentModeSelect",
+    "patientDocumentSourceToggleButton",
     "patientDocumentStyleSelect",
     "patientDocumentBlockFormatSelect",
     "patientDocumentFontFamilySelect",
@@ -1507,6 +1508,7 @@ function cacheElements() {
     "patientDocumentSourceEditor",
     "patientDocumentEditor",
     "patientDocumentContentInput",
+    "patientDocumentStatusBar",
     "patientDocumentNotifyOwnerInput",
     "patientFollowupFields",
     "patientFollowupDateInput",
@@ -8756,6 +8758,7 @@ function setPatientDocumentEditorContent(value) {
     "is-empty",
     !consultorioDocumentHtmlToText(sanitized)
   );
+  updatePatientDocumentStatusBar();
 }
 
 function buildPatientDocumentSelectOptions(placeholder, groups = []) {
@@ -8785,9 +8788,10 @@ function renderPatientDocumentEditorSelectOptions() {
   }
   if (elements.patientDocumentBlockFormatSelect) {
     elements.patientDocumentBlockFormatSelect.innerHTML = buildPatientDocumentSelectOptions(
-      "Formato",
+      "Normal",
       DOCUMENT_EDITOR_BLOCK_FORMAT_GROUPS
     );
+    elements.patientDocumentBlockFormatSelect.value = "p";
   }
   if (elements.patientDocumentFontFamilySelect) {
     elements.patientDocumentFontFamilySelect.innerHTML = buildPatientDocumentSelectOptions(
@@ -8804,7 +8808,7 @@ function renderPatientDocumentEditorSelectOptions() {
 }
 
 function isPatientDocumentSourceMode() {
-  return String(elements.patientDocumentModeSelect?.value || "visual") === "source";
+  return patientDocumentEditorMode === "source";
 }
 
 function syncPatientDocumentSourceState(value = null) {
@@ -8823,17 +8827,49 @@ function syncPatientDocumentSourceState(value = null) {
 
 function setPatientDocumentEditorMode(mode = "visual") {
   const normalizedMode = mode === "source" ? "source" : "visual";
-  if (elements.patientDocumentModeSelect) {
-    elements.patientDocumentModeSelect.value = normalizedMode;
-  }
+  patientDocumentEditorMode = normalizedMode;
   if (normalizedMode === "source") {
     syncPatientDocumentEditorState();
     syncPatientDocumentSourceState(elements.patientDocumentContentInput?.value || "");
   } else if (elements.patientDocumentSourceEditor) {
     setPatientDocumentEditorContent(elements.patientDocumentSourceEditor.value || "");
   }
+  elements.patientDocumentSourceToggleButton?.classList.toggle(
+    "is-active",
+    normalizedMode === "source"
+  );
+  elements.patientDocumentSourceToggleButton?.setAttribute(
+    "aria-pressed",
+    normalizedMode === "source" ? "true" : "false"
+  );
   elements.patientDocumentSourceEditor?.classList.toggle("is-hidden", normalizedMode !== "source");
   elements.patientDocumentEditor?.classList.toggle("is-hidden", normalizedMode === "source");
+  updatePatientDocumentStatusBar();
+}
+
+function updatePatientDocumentStatusBar() {
+  if (!elements.patientDocumentStatusBar) {
+    return;
+  }
+  if (isPatientDocumentSourceMode()) {
+    elements.patientDocumentStatusBar.textContent = "source html";
+    return;
+  }
+  const range = getPatientDocumentSelectionRange();
+  let blockTag = "p";
+  let node = range?.commonAncestorContainer || elements.patientDocumentEditor;
+  if (node?.nodeType === Node.TEXT_NODE) {
+    node = node.parentElement;
+  }
+  while (node && node !== elements.patientDocumentEditor) {
+    const tagName = String(node.tagName || "").toLowerCase();
+    if (["p", "div", "blockquote", "pre", "h1", "h2", "h3", "h4", "h5", "h6", "address"].includes(tagName)) {
+      blockTag = tagName;
+      break;
+    }
+    node = node.parentElement;
+  }
+  elements.patientDocumentStatusBar.textContent = `body ${blockTag}`;
 }
 
 function getPatientDocumentSelectionRange() {
@@ -9198,6 +9234,10 @@ async function handlePatientDocumentToolbarClick(event) {
   }
   if (command === "toggleSpellcheck") {
     togglePatientDocumentSpellcheck();
+    return;
+  }
+  if (command === "toggleSourceMode") {
+    setPatientDocumentEditorMode(isPatientDocumentSourceMode() ? "visual" : "source");
     return;
   }
   if (command === "createLink") {
@@ -10842,7 +10882,7 @@ function openPatientConsultationModal(consultation = null) {
     elements.patientDocumentStyleSelect.value = "";
   }
   if (elements.patientDocumentBlockFormatSelect) {
-    elements.patientDocumentBlockFormatSelect.value = "";
+    elements.patientDocumentBlockFormatSelect.value = "p";
   }
   if (elements.patientDocumentFontFamilySelect) {
     elements.patientDocumentFontFamilySelect.value = "";
@@ -12945,11 +12985,6 @@ function bindForms() {
       wrapAsync(handlePatientDocumentToolbarClick)
     );
   }
-  if (elements.patientDocumentModeSelect) {
-    elements.patientDocumentModeSelect.addEventListener("change", (event) => {
-      setPatientDocumentEditorMode(event.target.value || "visual");
-    });
-  }
   if (elements.patientDocumentStyleSelect) {
     elements.patientDocumentStyleSelect.addEventListener("change", (event) => {
       applyPatientDocumentStylePreset(event.target.value || "");
@@ -12992,6 +13027,9 @@ function bindForms() {
   if (elements.patientDocumentEditor) {
     elements.patientDocumentEditor.addEventListener("input", syncPatientDocumentEditorState);
     elements.patientDocumentEditor.addEventListener("blur", syncPatientDocumentEditorState);
+    elements.patientDocumentEditor.addEventListener("click", updatePatientDocumentStatusBar);
+    elements.patientDocumentEditor.addEventListener("keyup", updatePatientDocumentStatusBar);
+    elements.patientDocumentEditor.addEventListener("focus", updatePatientDocumentStatusBar);
     elements.patientDocumentEditor.addEventListener("paste", (event) => {
       event.preventDefault();
       const plainText = event.clipboardData?.getData("text/plain") || "";
@@ -13004,9 +13042,11 @@ function bindForms() {
   if (elements.patientDocumentSourceEditor) {
     elements.patientDocumentSourceEditor.addEventListener("input", (event) => {
       syncPatientDocumentSourceState(event.target.value || "");
+      updatePatientDocumentStatusBar();
     });
     elements.patientDocumentSourceEditor.addEventListener("blur", (event) => {
       syncPatientDocumentSourceState(event.target.value || "");
+      updatePatientDocumentStatusBar();
     });
   }
   if (elements.patientDocumentFormatSelect) {
