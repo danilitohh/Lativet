@@ -3594,9 +3594,9 @@ button:active {
 }
 
 .consultorio-document-editor__toolbar-row--controls .consultorio-document-editor__select {
-  padding-right: 14px;
-  font-size: 0.56rem;
-  letter-spacing: -0.01em;
+  padding-right: 12px;
+  font-size: 0.5rem;
+  letter-spacing: -0.02em;
 }
 
 .consultorio-document-editor__button {
