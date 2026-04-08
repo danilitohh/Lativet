@@ -3565,24 +3565,24 @@ button:active {
 
 .consultorio-document-editor__select {
   min-width: 0;
-  width: 72px;
+  width: 84px;
   flex: 0 0 auto;
 }
 
 .consultorio-document-editor__select--placeholder {
-  width: 58px;
+  width: 72px;
 }
 
 .consultorio-document-editor__select--format {
-  width: 82px;
+  width: 94px;
 }
 
 .consultorio-document-editor__select--font {
-  width: 76px;
+  width: 88px;
 }
 
 .consultorio-document-editor__select--size {
-  width: 68px;
+  width: 84px;
 }
 
 .consultorio-document-editor__toolbar-row--controls .consultorio-document-editor__select,
@@ -3594,9 +3594,9 @@ button:active {
 }
 
 .consultorio-document-editor__toolbar-row--controls .consultorio-document-editor__select {
-  padding-right: 12px;
-  font-size: 0.5rem;
-  letter-spacing: -0.02em;
+  padding-right: 14px;
+  font-size: 0.56rem;
+  letter-spacing: -0.01em;
 }
 
 .consultorio-document-editor__button {
