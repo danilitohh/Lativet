@@ -1928,6 +1928,79 @@ function buildPatientDocumentTemplateList(items = [], emptyLabel = "Sin elemento
     .join("");
 }
 
+function buildConsultorioUniqueTemplateItems(...collections) {
+  return Array.from(
+    new Set(
+      collections
+        .flat()
+        .map((item) => String(item || "").trim())
+        .filter(Boolean)
+    )
+  );
+}
+
+function isConsultorioConsentTemplate(template) {
+  return ["consent", "authorization"].includes(String(template?.categoryId || "").trim());
+}
+
+function getConsultorioTemplateGuideAutofillItems(template) {
+  const baseItems = template?.autofillFields || [];
+  const legalItems = [
+    "Consecutivo o referencia de historia clinica",
+    "Fecha y hora de diligenciamiento",
+    "Profesional responsable con matricula o registro",
+  ];
+  if (isConsultorioConsentTemplate(template)) {
+    legalItems.push(
+      "Clausula de tratamiento de datos personales y biometrico de firma",
+      "Constancia de que el consentimiento se anexa a la historia clinica"
+    );
+  }
+  return buildConsultorioUniqueTemplateItems(baseItems, legalItems);
+}
+
+function getConsultorioTemplateGuideRequiredItems(template) {
+  const baseItems = template?.requiredFields || [];
+  const legalItems = [
+    "Identificacion completa del propietario o responsable",
+    "Identificacion suficiente de la mascota",
+    "Motivo, alcance y objetivo del documento",
+    "Fecha, ciudad y firma de quien suscribe",
+  ];
+  if (isConsultorioConsentTemplate(template)) {
+    legalItems.push(
+      "Alternativas razonables explicadas",
+      "Beneficios esperados, riesgos frecuentes y riesgos graves",
+      "Pronostico y autorizaciones extraordinarias o de urgencia",
+      "Condiciones economicas o alcance de gastos si aplica",
+      "Constancia de entrega de informacion y, en lo posible, copia del documento del firmante"
+    );
+  } else {
+    legalItems.push(
+      "Soportes, observaciones o anexos relevantes",
+      "Firma y datos del profesional emisor"
+    );
+  }
+  return buildConsultorioUniqueTemplateItems(baseItems, legalItems);
+}
+
+function getConsultorioTemplateGuideSectionItems(template) {
+  const baseItems = template?.recommendedSections || [];
+  const legalItems = [
+    "Identificacion del documento y del expediente",
+    "Proteccion de datos, reserva y custodia documental",
+  ];
+  if (isConsultorioConsentTemplate(template)) {
+    legalItems.push(
+      "Declaracion de consentimiento informado",
+      "Firmas y constancia de copia entregada"
+    );
+  } else {
+    legalItems.push("Cierre profesional y soporte de emision");
+  }
+  return buildConsultorioUniqueTemplateItems(baseItems, legalItems);
+}
+
 function renderPatientDocumentTemplateGuide(template = null, formatLabel = "") {
   const hasFormat = Boolean(String(formatLabel || "").trim());
   const hasTemplate = Boolean(template);
@@ -1951,19 +2024,19 @@ function renderPatientDocumentTemplateGuide(template = null, formatLabel = "") {
   }
   if (elements.patientDocumentTemplateAutofillList) {
     elements.patientDocumentTemplateAutofillList.innerHTML = buildPatientDocumentTemplateList(
-      template?.autofillFields || [],
+      getConsultorioTemplateGuideAutofillItems(template),
       "No hay datos automaticos configurados."
     );
   }
   if (elements.patientDocumentTemplateRequiredList) {
     elements.patientDocumentTemplateRequiredList.innerHTML = buildPatientDocumentTemplateList(
-      template?.requiredFields || [],
+      getConsultorioTemplateGuideRequiredItems(template),
       "No hay validaciones especificas para esta plantilla."
     );
   }
   if (elements.patientDocumentTemplateSectionsList) {
     elements.patientDocumentTemplateSectionsList.innerHTML = buildPatientDocumentTemplateList(
-      template?.recommendedSections || [],
+      getConsultorioTemplateGuideSectionItems(template),
       "No hay secciones sugeridas."
     );
   }
@@ -1974,8 +2047,38 @@ function getPatientDocumentTemplateContext() {
   const owner = getOwnerById(patient?.owner_id || consultorioOwnerId || "") || getConsultorioOwner();
   const form = elements.patientConsultationForm;
   const consultationAt = String(form?.elements?.consultation_at?.value || "").trim();
+  const clinicalRecordNumber = String(form?.elements?.record_id?.value || "").trim();
+  const clinicSettings = state.settings || {};
+  const compliance = state.compliance || {};
   return {
     clinicName: String(state.settings?.clinic_name || "Lativet").trim() || "Lativet",
+    clinicAddress:
+      String(
+        clinicSettings.clinic_address ||
+          clinicSettings.address ||
+          clinicSettings.location_address ||
+          ""
+      ).trim() || buildConsultorioDocumentPlaceholder("direccion del responsable del tratamiento"),
+    clinicPhone:
+      String(
+        clinicSettings.clinic_phone || clinicSettings.phone || clinicSettings.contact_phone || ""
+      ).trim() || buildConsultorioDocumentPlaceholder("telefono del responsable del tratamiento"),
+    clinicEmail:
+      String(
+        clinicSettings.clinic_email ||
+          clinicSettings.email ||
+          clinicSettings.contact_email ||
+          clinicSettings.smtp_from ||
+          ""
+      ).trim() || buildConsultorioDocumentPlaceholder("correo del responsable del tratamiento"),
+    jurisdiction:
+      String(compliance.jurisdiction || "").trim() ||
+      buildConsultorioDocumentPlaceholder("jurisdiccion"),
+    retentionNote:
+      String(compliance.retention_policy_note || "").trim() ||
+      "Este documento hace parte del expediente clinico y debe conservarse conforme a la politica documental aplicable.",
+    clinicalRecordNumber:
+      clinicalRecordNumber || buildConsultorioDocumentPlaceholder("consecutivo de historia clinica"),
     professionalName:
       String(form?.elements?.professional_name?.value || getDefaultConsultorioProfessionalName()).trim() ||
       "Profesional tratante",
@@ -9807,6 +9910,34 @@ function getConsultorioDocumentPatientMicrochip(context) {
   return getConsultorioDocumentValue(context?.patient?.microchip || "", "microchip");
 }
 
+function getConsultorioDocumentClinicAddress(context) {
+  return getConsultorioDocumentValue(
+    context?.clinicAddress,
+    "direccion del responsable del tratamiento"
+  );
+}
+
+function getConsultorioDocumentClinicPhone(context) {
+  return getConsultorioDocumentValue(
+    context?.clinicPhone,
+    "telefono del responsable del tratamiento"
+  );
+}
+
+function getConsultorioDocumentClinicEmail(context) {
+  return getConsultorioDocumentValue(
+    context?.clinicEmail,
+    "correo del responsable del tratamiento"
+  );
+}
+
+function getConsultorioDocumentClinicalRecordNumber(context) {
+  return getConsultorioDocumentValue(
+    context?.clinicalRecordNumber,
+    "consecutivo de historia clinica"
+  );
+}
+
 function buildConsultorioDocumentOwnerSection(context) {
   return buildConsultorioDocumentSection(
     "Datos del propietario",
@@ -9854,6 +9985,137 @@ function buildConsultorioDocumentProfessionalSection(context) {
   );
 }
 
+function buildConsultorioDocumentTraceabilitySection(context) {
+  return buildConsultorioDocumentSection(
+    "Identificacion del documento y trazabilidad",
+    buildConsultorioDocumentTable(
+      [
+        ["Historia clinica / consecutivo", getConsultorioDocumentClinicalRecordNumber(context)],
+        ["Fecha y hora", getConsultorioDocumentValue(context?.documentDate, "fecha y hora")],
+        ["Jurisdiccion", getConsultorioDocumentValue(context?.jurisdiction, "jurisdiccion")],
+        ["Institucion responsable", getConsultorioDocumentValue(context?.clinicName, "institucion responsable")],
+      ],
+      2
+    )
+  );
+}
+
+function buildConsultorioDocumentDataProtectionSection(
+  context,
+  { includeSensitiveData = true, includeImages = false } = {}
+) {
+  const notes = [
+    "El propietario es informado de la finalidad asistencial, clinica, administrativa y de contacto para la cual se recolectan sus datos personales dentro de la atencion veterinaria.",
+    "Se informa el caracter facultativo de las respuestas sobre datos sensibles cuando no sean estrictamente necesarias para la atencion o para soportar la autorizacion.",
+    "Se informa que puede ejercer los derechos de conocer, actualizar, rectificar, solicitar prueba de la autorizacion, revocar cuando proceda y acceder gratuitamente a sus datos personales.",
+    `Datos de contacto del responsable del tratamiento: direccion ${getConsultorioDocumentClinicAddress(
+      context
+    )}, correo ${getConsultorioDocumentClinicEmail(context)} y telefono ${getConsultorioDocumentClinicPhone(
+      context
+    )}.`,
+  ];
+  if (includeSensitiveData) {
+    notes.push(
+      "Se solicita autorizacion expresa para el tratamiento de datos sensibles y biometrico de firma que sean necesarios para la atencion, soporte contractual y custodia del documento."
+    );
+  }
+  if (includeImages) {
+    notes.push(
+      "Si se recolectan imagenes o videos del paciente o del procedimiento, cualquier uso diferente a la atencion clinica debera contar con autorizacion expresa y separada del propietario."
+    );
+  }
+  return buildConsultorioDocumentSection("Proteccion de datos y reserva", buildConsultorioDocumentList(notes));
+}
+
+function buildConsultorioDocumentCustodySection(context) {
+  return buildConsultorioDocumentSection(
+    "Custodia documental",
+    buildConsultorioDocumentList([
+      "Este documento forma parte de los anexos de la historia clinica veterinaria del paciente.",
+      getConsultorioDocumentValue(
+        context?.retentionNote,
+        "nota de retencion documental"
+      ),
+      "El acceso al expediente debe mantenerse con reserva y solo para fines legalmente procedentes.",
+    ])
+  );
+}
+
+function buildConsultorioDocumentConsentComplianceSection(
+  context,
+  { includeEconomicScope = true, includeImages = false } = {}
+) {
+  const tableRows = [
+    ["Alternativas explicadas", buildConsultorioDocumentPlaceholder("alternativas razonables explicadas")],
+    ["Beneficios esperados", buildConsultorioDocumentPlaceholder("beneficios esperados")],
+    ["Riesgos frecuentes y graves", buildConsultorioDocumentPlaceholder("riesgos frecuentes y riesgos graves")],
+    ["Pronostico con y sin procedimiento", buildConsultorioDocumentPlaceholder("pronostico con y sin procedimiento")],
+    ["Calidad del firmante", buildConsultorioDocumentPlaceholder("si firma como propietario o responsable")],
+    [
+      "Copia del documento del firmante",
+      buildConsultorioDocumentPlaceholder("si se adjunta copia del documento de identificacion"),
+    ],
+  ];
+  if (includeEconomicScope) {
+    tableRows.push([
+      "Condiciones economicas y limite de gasto",
+      buildConsultorioDocumentPlaceholder("condiciones economicas y limite de gasto autorizado"),
+    ]);
+  }
+  if (includeImages) {
+    tableRows.push([
+      "Autorizacion de imagenes o videos",
+      buildConsultorioDocumentPlaceholder("alcance de la autorizacion de imagenes o videos"),
+    ]);
+  }
+  return buildConsultorioDocumentSection(
+    "Minimos del consentimiento informado",
+    [
+      buildConsultorioDocumentTable(tableRows, 2),
+      buildConsultorioDocumentList([
+        "El profesional deja constancia de haber brindado informacion suficiente, clara y comprensible sobre el procedimiento o decision clinica.",
+        "El propietario manifiesta haber tenido oportunidad de formular preguntas y recibir respuesta.",
+        "Si se entrega copia del documento al propietario, debe dejarse constancia en este formato.",
+      ]),
+    ].join("")
+  );
+}
+
+function buildConsultorioDocumentProfessionalSignatureSection(
+  context,
+  label = "Medico veterinario o MVZ"
+) {
+  return buildConsultorioDocumentSection(
+    "Cierre profesional",
+    `
+      <table>
+        <tbody>
+          <tr>
+            <td><strong>Firma ${escapeHtml(label)}:</strong><br><br>____________________________</td>
+            <td><strong>Nombre:</strong><br>${escapeHtml(
+              getConsultorioDocumentValue(context?.professionalName, "profesional responsable")
+            )}</td>
+            <td><strong>Matricula / registro:</strong><br>${escapeHtml(
+              getConsultorioDocumentValue(context?.professionalLicense, "registro profesional")
+            )}</td>
+          </tr>
+          <tr>
+            <td><strong>Institucion:</strong><br>${escapeHtml(
+              getConsultorioDocumentValue(context?.clinicName, "institucion responsable")
+            )}</td>
+            <td><strong>Fecha:</strong><br>${escapeHtml(
+              getConsultorioDocumentValue(context?.documentDate, "fecha del documento")
+            )}</td>
+            <td><strong>Historia clinica:</strong><br>${escapeHtml(
+              getConsultorioDocumentClinicalRecordNumber(context)
+            )}</td>
+          </tr>
+        </tbody>
+      </table>
+    `
+  );
+}
+
 function buildConsultorioDocumentSignatureSection(
   context,
   {
@@ -9874,6 +10136,20 @@ function buildConsultorioDocumentSignatureSection(
             <td><strong>Nombre:</strong> ${escapeHtml(getConsultorioDocumentOwnerName(context))}</td>
             <td><strong>Nombre:</strong> ${escapeHtml(
               getConsultorioDocumentValue(context?.professionalName, "profesional responsable")
+            )}</td>
+          </tr>
+          <tr>
+            <td><strong>Documento:</strong> ${escapeHtml(getConsultorioDocumentOwnerId(context))}</td>
+            <td><strong>Matricula / registro:</strong> ${escapeHtml(
+              getConsultorioDocumentValue(context?.professionalLicense, "registro profesional")
+            )}</td>
+          </tr>
+          <tr>
+            <td><strong>Fecha:</strong> ${escapeHtml(
+              getConsultorioDocumentValue(context?.documentDate, "fecha del documento")
+            )}</td>
+            <td><strong>Constancia:</strong> ${escapeHtml(
+              buildConsultorioDocumentPlaceholder("si se entrega copia al propietario")
             )}</td>
           </tr>
         </tbody>
@@ -9916,6 +10192,7 @@ function buildConsultorioFreeDocumentTemplateHtml(context) {
       context,
       "Utiliza esta plantilla para redactar constancias, conceptos o comunicaciones internas."
     ),
+    buildConsultorioDocumentTraceabilitySection(context),
     buildConsultorioDocumentOwnerSection(context),
     buildConsultorioDocumentPatientSection(context),
     buildConsultorioDocumentSection(
@@ -9936,6 +10213,8 @@ function buildConsultorioFreeDocumentTemplateHtml(context) {
       "Observaciones",
       `<p>${escapeHtml(buildConsultorioDocumentPlaceholder("observaciones finales"))}</p>`
     ),
+    buildConsultorioDocumentDataProtectionSection(context, { includeSensitiveData: true }),
+    buildConsultorioDocumentCustodySection(context),
     buildConsultorioDocumentSignatureSection(context),
   ].join("");
 }
@@ -9947,6 +10226,7 @@ function buildConsultorioSurgeryConsentTemplateHtml(context) {
       context,
       "El propietario declara que ha recibido informacion suficiente sobre el procedimiento, la anestesia, los riesgos y las alternativas terapeuticas."
     ),
+    buildConsultorioDocumentTraceabilitySection(context),
     buildConsultorioDocumentOwnerSection(context),
     buildConsultorioDocumentPatientSection(context),
     buildConsultorioDocumentSection(
@@ -9982,6 +10262,15 @@ function buildConsultorioSurgeryConsentTemplateHtml(context) {
         2
       )
     ),
+    buildConsultorioDocumentConsentComplianceSection(context, {
+      includeEconomicScope: true,
+      includeImages: true,
+    }),
+    buildConsultorioDocumentDataProtectionSection(context, {
+      includeSensitiveData: true,
+      includeImages: true,
+    }),
+    buildConsultorioDocumentCustodySection(context),
     buildConsultorioDocumentSignatureSection(context),
   ].join("");
 }
@@ -9993,6 +10282,7 @@ function buildConsultorioAnesthesiaConsentTemplateHtml(context) {
       context,
       "Esta autorizacion cubre sedacion o anestesia general, monitoreo perioperatorio y maniobras de soporte asociadas."
     ),
+    buildConsultorioDocumentTraceabilitySection(context),
     buildConsultorioDocumentOwnerSection(context),
     buildConsultorioDocumentPatientSection(context),
     buildConsultorioDocumentSection(
@@ -10027,6 +10317,11 @@ function buildConsultorioAnesthesiaConsentTemplateHtml(context) {
         "El propietario entiende que la ausencia de complicaciones no puede garantizarse.",
       ])
     ),
+    buildConsultorioDocumentConsentComplianceSection(context, {
+      includeEconomicScope: true,
+    }),
+    buildConsultorioDocumentDataProtectionSection(context, { includeSensitiveData: true }),
+    buildConsultorioDocumentCustodySection(context),
     buildConsultorioDocumentSignatureSection(context),
   ].join("");
 }
@@ -10038,6 +10333,7 @@ function buildConsultorioHospitalizationConsentTemplateHtml(context) {
       context,
       "El propietario autoriza la permanencia del paciente en hospitalizacion y la atencion medica necesaria durante la estancia."
     ),
+    buildConsultorioDocumentTraceabilitySection(context),
     buildConsultorioDocumentOwnerSection(context),
     buildConsultorioDocumentPatientSection(context),
     buildConsultorioDocumentSection(
@@ -10072,6 +10368,11 @@ function buildConsultorioHospitalizationConsentTemplateHtml(context) {
         2
       )
     ),
+    buildConsultorioDocumentConsentComplianceSection(context, {
+      includeEconomicScope: true,
+    }),
+    buildConsultorioDocumentDataProtectionSection(context, { includeSensitiveData: true }),
+    buildConsultorioDocumentCustodySection(context),
     buildConsultorioDocumentSignatureSection(context),
   ].join("");
 }
@@ -10083,6 +10384,7 @@ function buildConsultorioDiagnosticConsentTemplateHtml(context) {
       context,
       "El propietario autoriza la realizacion del estudio diagnostico, toma de muestras y procedimientos complementarios necesarios."
     ),
+    buildConsultorioDocumentTraceabilitySection(context),
     buildConsultorioDocumentOwnerSection(context),
     buildConsultorioDocumentPatientSection(context),
     buildConsultorioDocumentSection(
@@ -10117,6 +10419,15 @@ function buildConsultorioDiagnosticConsentTemplateHtml(context) {
         2
       )
     ),
+    buildConsultorioDocumentConsentComplianceSection(context, {
+      includeEconomicScope: true,
+      includeImages: true,
+    }),
+    buildConsultorioDocumentDataProtectionSection(context, {
+      includeSensitiveData: true,
+      includeImages: true,
+    }),
+    buildConsultorioDocumentCustodySection(context),
     buildConsultorioDocumentSignatureSection(context),
   ].join("");
 }
@@ -10128,6 +10439,7 @@ function buildConsultorioEuthanasiaConsentTemplateHtml(context) {
       context,
       "El propietario manifiesta haber recibido explicacion sobre el estado del paciente y autoriza la eutanasia humanitaria."
     ),
+    buildConsultorioDocumentTraceabilitySection(context),
     buildConsultorioDocumentOwnerSection(context),
     buildConsultorioDocumentPatientSection(context),
     buildConsultorioDocumentSection(
@@ -10150,6 +10462,11 @@ function buildConsultorioEuthanasiaConsentTemplateHtml(context) {
         `Destino del cuerpo o restos: ${buildConsultorioDocumentPlaceholder("destino final del cuerpo o cremacion")}`,
       ])
     ),
+    buildConsultorioDocumentConsentComplianceSection(context, {
+      includeEconomicScope: false,
+    }),
+    buildConsultorioDocumentDataProtectionSection(context, { includeSensitiveData: true }),
+    buildConsultorioDocumentCustodySection(context),
     buildConsultorioDocumentSignatureSection(context),
   ].join("");
 }
@@ -10161,6 +10478,7 @@ function buildConsultorioBoardingConsentTemplateHtml(context) {
       context,
       "El propietario autoriza la estancia del paciente en guarderia u hospedaje y declara haber informado los cuidados especiales requeridos."
     ),
+    buildConsultorioDocumentTraceabilitySection(context),
     buildConsultorioDocumentOwnerSection(context),
     buildConsultorioDocumentPatientSection(context),
     buildConsultorioDocumentSection(
@@ -10195,6 +10513,15 @@ function buildConsultorioBoardingConsentTemplateHtml(context) {
         "El propietario acepta las reglas internas de convivencia, higiene y horarios del servicio.",
       ])
     ),
+    buildConsultorioDocumentConsentComplianceSection(context, {
+      includeEconomicScope: true,
+      includeImages: true,
+    }),
+    buildConsultorioDocumentDataProtectionSection(context, {
+      includeSensitiveData: true,
+      includeImages: true,
+    }),
+    buildConsultorioDocumentCustodySection(context),
     buildConsultorioDocumentSignatureSection(context),
   ].join("");
 }
@@ -10206,6 +10533,7 @@ function buildConsultorioHealthCertificateTemplateHtml(context) {
       context,
       "Se expide a solicitud del propietario con base en la valoracion clinica practicada al paciente."
     ),
+    buildConsultorioDocumentTraceabilitySection(context),
     buildConsultorioDocumentOwnerSection(context),
     buildConsultorioDocumentPatientSection(context),
     buildConsultorioDocumentSection(
@@ -10229,6 +10557,9 @@ function buildConsultorioHealthCertificateTemplateHtml(context) {
       ])
     ),
     buildConsultorioDocumentProfessionalSection(context),
+    buildConsultorioDocumentDataProtectionSection(context, { includeSensitiveData: true }),
+    buildConsultorioDocumentCustodySection(context),
+    buildConsultorioDocumentProfessionalSignatureSection(context),
   ].join("");
 }
 
@@ -10239,6 +10570,7 @@ function buildConsultorioVaccinationCertificateTemplateHtml(context) {
       context,
       "Resumen del plan vacunal vigente del paciente segun la informacion disponible en la historia clinica."
     ),
+    buildConsultorioDocumentTraceabilitySection(context),
     buildConsultorioDocumentOwnerSection(context),
     buildConsultorioDocumentPatientSection(context),
     buildConsultorioDocumentSection("Registro de vacunas", buildConsultorioVaccineRecordPlaceholderTable()),
@@ -10250,6 +10582,9 @@ function buildConsultorioVaccinationCertificateTemplateHtml(context) {
       ])
     ),
     buildConsultorioDocumentProfessionalSection(context),
+    buildConsultorioDocumentDataProtectionSection(context, { includeSensitiveData: true }),
+    buildConsultorioDocumentCustodySection(context),
+    buildConsultorioDocumentProfessionalSignatureSection(context),
   ].join("");
 }
 
@@ -10260,6 +10595,7 @@ function buildConsultorioTravelCertificateTemplateHtml(context) {
       context,
       "Documento emitido para soportar el traslado del paciente y dejar constancia del estado sanitario reportado."
     ),
+    buildConsultorioDocumentTraceabilitySection(context),
     buildConsultorioDocumentOwnerSection(context),
     buildConsultorioDocumentPatientSection(context),
     buildConsultorioDocumentSection(
@@ -10283,6 +10619,9 @@ function buildConsultorioTravelCertificateTemplateHtml(context) {
       ])
     ),
     buildConsultorioDocumentProfessionalSection(context),
+    buildConsultorioDocumentDataProtectionSection(context, { includeSensitiveData: true }),
+    buildConsultorioDocumentCustodySection(context),
+    buildConsultorioDocumentProfessionalSignatureSection(context),
   ].join("");
 }
 
@@ -10293,6 +10632,7 @@ function buildConsultorioClinicalSummaryTemplateHtml(context) {
       context,
       "Documento de apoyo para historia clinica, entrega al propietario o referencia posterior."
     ),
+    buildConsultorioDocumentTraceabilitySection(context),
     buildConsultorioDocumentOwnerSection(context),
     buildConsultorioDocumentPatientSection(context),
     buildConsultorioDocumentSection(
@@ -10325,6 +10665,9 @@ function buildConsultorioClinicalSummaryTemplateHtml(context) {
       ])
     ),
     buildConsultorioDocumentProfessionalSection(context),
+    buildConsultorioDocumentDataProtectionSection(context, { includeSensitiveData: true }),
+    buildConsultorioDocumentCustodySection(context),
+    buildConsultorioDocumentProfessionalSignatureSection(context),
   ].join("");
 }
 
@@ -10335,6 +10678,7 @@ function buildConsultorioDischargeSummaryTemplateHtml(context) {
       context,
       "Se deja constancia del egreso del paciente y de las recomendaciones entregadas al propietario."
     ),
+    buildConsultorioDocumentTraceabilitySection(context),
     buildConsultorioDocumentOwnerSection(context),
     buildConsultorioDocumentPatientSection(context),
     buildConsultorioDocumentSection(
@@ -10358,6 +10702,8 @@ function buildConsultorioDischargeSummaryTemplateHtml(context) {
         `Proximo control: ${buildConsultorioDocumentPlaceholder("fecha del proximo control")}`,
       ])
     ),
+    buildConsultorioDocumentDataProtectionSection(context, { includeSensitiveData: true }),
+    buildConsultorioDocumentCustodySection(context),
     buildConsultorioDocumentSignatureSection(context, {
       ownerLabel: "Propietario que recibe al paciente",
     }),
@@ -10371,6 +10717,7 @@ function buildConsultorioProgressReportTemplateHtml(context) {
       context,
       "Registro estructurado de seguimiento para hospitalizacion, control ambulatorio o contacto con el propietario."
     ),
+    buildConsultorioDocumentTraceabilitySection(context),
     buildConsultorioDocumentOwnerSection(context),
     buildConsultorioDocumentPatientSection(context),
     buildConsultorioDocumentSection(
@@ -10393,6 +10740,9 @@ function buildConsultorioProgressReportTemplateHtml(context) {
       ])
     ),
     buildConsultorioDocumentProfessionalSection(context),
+    buildConsultorioDocumentDataProtectionSection(context, { includeSensitiveData: true }),
+    buildConsultorioDocumentCustodySection(context),
+    buildConsultorioDocumentProfessionalSignatureSection(context),
   ].join("");
 }
 
@@ -10403,6 +10753,7 @@ function buildConsultorioSpecialistReferralTemplateHtml(context) {
       context,
       "El paciente se remite para valoracion complementaria por una especialidad o servicio de mayor complejidad."
     ),
+    buildConsultorioDocumentTraceabilitySection(context),
     buildConsultorioDocumentOwnerSection(context),
     buildConsultorioDocumentPatientSection(context),
     buildConsultorioDocumentSection(
@@ -10430,6 +10781,9 @@ function buildConsultorioSpecialistReferralTemplateHtml(context) {
       )
     ),
     buildConsultorioDocumentProfessionalSection(context),
+    buildConsultorioDocumentDataProtectionSection(context, { includeSensitiveData: true }),
+    buildConsultorioDocumentCustodySection(context),
+    buildConsultorioDocumentProfessionalSignatureSection(context),
   ].join("");
 }
 
@@ -10440,6 +10794,7 @@ function buildConsultorioEmergencyReferralTemplateHtml(context) {
       context,
       "El paciente requiere traslado a un centro de mayor complejidad y se comparte la informacion esencial para su recepcion."
     ),
+    buildConsultorioDocumentTraceabilitySection(context),
     buildConsultorioDocumentOwnerSection(context),
     buildConsultorioDocumentPatientSection(context),
     buildConsultorioDocumentSection(
@@ -10464,6 +10819,9 @@ function buildConsultorioEmergencyReferralTemplateHtml(context) {
       ])
     ),
     buildConsultorioDocumentProfessionalSection(context),
+    buildConsultorioDocumentDataProtectionSection(context, { includeSensitiveData: true }),
+    buildConsultorioDocumentCustodySection(context),
+    buildConsultorioDocumentProfessionalSignatureSection(context),
   ].join("");
 }
 
@@ -10474,6 +10832,7 @@ function buildConsultorioProcedureAuthorizationTemplateHtml(context) {
       context,
       "El propietario autoriza la realizacion del procedimiento o tratamiento aqui descrito."
     ),
+    buildConsultorioDocumentTraceabilitySection(context),
     buildConsultorioDocumentOwnerSection(context),
     buildConsultorioDocumentPatientSection(context),
     buildConsultorioDocumentSection(
@@ -10495,6 +10854,11 @@ function buildConsultorioProcedureAuthorizationTemplateHtml(context) {
         `Observaciones adicionales: ${buildConsultorioDocumentPlaceholder("observaciones adicionales")}`,
       ])
     ),
+    buildConsultorioDocumentConsentComplianceSection(context, {
+      includeEconomicScope: true,
+    }),
+    buildConsultorioDocumentDataProtectionSection(context, { includeSensitiveData: true }),
+    buildConsultorioDocumentCustodySection(context),
     buildConsultorioDocumentSignatureSection(context),
   ].join("");
 }
@@ -10506,6 +10870,7 @@ function buildConsultorioDischargeAgainstAdviceTemplateHtml(context) {
       context,
       "El propietario solicita el retiro voluntario del paciente en contra de la recomendacion medica o antes de completar el manejo sugerido."
     ),
+    buildConsultorioDocumentTraceabilitySection(context),
     buildConsultorioDocumentOwnerSection(context),
     buildConsultorioDocumentPatientSection(context),
     buildConsultorioDocumentSection(
@@ -10528,6 +10893,11 @@ function buildConsultorioDischargeAgainstAdviceTemplateHtml(context) {
         `Compromisos asumidos: ${buildConsultorioDocumentPlaceholder("compromisos asumidos por el propietario")}`,
       ])
     ),
+    buildConsultorioDocumentConsentComplianceSection(context, {
+      includeEconomicScope: false,
+    }),
+    buildConsultorioDocumentDataProtectionSection(context, { includeSensitiveData: true }),
+    buildConsultorioDocumentCustodySection(context),
     buildConsultorioDocumentSignatureSection(context),
   ].join("");
 }
@@ -10539,6 +10909,7 @@ function buildConsultorioHospitalAdmissionTemplateHtml(context) {
       context,
       "Registro inicial del paciente al momento de ingresar a hospitalizacion."
     ),
+    buildConsultorioDocumentTraceabilitySection(context),
     buildConsultorioDocumentOwnerSection(context),
     buildConsultorioDocumentPatientSection(context),
     buildConsultorioDocumentSection(
@@ -10575,6 +10946,8 @@ function buildConsultorioHospitalAdmissionTemplateHtml(context) {
         2
       )
     ),
+    buildConsultorioDocumentDataProtectionSection(context, { includeSensitiveData: true }),
+    buildConsultorioDocumentCustodySection(context),
     buildConsultorioDocumentSignatureSection(context),
   ].join("");
 }
@@ -10586,6 +10959,7 @@ function buildConsultorioBoardingAdmissionTemplateHtml(context) {
       context,
       "Registro operativo del ingreso del paciente a guarderia, hotel o estancia corta."
     ),
+    buildConsultorioDocumentTraceabilitySection(context),
     buildConsultorioDocumentOwnerSection(context),
     buildConsultorioDocumentPatientSection(context),
     buildConsultorioDocumentSection(
@@ -10624,6 +10998,11 @@ function buildConsultorioBoardingAdmissionTemplateHtml(context) {
         2
       )
     ),
+    buildConsultorioDocumentDataProtectionSection(context, {
+      includeSensitiveData: true,
+      includeImages: true,
+    }),
+    buildConsultorioDocumentCustodySection(context),
     buildConsultorioDocumentSignatureSection(context),
   ].join("");
 }
@@ -13894,9 +14273,9 @@ async function handlePatientConsultationSubmit(event) {
             description: documentTemplate.description,
             categoryId: documentTemplate.categoryId,
             categoryLabel: documentTemplate.formatLabel,
-            autofillFields: documentTemplate.autofillFields || [],
-            requiredFields: documentTemplate.requiredFields || [],
-            recommendedSections: documentTemplate.recommendedSections || [],
+            autofillFields: getConsultorioTemplateGuideAutofillItems(documentTemplate),
+            requiredFields: getConsultorioTemplateGuideRequiredItems(documentTemplate),
+            recommendedSections: getConsultorioTemplateGuideSectionItems(documentTemplate),
           }
         : null,
       contentHtml: documentHtml,
