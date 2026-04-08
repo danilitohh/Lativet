@@ -1890,7 +1890,18 @@
               <div class="consultorio-document-editor">
                 <div id="patientDocumentToolbar" class="consultorio-document-editor__toolbar">
                   <div class="consultorio-document-editor__toolbar-row consultorio-document-editor__toolbar-row--actions">
-                    <div class="consultorio-document-editor__group" role="group" aria-label="Historial">
+                    <select
+                      id="patientDocumentModeSelect"
+                      class="consultorio-document-editor__select consultorio-document-editor__select--mode"
+                      aria-label="Modo del editor"
+                    >
+                      <option value="visual" selected>Visual</option>
+                      <option value="source">Fuente HTML</option>
+                    </select>
+                    <div class="consultorio-document-editor__group" role="group" aria-label="Portapapeles e historial">
+                      <button class="consultorio-document-editor__button consultorio-document-editor__button--wide" type="button" data-document-command="clipboardCut" title="Cortar" aria-label="Cortar">Cut</button>
+                      <button class="consultorio-document-editor__button consultorio-document-editor__button--wide" type="button" data-document-command="clipboardCopy" title="Copiar" aria-label="Copiar">Copy</button>
+                      <button class="consultorio-document-editor__button consultorio-document-editor__button--wide" type="button" data-document-command="clipboardPaste" title="Pegar" aria-label="Pegar">Paste</button>
                       <button
                         class="consultorio-document-editor__button"
                         type="button"
@@ -1909,6 +1920,7 @@
                       >
                         &rarr;
                       </button>
+                      <button class="consultorio-document-editor__button consultorio-document-editor__button--wide" type="button" data-document-command="toggleSpellcheck" title="Corrector ortografico" aria-label="Corrector ortografico">ABC</button>
                     </div>
                     <div class="consultorio-document-editor__group" role="group" aria-label="Texto">
                       <button class="consultorio-document-editor__button" type="button" data-document-command="bold" title="Negrita" aria-label="Negrita"><strong>B</strong></button>
@@ -1921,15 +1933,24 @@
                     <div class="consultorio-document-editor__group" role="group" aria-label="Estructura">
                       <button class="consultorio-document-editor__button" type="button" data-document-command="insertUnorderedList" title="Lista" aria-label="Lista">&bull;</button>
                       <button class="consultorio-document-editor__button" type="button" data-document-command="insertOrderedList" title="Lista numerada" aria-label="Lista numerada">1.</button>
+                      <button class="consultorio-document-editor__button" type="button" data-document-command="outdent" title="Reducir sangria" aria-label="Reducir sangria">&lt;</button>
+                      <button class="consultorio-document-editor__button" type="button" data-document-command="indent" title="Aumentar sangria" aria-label="Aumentar sangria">&gt;</button>
                       <button class="consultorio-document-editor__button" type="button" data-document-command="formatBlock" data-document-command-value="blockquote" title="Cita" aria-label="Cita">"</button>
-                      <button class="consultorio-document-editor__button consultorio-document-editor__button--wide" type="button" data-document-command="createLink" title="Enlace" aria-label="Enlace">Link</button>
-                      <button class="consultorio-document-editor__button consultorio-document-editor__button--wide" type="button" data-document-command="removeFormat" title="Limpiar formato" aria-label="Limpiar formato">Tx</button>
                     </div>
                     <div class="consultorio-document-editor__group" role="group" aria-label="Alineacion">
                       <button class="consultorio-document-editor__button" type="button" data-document-command="justifyLeft" title="Alinear a la izquierda" aria-label="Alinear a la izquierda">L</button>
                       <button class="consultorio-document-editor__button" type="button" data-document-command="justifyCenter" title="Centrar" aria-label="Centrar">C</button>
                       <button class="consultorio-document-editor__button" type="button" data-document-command="justifyRight" title="Alinear a la derecha" aria-label="Alinear a la derecha">R</button>
                       <button class="consultorio-document-editor__button" type="button" data-document-command="justifyFull" title="Justificar" aria-label="Justificar">J</button>
+                    </div>
+                    <div class="consultorio-document-editor__group" role="group" aria-label="Insercion">
+                      <button class="consultorio-document-editor__button consultorio-document-editor__button--wide" type="button" data-document-command="createLink" title="Enlace" aria-label="Enlace">Link</button>
+                      <button class="consultorio-document-editor__button consultorio-document-editor__button--wide" type="button" data-document-command="unlink" title="Quitar enlace" aria-label="Quitar enlace">Un</button>
+                      <button class="consultorio-document-editor__button consultorio-document-editor__button--wide" type="button" data-document-command="insertHorizontalRule" title="Linea horizontal" aria-label="Linea horizontal">HR</button>
+                      <button class="consultorio-document-editor__button consultorio-document-editor__button--wide" type="button" data-document-command="insertImagePrompt" title="Insertar imagen" aria-label="Insertar imagen">Img</button>
+                      <button class="consultorio-document-editor__button consultorio-document-editor__button--wide" type="button" data-document-command="insertTablePrompt" title="Insertar tabla" aria-label="Insertar tabla">Tbl</button>
+                      <button class="consultorio-document-editor__button consultorio-document-editor__button--wide" type="button" data-document-command="insertSpecialCharPrompt" title="Caracter especial" aria-label="Caracter especial">Ω</button>
+                      <button class="consultorio-document-editor__button consultorio-document-editor__button--wide" type="button" data-document-command="removeFormat" title="Limpiar formato" aria-label="Limpiar formato">Tx</button>
                     </div>
                   </div>
                   <div class="consultorio-document-editor__toolbar-row consultorio-document-editor__toolbar-row--controls">
@@ -1998,13 +2019,18 @@
                       </optgroup>
                     </select>
                     <div class="consultorio-document-editor__group" role="group" aria-label="Ajustes">
-                      <button class="consultorio-document-editor__button" type="button" data-document-command="decreaseFontSize" title="Reducir tamano" aria-label="Reducir tamano">A-</button>
-                      <button class="consultorio-document-editor__button" type="button" data-document-command="increaseFontSize" title="Aumentar tamano" aria-label="Aumentar tamano">A+</button>
-                      <button class="consultorio-document-editor__button" type="button" data-document-command="outdent" title="Reducir sangria" aria-label="Reducir sangria">&lt;</button>
-                      <button class="consultorio-document-editor__button" type="button" data-document-command="indent" title="Aumentar sangria" aria-label="Aumentar sangria">&gt;</button>
+                      <button class="consultorio-document-editor__button" type="button" data-document-command="applyTextColorPrompt" title="Color de texto" aria-label="Color de texto">A</button>
+                      <button class="consultorio-document-editor__button" type="button" data-document-command="applyHighlightPrompt" title="Resaltar texto" aria-label="Resaltar texto">A*</button>
+                      <button class="consultorio-document-editor__button" type="button" data-document-command="toggleDocumentFullscreen" title="Expandir editor" aria-label="Expandir editor">[]</button>
                     </div>
                   </div>
                 </div>
+                <textarea
+                  id="patientDocumentSourceEditor"
+                  class="consultorio-document-editor__source is-hidden"
+                  spellcheck="false"
+                  aria-label="Fuente HTML del documento"
+                ></textarea>
                 <div
                   id="patientDocumentEditor"
                   class="consultorio-document-editor__surface is-empty"

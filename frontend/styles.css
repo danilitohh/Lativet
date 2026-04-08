@@ -3496,6 +3496,13 @@ button:active {
   overflow: hidden;
 }
 
+.consultorio-document-editor--expanded {
+  position: fixed;
+  inset: 24px;
+  z-index: 140;
+  box-shadow: 0 24px 54px rgba(19, 26, 40, 0.24);
+}
+
 .consultorio-document-editor__toolbar {
   display: grid;
   gap: 0;
@@ -3512,8 +3519,11 @@ button:active {
 }
 
 .consultorio-document-editor__toolbar-row--actions {
+  flex-wrap: nowrap;
   padding-bottom: 4px;
   border-bottom: 1px solid #dde1e8;
+  overflow-x: auto;
+  scrollbar-width: thin;
 }
 
 .consultorio-document-editor__toolbar-row--controls {
@@ -3550,6 +3560,10 @@ button:active {
   flex-wrap: wrap;
 }
 
+.consultorio-document-editor__toolbar-row--actions .consultorio-document-editor__group {
+  flex-wrap: nowrap;
+}
+
 .consultorio-document-editor__select,
 .consultorio-document-editor__button {
   min-height: 22px;
@@ -3567,6 +3581,10 @@ button:active {
   min-width: 0;
   width: 84px;
   flex: 0 0 auto;
+}
+
+.consultorio-document-editor__select--mode {
+  width: 112px;
 }
 
 .consultorio-document-editor__select--style {
@@ -3605,7 +3623,7 @@ button:active {
 }
 
 .consultorio-document-editor__button--wide {
-  min-width: 34px;
+  min-width: 40px;
 }
 
 .consultorio-document-editor__button:hover {
@@ -3633,6 +3651,18 @@ button:active {
   outline: none;
   overflow: auto;
   background: #fff;
+}
+
+.consultorio-document-editor__source {
+  width: 100%;
+  min-height: clamp(300px, 44vh, 480px);
+  padding: 14px 16px;
+  border: 0;
+  outline: none;
+  resize: vertical;
+  background: #fff;
+  color: #334155;
+  font: 0.76rem/1.55 "Courier New", monospace;
 }
 
 .consultorio-document-editor__surface.is-empty::before {
@@ -3686,6 +3716,34 @@ button:active {
   padding: 0 2px;
   background: #fff29b;
   color: inherit;
+}
+
+.consultorio-document-editor__surface img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 0 0 12px;
+  border-radius: 4px;
+}
+
+.consultorio-document-editor__surface table {
+  width: 100%;
+  margin: 0 0 12px;
+  border-collapse: collapse;
+}
+
+.consultorio-document-editor__surface th,
+.consultorio-document-editor__surface td {
+  padding: 8px 10px;
+  border: 1px solid #d7dbe4;
+  text-align: left;
+  vertical-align: top;
+}
+
+.consultorio-document-editor__surface hr {
+  border: 0;
+  border-top: 1px solid #d7dbe4;
+  margin: 14px 0;
 }
 
 .consultorio-document-fields__message {

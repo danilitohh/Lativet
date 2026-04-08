@@ -1410,10 +1410,12 @@ function cacheElements() {
     "patientDocumentNameInput",
     "patientDocumentSignatureSelect",
     "patientDocumentToolbar",
+    "patientDocumentModeSelect",
     "patientDocumentStyleSelect",
     "patientDocumentBlockFormatSelect",
     "patientDocumentFontFamilySelect",
     "patientDocumentFontSizeSelect",
+    "patientDocumentSourceEditor",
     "patientDocumentEditor",
     "patientDocumentContentInput",
     "patientDocumentNotifyOwnerInput",
@@ -3551,6 +3553,14 @@ function sanitizeConsultorioDocumentHtml(value) {
     "BLOCKQUOTE",
     "PRE",
     "MARK",
+    "IMG",
+    "TABLE",
+    "THEAD",
+    "TBODY",
+    "TR",
+    "TD",
+    "TH",
+    "HR",
     "FONT",
     "A",
   ]);
@@ -3577,14 +3587,36 @@ function sanitizeConsultorioDocumentHtml(value) {
         cleanNode.setAttribute("target", "_blank");
         cleanNode.setAttribute("rel", "noreferrer");
       }
+    } else if (tagName === "IMG") {
+      const src = String(node.getAttribute("src") || "").trim();
+      const alt = String(node.getAttribute("alt") || "").trim();
+      if (/^(https?:|data:image\/)/i.test(src)) {
+        cleanNode.setAttribute("src", src);
+        if (alt) {
+          cleanNode.setAttribute("alt", alt);
+        }
+      }
     } else if (tagName === "FONT") {
       const size = String(node.getAttribute("size") || "").trim();
       const face = String(node.getAttribute("face") || "").trim();
+      const color = String(node.getAttribute("color") || "").trim();
       if (/^[1-7]$/.test(size)) {
         cleanNode.setAttribute("size", size);
       }
       if (face) {
         cleanNode.setAttribute("face", face);
+      }
+      if (/^#?[0-9a-f]{3,8}$/i.test(color) || /^[a-z]+$/i.test(color)) {
+        cleanNode.setAttribute("color", color.startsWith("#") ? color : color.toLowerCase());
+      }
+    } else if (tagName === "TD" || tagName === "TH") {
+      const colspan = String(node.getAttribute("colspan") || "").trim();
+      const rowspan = String(node.getAttribute("rowspan") || "").trim();
+      if (/^\d+$/.test(colspan) && Number(colspan) > 1) {
+        cleanNode.setAttribute("colspan", colspan);
+      }
+      if (/^\d+$/.test(rowspan) && Number(rowspan) > 1) {
+        cleanNode.setAttribute("rowspan", rowspan);
       }
     }
     Array.from(node.childNodes).forEach((child) => {
@@ -8623,14 +8655,54 @@ function setPatientDocumentEditorContent(value) {
   const sanitized = sanitizeConsultorioDocumentHtml(value);
   elements.patientDocumentEditor.innerHTML = sanitized;
   elements.patientDocumentContentInput.value = sanitized;
+  if (elements.patientDocumentSourceEditor) {
+    elements.patientDocumentSourceEditor.value = sanitized;
+  }
   elements.patientDocumentEditor.classList.toggle(
     "is-empty",
     !consultorioDocumentHtmlToText(sanitized)
   );
 }
 
+function isPatientDocumentSourceMode() {
+  return String(elements.patientDocumentModeSelect?.value || "visual") === "source";
+}
+
+function syncPatientDocumentSourceState(value = null) {
+  if (!elements.patientDocumentContentInput) {
+    return;
+  }
+  const nextValue =
+    value !== null
+      ? String(value)
+      : String(elements.patientDocumentSourceEditor?.value || elements.patientDocumentContentInput.value || "");
+  elements.patientDocumentContentInput.value = nextValue;
+  if (elements.patientDocumentSourceEditor) {
+    elements.patientDocumentSourceEditor.value = nextValue;
+  }
+}
+
+function setPatientDocumentEditorMode(mode = "visual") {
+  const normalizedMode = mode === "source" ? "source" : "visual";
+  if (elements.patientDocumentModeSelect) {
+    elements.patientDocumentModeSelect.value = normalizedMode;
+  }
+  if (normalizedMode === "source") {
+    syncPatientDocumentEditorState();
+    syncPatientDocumentSourceState(elements.patientDocumentContentInput?.value || "");
+  } else if (elements.patientDocumentSourceEditor) {
+    setPatientDocumentEditorContent(elements.patientDocumentSourceEditor.value || "");
+  }
+  elements.patientDocumentSourceEditor?.classList.toggle("is-hidden", normalizedMode !== "source");
+  elements.patientDocumentEditor?.classList.toggle("is-hidden", normalizedMode === "source");
+}
+
 function getPatientDocumentSelectionRange() {
-  if (!elements.patientDocumentEditor || typeof window?.getSelection !== "function") {
+  if (
+    !elements.patientDocumentEditor ||
+    isPatientDocumentSourceMode() ||
+    typeof window?.getSelection !== "function"
+  ) {
     return null;
   }
   const selection = window.getSelection();
@@ -8656,7 +8728,10 @@ function wrapPatientDocumentSelectionWithHtml(builder) {
   if (!selectedText) {
     return false;
   }
-  document.execCommand("insertHTML", false, builder(selectedText));
+  const fragmentContainer = document.createElement("div");
+  fragmentContainer.appendChild(range.cloneContents());
+  const selectedHtml = fragmentContainer.innerHTML;
+  document.execCommand("insertHTML", false, builder(selectedText, selectedHtml));
   syncPatientDocumentEditorState();
   return true;
 }
@@ -8681,7 +8756,7 @@ function applyPatientDocumentStylePreset(value) {
   }
   if (preset === "marker") {
     const applied = wrapPatientDocumentSelectionWithHtml(
-      (selectedText) => `<mark>${escapeHtml(selectedText)}</mark>`
+      (selectedText, selectedHtml) => `<mark>${selectedHtml || escapeHtml(selectedText)}</mark>`
     );
     if (!applied) {
       showStatus("Selecciona un texto para aplicar Marker.", "info");
@@ -8690,7 +8765,11 @@ function applyPatientDocumentStylePreset(value) {
 }
 
 function applyPatientDocumentEditorCommand(command, value = null) {
-  if (!elements.patientDocumentEditor || typeof document?.execCommand !== "function") {
+  if (
+    !elements.patientDocumentEditor ||
+    isPatientDocumentSourceMode() ||
+    typeof document?.execCommand !== "function"
+  ) {
     return;
   }
   elements.patientDocumentEditor.focus();
@@ -8714,7 +8793,194 @@ function applyPatientDocumentEditorCommand(command, value = null) {
   syncPatientDocumentEditorState();
 }
 
-function handlePatientDocumentToolbarClick(event) {
+function insertPatientDocumentTextAtCursor(value) {
+  const text = String(value || "");
+  if (!text) {
+    return;
+  }
+  if (isPatientDocumentSourceMode() && elements.patientDocumentSourceEditor) {
+    const source = elements.patientDocumentSourceEditor;
+    const start = Number(source.selectionStart || 0);
+    const end = Number(source.selectionEnd || 0);
+    const current = source.value || "";
+    source.value = `${current.slice(0, start)}${text}${current.slice(end)}`;
+    source.selectionStart = source.selectionEnd = start + text.length;
+    syncPatientDocumentSourceState(source.value);
+    source.focus();
+    return;
+  }
+  elements.patientDocumentEditor?.focus();
+  if (typeof document?.execCommand === "function") {
+    document.execCommand("insertText", false, text);
+    syncPatientDocumentEditorState();
+  }
+}
+
+async function handlePatientDocumentClipboardCommand(command) {
+  const normalized = String(command || "").trim().toLowerCase();
+  if (!normalized) {
+    return;
+  }
+  if (normalized === "paste") {
+    let text = "";
+    try {
+      text = (await navigator.clipboard?.readText?.()) || "";
+    } catch (error) {
+      text = "";
+    }
+    if (!text) {
+      text = window.prompt("Pega aqui el contenido que deseas insertar:", "") || "";
+    }
+    if (!text) {
+      return;
+    }
+    insertPatientDocumentTextAtCursor(text);
+    return;
+  }
+  if (isPatientDocumentSourceMode() && elements.patientDocumentSourceEditor) {
+    const source = elements.patientDocumentSourceEditor;
+    const start = Number(source.selectionStart || 0);
+    const end = Number(source.selectionEnd || 0);
+    const text = source.value.slice(start, end);
+    if (!text) {
+      return;
+    }
+    await navigator.clipboard?.writeText?.(text);
+    if (normalized === "cut") {
+      source.value = `${source.value.slice(0, start)}${source.value.slice(end)}`;
+      source.selectionStart = source.selectionEnd = start;
+      syncPatientDocumentSourceState(source.value);
+    }
+    return;
+  }
+  elements.patientDocumentEditor?.focus();
+  try {
+    const success = document.execCommand(normalized);
+    if (success) {
+      syncPatientDocumentEditorState();
+      return;
+    }
+  } catch (error) {
+    // fallback below
+  }
+  const range = getPatientDocumentSelectionRange();
+  const text = String(range?.toString() || "").trim();
+  if (!text) {
+    return;
+  }
+  await navigator.clipboard?.writeText?.(text);
+  if (normalized === "cut") {
+    document.execCommand("delete", false);
+    syncPatientDocumentEditorState();
+  }
+}
+
+function insertPatientDocumentImageFromPrompt() {
+  const url = String(window.prompt("Ingresa la URL de la imagen:", "") || "").trim();
+  if (!url) {
+    return;
+  }
+  const alt = String(window.prompt("Texto alternativo de la imagen:", "Imagen") || "Imagen").trim();
+  if (isPatientDocumentSourceMode()) {
+    insertPatientDocumentTextAtCursor(`<img src="${escapeHtml(url)}" alt="${escapeHtml(alt)}">`);
+    return;
+  }
+  elements.patientDocumentEditor?.focus();
+  document.execCommand(
+    "insertHTML",
+    false,
+    `<img src="${escapeHtml(url)}" alt="${escapeHtml(alt)}">`
+  );
+  syncPatientDocumentEditorState();
+}
+
+function insertPatientDocumentTableFromPrompt() {
+  const rows = Number(window.prompt("Numero de filas:", "2") || 0);
+  const columns = Number(window.prompt("Numero de columnas:", "2") || 0);
+  if (!Number.isInteger(rows) || !Number.isInteger(columns) || rows < 1 || columns < 1) {
+    return;
+  }
+  const safeRows = Math.min(rows, 10);
+  const safeColumns = Math.min(columns, 10);
+  const tableHtml = [
+    "<table><tbody>",
+    ...Array.from({ length: safeRows }, () =>
+      `<tr>${Array.from({ length: safeColumns }, () => "<td>Celda</td>").join("")}</tr>`
+    ),
+    "</tbody></table>",
+  ].join("");
+  if (isPatientDocumentSourceMode()) {
+    insertPatientDocumentTextAtCursor(tableHtml);
+    return;
+  }
+  elements.patientDocumentEditor?.focus();
+  document.execCommand("insertHTML", false, tableHtml);
+  syncPatientDocumentEditorState();
+}
+
+function insertPatientDocumentSpecialCharacter() {
+  const character = String(window.prompt("Ingresa el caracter especial:", "Ω") || "").trim();
+  if (!character) {
+    return;
+  }
+  insertPatientDocumentTextAtCursor(character);
+}
+
+function applyPatientDocumentTextColorPrompt() {
+  const color = String(window.prompt("Color de texto (ej: #1d4ed8):", "#1d4ed8") || "").trim();
+  if (!color) {
+    return;
+  }
+  const applied = wrapPatientDocumentSelectionWithHtml(
+    (selectedText, selectedHtml) =>
+      `<font color="${escapeHtml(color)}">${selectedHtml || escapeHtml(selectedText)}</font>`
+  );
+  if (!applied) {
+    showStatus("Selecciona un texto para cambiar el color.", "info");
+  }
+}
+
+function applyPatientDocumentHighlightPrompt() {
+  const applied = wrapPatientDocumentSelectionWithHtml(
+    (selectedText, selectedHtml) => `<mark>${selectedHtml || escapeHtml(selectedText)}</mark>`
+  );
+  if (!applied) {
+    showStatus("Selecciona un texto para resaltar.", "info");
+  }
+}
+
+function togglePatientDocumentSpellcheck() {
+  const nextValue = !(elements.patientDocumentEditor?.spellcheck ?? true);
+  if (elements.patientDocumentEditor) {
+    elements.patientDocumentEditor.spellcheck = nextValue;
+  }
+  if (elements.patientDocumentSourceEditor) {
+    elements.patientDocumentSourceEditor.spellcheck = nextValue;
+  }
+  return nextValue;
+}
+
+async function togglePatientDocumentFullscreen() {
+  const container = elements.patientDocumentEditor?.closest(".consultorio-document-editor");
+  if (!container) {
+    return;
+  }
+  if (document.fullscreenElement === container && document.exitFullscreen) {
+    await document.exitFullscreen();
+    return;
+  }
+  if (typeof container.requestFullscreen === "function") {
+    try {
+      await container.requestFullscreen();
+      return;
+    } catch (error) {
+      // fall through to local expanded mode
+    }
+  }
+  container.classList.toggle("consultorio-document-editor--expanded");
+}
+
+async function handlePatientDocumentToolbarClick(event) {
   const button = event.target.closest("[data-document-command]");
   if (!button) {
     return;
@@ -8724,12 +8990,52 @@ function handlePatientDocumentToolbarClick(event) {
   if (!command) {
     return;
   }
+  if (command === "clipboardCut") {
+    await handlePatientDocumentClipboardCommand("cut");
+    return;
+  }
+  if (command === "clipboardCopy") {
+    await handlePatientDocumentClipboardCommand("copy");
+    return;
+  }
+  if (command === "clipboardPaste") {
+    await handlePatientDocumentClipboardCommand("paste");
+    return;
+  }
+  if (command === "toggleSpellcheck") {
+    togglePatientDocumentSpellcheck();
+    return;
+  }
   if (command === "createLink") {
     const url = window.prompt("Ingresa la URL del enlace:");
     if (!url) {
       return;
     }
     applyPatientDocumentEditorCommand(command, url);
+    return;
+  }
+  if (command === "insertImagePrompt") {
+    insertPatientDocumentImageFromPrompt();
+    return;
+  }
+  if (command === "insertTablePrompt") {
+    insertPatientDocumentTableFromPrompt();
+    return;
+  }
+  if (command === "insertSpecialCharPrompt") {
+    insertPatientDocumentSpecialCharacter();
+    return;
+  }
+  if (command === "applyTextColorPrompt") {
+    applyPatientDocumentTextColorPrompt();
+    return;
+  }
+  if (command === "applyHighlightPrompt") {
+    applyPatientDocumentHighlightPrompt();
+    return;
+  }
+  if (command === "toggleDocumentFullscreen") {
+    await togglePatientDocumentFullscreen();
     return;
   }
   applyPatientDocumentEditorCommand(command, button.dataset.documentCommandValue || null);
@@ -10350,6 +10656,7 @@ function openPatientConsultationModal(consultation = null) {
   if (elements.patientDocumentFontSizeSelect) {
     elements.patientDocumentFontSizeSelect.value = "";
   }
+  setPatientDocumentEditorMode("visual");
   setPatientDocumentEditorContent(documentDetails.contentHtml);
   if (form.elements.document_notify_owner) {
     form.elements.document_notify_owner.checked = Boolean(documentDetails.notifyOwner);
@@ -12439,7 +12746,15 @@ function bindForms() {
         event.preventDefault();
       }
     });
-    elements.patientDocumentToolbar.addEventListener("click", handlePatientDocumentToolbarClick);
+    elements.patientDocumentToolbar.addEventListener(
+      "click",
+      wrapAsync(handlePatientDocumentToolbarClick)
+    );
+  }
+  if (elements.patientDocumentModeSelect) {
+    elements.patientDocumentModeSelect.addEventListener("change", (event) => {
+      setPatientDocumentEditorMode(event.target.value || "visual");
+    });
   }
   if (elements.patientDocumentStyleSelect) {
     elements.patientDocumentStyleSelect.addEventListener("change", (event) => {
@@ -12490,6 +12805,14 @@ function bindForms() {
         document.execCommand("insertText", false, plainText);
       }
       syncPatientDocumentEditorState();
+    });
+  }
+  if (elements.patientDocumentSourceEditor) {
+    elements.patientDocumentSourceEditor.addEventListener("input", (event) => {
+      syncPatientDocumentSourceState(event.target.value || "");
+    });
+    elements.patientDocumentSourceEditor.addEventListener("blur", (event) => {
+      syncPatientDocumentSourceState(event.target.value || "");
     });
   }
   if (elements.patientDocumentFormatSelect) {
