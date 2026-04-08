@@ -3499,7 +3499,7 @@ button:active {
 .consultorio-document-editor__toolbar {
   display: grid;
   gap: 0;
-  padding: 8px 10px 7px;
+  padding: 6px 8px;
   border-bottom: 1px solid #d7dbe4;
   background: #f1f2f4;
 }
@@ -3507,42 +3507,34 @@ button:active {
 .consultorio-document-editor__toolbar-row {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   flex-wrap: wrap;
 }
 
 .consultorio-document-editor__toolbar-row + .consultorio-document-editor__toolbar-row {
-  margin-top: 6px;
-  padding-top: 6px;
+  margin-top: 4px;
+  padding-top: 4px;
   border-top: 1px solid #dde1e8;
 }
 
 .consultorio-document-editor__group {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
   flex-wrap: wrap;
-}
-
-.consultorio-document-editor__select--source {
-  min-width: 104px;
-}
-
-.consultorio-document-editor__select:disabled {
-  opacity: 1;
-  cursor: default;
 }
 
 .consultorio-document-editor__select,
 .consultorio-document-editor__button {
-  min-height: 26px;
-  padding: 3px 8px;
+  min-height: 22px;
+  padding: 1px 6px;
   border: 1px solid #cfd4dd;
   border-radius: 2px;
   background: #fff;
   color: #5c6473;
-  font-size: 0.72rem;
+  font-size: 0.66rem;
   box-shadow: none;
+  line-height: 1.1;
 }
 
 .consultorio-document-editor__button:hover {
@@ -3687,11 +3679,12 @@ button:active {
 }
 
 .consultorio-consultation-modal--documents .consultorio-document-editor__select {
-  min-height: 26px;
-  padding: 3px 8px;
+  min-height: 22px;
+  padding: 1px 6px;
   border-color: #cfd4dd;
   border-radius: 2px;
   color: #5c6473;
+  font-size: 0.66rem;
 }
 
 .consultorio-consultation-modal--documents .consultorio-followup-message {
@@ -5991,19 +5984,15 @@ body.auth-locked .page-shell > :not(#loginModal) {
   }
 
   .consultorio-document-editor__toolbar {
-    padding: 8px;
+    padding: 6px;
   }
 
   .consultorio-document-editor__toolbar-row {
-    gap: 5px;
+    gap: 4px;
   }
 
   .consultorio-document-editor__group {
     gap: 3px;
-  }
-
-  .consultorio-document-editor__select--source {
-    min-width: 100%;
   }
 
   .consultorio-consultation-modal--documents .form-actions {
