@@ -303,6 +303,95 @@ const LAB_TEST_CATEGORY_CUSTOM_OPTION = "__custom__";
 const LAB_TEST_LABEL_SEPARATOR = " - ";
 const DEFAULT_DOCUMENT_EDITOR_FONT_FAMILY = "Plus Jakarta Sans";
 const DEFAULT_DOCUMENT_EDITOR_FONT_SIZE = "3";
+const DOCUMENT_EDITOR_STYLE_GROUPS = [
+  {
+    label: "Estilos de parrafo",
+    options: [
+      { value: "body_text", label: "Body Text" },
+      { value: "lead_paragraph", label: "Lead Paragraph" },
+      { value: "section_title", label: "Section Title" },
+      { value: "italic_title", label: "Italic Title" },
+      { value: "subtitle", label: "Subtitle" },
+      { value: "special_container", label: "Special Container" },
+      { value: "quote_box", label: "Quote Box" },
+      { value: "code_block", label: "Code Block" },
+      { value: "signature_line", label: "Signature Line" },
+    ],
+  },
+  {
+    label: "Estilos de caracter",
+    options: [
+      { value: "marker", label: "Marker" },
+      { value: "important", label: "Important" },
+      { value: "small_print", label: "Small Print" },
+      { value: "inline_code", label: "Inline Code" },
+      { value: "accent_text", label: "Accent Text" },
+    ],
+  },
+];
+const DOCUMENT_EDITOR_BLOCK_FORMAT_GROUPS = [
+  {
+    label: "Formato",
+    options: [
+      { value: "p", label: "Normal" },
+      { value: "div", label: "Division" },
+      { value: "h1", label: "Encabezado" },
+      { value: "h2", label: "Encabezado 2" },
+      { value: "h3", label: "Encabezado 3" },
+      { value: "h4", label: "Encabezado 4" },
+      { value: "h5", label: "Encabezado 5" },
+      { value: "h6", label: "Encabezado 6" },
+      { value: "blockquote", label: "Bloque de cita" },
+      { value: "address", label: "Direccion" },
+      { value: "pre", label: "Con formato" },
+    ],
+  },
+];
+const DOCUMENT_EDITOR_FONT_GROUPS = [
+  {
+    label: "Fuente",
+    options: [
+      { value: "default", label: "(Default)" },
+      { value: "Arial", label: "Arial" },
+      { value: "Arial Black", label: "Arial Black" },
+      { value: "Book Antiqua", label: "Book Antiqua" },
+      { value: "Calibri", label: "Calibri" },
+      { value: "Cambria", label: "Cambria" },
+      { value: "Comic Sans MS", label: "Comic Sans MS" },
+      { value: "Courier New", label: "Courier New" },
+      { value: "Georgia", label: "Georgia" },
+      { value: "Helvetica", label: "Helvetica" },
+      { value: "Impact", label: "Impact" },
+      { value: "Lucida Console", label: "Lucida Console" },
+      { value: "Lucida Sans Unicode", label: "Lucida Sans Unicode" },
+      { value: "Palatino Linotype", label: "Palatino Linotype" },
+      { value: "Plus Jakarta Sans", label: "Plus Jakarta Sans" },
+      { value: "Sora", label: "Sora" },
+      { value: "Tahoma", label: "Tahoma" },
+      { value: "Times New Roman", label: "Times New Roman" },
+      { value: "Trebuchet MS", label: "Trebuchet MS" },
+      { value: "Verdana", label: "Verdana" },
+      { value: "sans-serif", label: "Sans Serif" },
+      { value: "serif", label: "Serif" },
+      { value: "monospace", label: "Monospace" },
+    ],
+  },
+];
+const DOCUMENT_EDITOR_SIZE_GROUPS = [
+  {
+    label: "Tamano",
+    options: [
+      { value: "default", label: "(Default)" },
+      { value: "1", label: "8" },
+      { value: "2", label: "9" },
+      { value: "3", label: "10" },
+      { value: "4", label: "11" },
+      { value: "5", label: "12" },
+      { value: "6", label: "14" },
+      { value: "7", label: "18" },
+    ],
+  },
+];
 const LAB_TEST_CATEGORY_OPTIONS = [
   "PERFILES MAS USADOS",
   "PARASITOLOGIA VETERINARIA",
@@ -3550,6 +3639,11 @@ function sanitizeConsultorioDocumentHtml(value) {
     "H1",
     "H2",
     "H3",
+    "H4",
+    "H5",
+    "H6",
+    "DIV",
+    "ADDRESS",
     "BLOCKQUOTE",
     "PRE",
     "MARK",
@@ -8664,6 +8758,51 @@ function setPatientDocumentEditorContent(value) {
   );
 }
 
+function buildPatientDocumentSelectOptions(placeholder, groups = []) {
+  return [
+    `<option value="">${escapeHtml(placeholder)}</option>`,
+    ...groups.map(
+      (group) => `
+        <optgroup label="${escapeHtml(group.label || "")}">
+          ${(group.options || [])
+            .map(
+              (option) =>
+                `<option value="${escapeHtml(option.value || "")}">${escapeHtml(option.label || "")}</option>`
+            )
+            .join("")}
+        </optgroup>
+      `
+    ),
+  ].join("");
+}
+
+function renderPatientDocumentEditorSelectOptions() {
+  if (elements.patientDocumentStyleSelect) {
+    elements.patientDocumentStyleSelect.innerHTML = buildPatientDocumentSelectOptions(
+      "Estilo",
+      DOCUMENT_EDITOR_STYLE_GROUPS
+    );
+  }
+  if (elements.patientDocumentBlockFormatSelect) {
+    elements.patientDocumentBlockFormatSelect.innerHTML = buildPatientDocumentSelectOptions(
+      "Formato",
+      DOCUMENT_EDITOR_BLOCK_FORMAT_GROUPS
+    );
+  }
+  if (elements.patientDocumentFontFamilySelect) {
+    elements.patientDocumentFontFamilySelect.innerHTML = buildPatientDocumentSelectOptions(
+      "Fuente",
+      DOCUMENT_EDITOR_FONT_GROUPS
+    );
+  }
+  if (elements.patientDocumentFontSizeSelect) {
+    elements.patientDocumentFontSizeSelect.innerHTML = buildPatientDocumentSelectOptions(
+      "Tamano",
+      DOCUMENT_EDITOR_SIZE_GROUPS
+    );
+  }
+}
+
 function isPatientDocumentSourceMode() {
   return String(elements.patientDocumentModeSelect?.value || "visual") === "source";
 }
@@ -8741,6 +8880,20 @@ function applyPatientDocumentStylePreset(value) {
   if (!preset) {
     return;
   }
+  if (preset === "body_text") {
+    applyPatientDocumentEditorCommand("formatBlock", "p");
+    return;
+  }
+  if (preset === "lead_paragraph") {
+    applyPatientDocumentEditorCommand("formatBlock", "p");
+    applyPatientDocumentEditorCommand("fontSize", "4");
+    return;
+  }
+  if (preset === "section_title") {
+    applyPatientDocumentEditorCommand("formatBlock", "h2");
+    applyPatientDocumentEditorCommand("bold");
+    return;
+  }
   if (preset === "italic_title") {
     applyPatientDocumentEditorCommand("formatBlock", "h2");
     applyPatientDocumentEditorCommand("italic");
@@ -8754,12 +8907,53 @@ function applyPatientDocumentStylePreset(value) {
     applyPatientDocumentEditorCommand("formatBlock", "blockquote");
     return;
   }
+  if (preset === "quote_box") {
+    applyPatientDocumentEditorCommand("formatBlock", "blockquote");
+    applyPatientDocumentEditorCommand("italic");
+    return;
+  }
+  if (preset === "code_block") {
+    applyPatientDocumentEditorCommand("formatBlock", "pre");
+    return;
+  }
+  if (preset === "signature_line") {
+    insertPatientDocumentTextAtCursor("____________________________");
+    return;
+  }
   if (preset === "marker") {
     const applied = wrapPatientDocumentSelectionWithHtml(
       (selectedText, selectedHtml) => `<mark>${selectedHtml || escapeHtml(selectedText)}</mark>`
     );
     if (!applied) {
       showStatus("Selecciona un texto para aplicar Marker.", "info");
+    }
+    return;
+  }
+  if (preset === "important") {
+    applyPatientDocumentEditorCommand("bold");
+    return;
+  }
+  if (preset === "small_print") {
+    applyPatientDocumentEditorCommand("fontSize", "2");
+    return;
+  }
+  if (preset === "inline_code") {
+    const applied = wrapPatientDocumentSelectionWithHtml(
+      (selectedText, selectedHtml) =>
+        `<font face="Courier New">${selectedHtml || escapeHtml(selectedText)}</font>`
+    );
+    if (!applied) {
+      showStatus("Selecciona un texto para aplicar Inline Code.", "info");
+    }
+    return;
+  }
+  if (preset === "accent_text") {
+    const applied = wrapPatientDocumentSelectionWithHtml(
+      (selectedText, selectedHtml) =>
+        `<font color="#1d4ed8">${selectedHtml || escapeHtml(selectedText)}</font>`
+    );
+    if (!applied) {
+      showStatus("Selecciona un texto para aplicar Accent Text.", "info");
     }
   }
 }
@@ -13669,6 +13863,7 @@ async function startDataLoad() {
 
 async function initApp() {
   cacheElements();
+  renderPatientDocumentEditorSelectOptions();
   renderNotifications();
   buildNavDropdowns();
   bindNavigation();
