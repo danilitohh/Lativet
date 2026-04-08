@@ -3595,10 +3595,11 @@ button:active {
 }
 
 .consultorio-document-editor {
-  border: 1px solid #cfd4dd;
-  border-radius: 2px;
-  background: #ececec;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  border-radius: 12px;
+  background: #fff;
   overflow: hidden;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
 }
 
 .consultorio-document-editor--expanded {
@@ -3763,11 +3764,11 @@ button:active {
 }
 
 .consultorio-document-editor__surface {
-  min-height: 186px;
-  padding: 10px 12px;
+  min-height: 320px;
+  padding: 16px 18px;
   color: #394657;
-  font-size: 0.78rem;
-  line-height: 1.55;
+  font-size: 0.84rem;
+  line-height: 1.65;
   outline: none;
   overflow: auto;
   background: #fff;
@@ -3800,7 +3801,7 @@ button:active {
 }
 
 .consultorio-document-editor__surface:focus {
-  box-shadow: inset 0 0 0 2px rgba(90, 103, 232, 0.08);
+  box-shadow: inset 0 0 0 2px rgba(90, 103, 232, 0.12);
 }
 
 .consultorio-document-editor__surface p,
