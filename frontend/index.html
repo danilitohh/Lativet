@@ -1867,6 +1867,13 @@
               </div>
 
               <label class="consultorio-consultation-form__field">
+                <span>Plantilla sugerida</span>
+                <select id="patientDocumentTemplateSelect" aria-label="Plantilla sugerida">
+                  <option value="">Selecciona primero un tipo de documento</option>
+                </select>
+              </label>
+
+              <label class="consultorio-consultation-form__field">
                 <span>Nombre del documento</span>
                 <input
                   id="patientDocumentNameInput"
@@ -1883,6 +1890,52 @@
                   <option value="optional">No requiere</option>
                 </select>
               </label>
+            </div>
+
+            <div id="patientDocumentTemplatePanel" class="consultorio-document-template is-hidden">
+              <div class="consultorio-document-template__header">
+                <div class="consultorio-document-template__header-copy">
+                  <span class="consultorio-document-template__eyebrow">Plantilla guiada</span>
+                  <strong id="patientDocumentTemplateTitle">Selecciona un tipo de documento</strong>
+                  <p id="patientDocumentTemplateDescription">
+                    Elige un tipo y una plantilla para que el sistema te proponga el contenido y los
+                    elementos que normalmente se solicitan en una veterinaria.
+                  </p>
+                </div>
+                <button
+                  id="patientDocumentApplyTemplateButton"
+                  class="secondary-button consultorio-document-template__action"
+                  type="button"
+                >
+                  Reaplicar plantilla
+                </button>
+              </div>
+
+              <div class="consultorio-document-template__grid">
+                <article class="consultorio-document-template__card">
+                  <span>Se completa automaticamente</span>
+                  <ul
+                    id="patientDocumentTemplateAutofillList"
+                    class="consultorio-document-template__list"
+                  ></ul>
+                </article>
+
+                <article class="consultorio-document-template__card">
+                  <span>Debes revisar o solicitar</span>
+                  <ul
+                    id="patientDocumentTemplateRequiredList"
+                    class="consultorio-document-template__list"
+                  ></ul>
+                </article>
+
+                <article class="consultorio-document-template__card">
+                  <span>Secciones que incluira</span>
+                  <ul
+                    id="patientDocumentTemplateSectionsList"
+                    class="consultorio-document-template__list"
+                  ></ul>
+                </article>
+              </div>
             </div>
 
             <div class="consultorio-consultation-form__field consultorio-document-fields__editor-field">

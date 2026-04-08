@@ -3462,7 +3462,7 @@ button:active {
 
 .consultorio-document-fields__top {
   display: grid;
-  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1.1fr) minmax(170px, 0.72fr);
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1.05fr) minmax(0, 1fr) minmax(170px, 0.72fr);
   gap: 12px 16px;
   align-items: start;
 }
@@ -3487,6 +3487,111 @@ button:active {
 
 .consultorio-document-fields__editor-field {
   gap: 6px;
+}
+
+.consultorio-document-template {
+  display: grid;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid rgba(90, 103, 232, 0.16);
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(246, 248, 255, 0.98), rgba(255, 255, 255, 0.98));
+}
+
+.consultorio-document-template__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.consultorio-document-template__header-copy {
+  display: grid;
+  gap: 4px;
+}
+
+.consultorio-document-template__eyebrow {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #5a67e8;
+}
+
+.consultorio-document-template__header strong {
+  font-size: 0.98rem;
+  color: #21304a;
+}
+
+.consultorio-document-template__header p {
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: #5f6b81;
+}
+
+.consultorio-document-template__action {
+  flex: 0 0 auto;
+  min-height: 34px;
+  font-size: 0.76rem;
+}
+
+.consultorio-document-template__grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.consultorio-document-template__card {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.consultorio-document-template__card > span {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #334155;
+}
+
+.consultorio-document-template__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 8px;
+}
+
+.consultorio-document-template__item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: #4b5567;
+}
+
+.consultorio-document-template__item::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  margin-top: 0.36rem;
+  border-radius: 999px;
+  background: #5a67e8;
+  flex: 0 0 auto;
+}
+
+.consultorio-document-template__item--empty {
+  color: #8a94a7;
+}
+
+.consultorio-document-template__item--empty::before {
+  background: #c5ccda;
 }
 
 .consultorio-document-editor {
@@ -6188,6 +6293,18 @@ body.auth-locked .page-shell > :not(#loginModal) {
   .consultorio-document-editor__toolbar-row--controls {
     flex-wrap: wrap;
     gap: 4px;
+  }
+
+  .consultorio-document-template__header {
+    flex-direction: column;
+  }
+
+  .consultorio-document-template__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .consultorio-document-template__action {
+    width: 100%;
   }
 
   .consultorio-consultation-modal--documents .form-actions {
