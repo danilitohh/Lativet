@@ -301,6 +301,8 @@ const CONSULTORIO_PROCEDURE_CUSTOM_OPTION = "__custom__";
 const CONSULTORIO_ORDER_ITEM_CUSTOM_OPTION = "__custom__";
 const LAB_TEST_CATEGORY_CUSTOM_OPTION = "__custom__";
 const LAB_TEST_LABEL_SEPARATOR = " - ";
+const DEFAULT_DOCUMENT_EDITOR_FONT_FAMILY = "Plus Jakarta Sans";
+const DEFAULT_DOCUMENT_EDITOR_FONT_SIZE = "3";
 const LAB_TEST_CATEGORY_OPTIONS = [
   "PERFILES MAS USADOS",
   "PARASITOLOGIA VETERINARIA",
@@ -1409,6 +1411,7 @@ function cacheElements() {
     "patientDocumentSignatureSelect",
     "patientDocumentToolbar",
     "patientDocumentStyleSelect",
+    "patientDocumentBlockFormatSelect",
     "patientDocumentFontFamilySelect",
     "patientDocumentFontSizeSelect",
     "patientDocumentEditor",
@@ -3546,6 +3549,8 @@ function sanitizeConsultorioDocumentHtml(value) {
     "H2",
     "H3",
     "BLOCKQUOTE",
+    "PRE",
+    "MARK",
     "FONT",
     "A",
   ]);
@@ -8624,6 +8629,66 @@ function setPatientDocumentEditorContent(value) {
   );
 }
 
+function getPatientDocumentSelectionRange() {
+  if (!elements.patientDocumentEditor || typeof window?.getSelection !== "function") {
+    return null;
+  }
+  const selection = window.getSelection();
+  if (!selection || !selection.rangeCount) {
+    return null;
+  }
+  const range = selection.getRangeAt(0);
+  if (!elements.patientDocumentEditor.contains(range.commonAncestorContainer)) {
+    return null;
+  }
+  return range;
+}
+
+function wrapPatientDocumentSelectionWithHtml(builder) {
+  if (typeof document?.execCommand !== "function" || typeof builder !== "function") {
+    return false;
+  }
+  const range = getPatientDocumentSelectionRange();
+  if (!range || range.collapsed) {
+    return false;
+  }
+  const selectedText = String(range.toString() || "").trim();
+  if (!selectedText) {
+    return false;
+  }
+  document.execCommand("insertHTML", false, builder(selectedText));
+  syncPatientDocumentEditorState();
+  return true;
+}
+
+function applyPatientDocumentStylePreset(value) {
+  const preset = String(value || "").trim();
+  if (!preset) {
+    return;
+  }
+  if (preset === "italic_title") {
+    applyPatientDocumentEditorCommand("formatBlock", "h2");
+    applyPatientDocumentEditorCommand("italic");
+    return;
+  }
+  if (preset === "subtitle") {
+    applyPatientDocumentEditorCommand("formatBlock", "h3");
+    return;
+  }
+  if (preset === "special_container") {
+    applyPatientDocumentEditorCommand("formatBlock", "blockquote");
+    return;
+  }
+  if (preset === "marker") {
+    const applied = wrapPatientDocumentSelectionWithHtml(
+      (selectedText) => `<mark>${escapeHtml(selectedText)}</mark>`
+    );
+    if (!applied) {
+      showStatus("Selecciona un texto para aplicar Marker.", "info");
+    }
+  }
+}
+
 function applyPatientDocumentEditorCommand(command, value = null) {
   if (!elements.patientDocumentEditor || typeof document?.execCommand !== "function") {
     return;
@@ -10274,13 +10339,16 @@ function openPatientConsultationModal(consultation = null) {
       : "optional";
   }
   if (elements.patientDocumentStyleSelect) {
-    elements.patientDocumentStyleSelect.value = "p";
+    elements.patientDocumentStyleSelect.value = "";
+  }
+  if (elements.patientDocumentBlockFormatSelect) {
+    elements.patientDocumentBlockFormatSelect.value = "";
   }
   if (elements.patientDocumentFontFamilySelect) {
     elements.patientDocumentFontFamilySelect.value = "";
   }
   if (elements.patientDocumentFontSizeSelect) {
-    elements.patientDocumentFontSizeSelect.value = "3";
+    elements.patientDocumentFontSizeSelect.value = "";
   }
   setPatientDocumentEditorContent(documentDetails.contentHtml);
   if (form.elements.document_notify_owner) {
@@ -12375,7 +12443,16 @@ function bindForms() {
   }
   if (elements.patientDocumentStyleSelect) {
     elements.patientDocumentStyleSelect.addEventListener("change", (event) => {
-      const value = event.target.value || "p";
+      applyPatientDocumentStylePreset(event.target.value || "");
+      event.target.value = "";
+    });
+  }
+  if (elements.patientDocumentBlockFormatSelect) {
+    elements.patientDocumentBlockFormatSelect.addEventListener("change", (event) => {
+      const value = String(event.target.value || "").trim();
+      if (!value) {
+        return;
+      }
       applyPatientDocumentEditorCommand("formatBlock", value);
     });
   }
@@ -12385,13 +12462,22 @@ function bindForms() {
       if (!value) {
         return;
       }
-      applyPatientDocumentEditorCommand("fontName", value);
+      applyPatientDocumentEditorCommand(
+        "fontName",
+        value === "default" ? DEFAULT_DOCUMENT_EDITOR_FONT_FAMILY : value
+      );
     });
   }
   if (elements.patientDocumentFontSizeSelect) {
     elements.patientDocumentFontSizeSelect.addEventListener("change", (event) => {
-      const value = event.target.value || "3";
-      applyPatientDocumentEditorCommand("fontSize", value);
+      const value = String(event.target.value || "").trim();
+      if (!value) {
+        return;
+      }
+      applyPatientDocumentEditorCommand(
+        "fontSize",
+        value === "default" ? DEFAULT_DOCUMENT_EDITOR_FONT_SIZE : value
+      );
     });
   }
   if (elements.patientDocumentEditor) {

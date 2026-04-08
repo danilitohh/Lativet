@@ -1934,44 +1934,68 @@
                   </div>
                   <div class="consultorio-document-editor__toolbar-row consultorio-document-editor__toolbar-row--controls">
                     <select
-                      class="consultorio-document-editor__select consultorio-document-editor__select--placeholder"
+                      id="patientDocumentStyleSelect"
+                      class="consultorio-document-editor__select consultorio-document-editor__select--style"
                       aria-label="Estilo"
-                      disabled
                     >
-                      <option selected>Estilo</option>
+                      <option value="" selected>Estilo</option>
+                      <optgroup label="Estilos de parrafo">
+                        <option value="italic_title">Italic Title</option>
+                        <option value="subtitle">Subtitle</option>
+                        <option value="special_container">Special Container</option>
+                      </optgroup>
+                      <optgroup label="Estilos de caracter">
+                        <option value="marker">Marker</option>
+                      </optgroup>
                     </select>
                     <select
-                      id="patientDocumentStyleSelect"
+                      id="patientDocumentBlockFormatSelect"
                       class="consultorio-document-editor__select consultorio-document-editor__select--format"
                       aria-label="Formato"
                     >
-                      <option value="p">Formato</option>
-                      <option value="h1">Titulo 1</option>
-                      <option value="h2">Titulo 2</option>
-                      <option value="h3">Titulo 3</option>
-                      <option value="blockquote">Cita</option>
+                      <option value="" selected>Formato</option>
+                      <optgroup label="Formato">
+                        <option value="p">Normal</option>
+                        <option value="h1">Encabezado</option>
+                        <option value="h2">Encabezado 2</option>
+                        <option value="h3">Encabezado 3</option>
+                        <option value="pre">Con formato</option>
+                      </optgroup>
                     </select>
                     <select
                       id="patientDocumentFontFamilySelect"
                       class="consultorio-document-editor__select consultorio-document-editor__select--font"
                       aria-label="Fuente"
                     >
-                      <option value="">Fuente</option>
-                      <option value="Arial">Arial</option>
-                      <option value="Georgia">Georgia</option>
-                      <option value="Tahoma">Tahoma</option>
-                      <option value="Times New Roman">Times</option>
-                      <option value="Verdana">Verdana</option>
+                      <option value="" selected>Fuente</option>
+                      <optgroup label="Fuente">
+                        <option value="default">(Default)</option>
+                        <option value="Arial">Arial</option>
+                        <option value="Comic Sans MS">Comic Sans MS</option>
+                        <option value="Courier New">Courier New</option>
+                        <option value="Georgia">Georgia</option>
+                        <option value="Lucida Sans Unicode">Lucida Sans Unicode</option>
+                        <option value="Tahoma">Tahoma</option>
+                        <option value="Times New Roman">Times New Roman</option>
+                        <option value="Verdana">Verdana</option>
+                      </optgroup>
                     </select>
                     <select
                       id="patientDocumentFontSizeSelect"
                       class="consultorio-document-editor__select consultorio-document-editor__select--size"
                       aria-label="Tamano"
                     >
-                      <option value="3" selected>Tamano</option>
-                      <option value="2">Pequeno</option>
-                      <option value="4">Mediano</option>
-                      <option value="5">Grande</option>
+                      <option value="" selected>Tamano</option>
+                      <optgroup label="Tamano">
+                        <option value="default">(Default)</option>
+                        <option value="1">8</option>
+                        <option value="2">9</option>
+                        <option value="3">10</option>
+                        <option value="4">11</option>
+                        <option value="5">12</option>
+                        <option value="6">14</option>
+                        <option value="7">18</option>
+                      </optgroup>
                     </select>
                     <div class="consultorio-document-editor__group" role="group" aria-label="Ajustes">
                       <button class="consultorio-document-editor__button" type="button" data-document-command="decreaseFontSize" title="Reducir tamano" aria-label="Reducir tamano">A-</button>

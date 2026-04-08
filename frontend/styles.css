@@ -3569,7 +3569,7 @@ button:active {
   flex: 0 0 auto;
 }
 
-.consultorio-document-editor__select--placeholder {
+.consultorio-document-editor__select--style {
   width: 82px;
 }
 
@@ -3606,10 +3606,6 @@ button:active {
 
 .consultorio-document-editor__button--wide {
   min-width: 34px;
-}
-
-.consultorio-document-editor__select--placeholder {
-  color: #7a8291;
 }
 
 .consultorio-document-editor__button:hover {
@@ -3674,6 +3670,22 @@ button:active {
   padding-left: 12px;
   border-left: 3px solid #d7deef;
   color: #6b7690;
+}
+
+.consultorio-document-editor__surface pre {
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border-radius: 4px;
+  background: #f5f7fb;
+  color: #42506a;
+  font: 0.76rem/1.5 "Courier New", monospace;
+  white-space: pre-wrap;
+}
+
+.consultorio-document-editor__surface mark {
+  padding: 0 2px;
+  background: #fff29b;
+  color: inherit;
 }
 
 .consultorio-document-fields__message {
@@ -3760,10 +3772,6 @@ button:active {
   border-radius: 2px;
   color: #5c6473;
   font-size: 0.66rem;
-}
-
-.consultorio-consultation-modal--documents .consultorio-document-editor__select--placeholder {
-  color: #7a8291;
 }
 
 .consultorio-consultation-modal--documents .consultorio-followup-message {
