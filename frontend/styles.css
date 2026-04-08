@@ -3593,6 +3593,12 @@ button:active {
   font-size: 0.62rem;
 }
 
+.consultorio-document-editor__toolbar-row--controls .consultorio-document-editor__select {
+  padding-right: 14px;
+  font-size: 0.56rem;
+  letter-spacing: -0.01em;
+}
+
 .consultorio-document-editor__button {
   min-width: 24px;
   justify-content: center;
