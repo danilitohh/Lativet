@@ -71,6 +71,8 @@ let pendingProcedureOrderItemIndex = null;
 let activeSectionId = "dashboard";
 let pendingAppointmentDraft = null;
 let returnToAppointmentModal = false;
+let pendingConsentPatientId = "";
+let pendingGroomingPatientId = "";
 const notifications = [];
 let unreadNotifications = 0;
 const MAX_NOTIFICATIONS = 60;
@@ -3815,6 +3817,8 @@ function isConsultorioWorkspaceOnlyView(profileConfig) {
     "documents",
     "seguimiento",
     "remisiones",
+    "consents",
+    "grooming",
   ].includes(profileConfig?.value || "");
 }
 
@@ -5697,6 +5701,26 @@ function openConsultorioPatientProfile(patient) {
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
+function openConsentsSection(patientId = "") {
+  pendingConsentPatientId = String(patientId || "").trim();
+  setSectionSubsection("consents", "general");
+  setActiveSection("consents");
+  window.scrollTo({ top: 0, behavior: "smooth" });
+  if (typeof window.requestAnimationFrame === "function") {
+    window.requestAnimationFrame(() => elements.consentPatientSelect?.focus());
+  }
+}
+
+function openConsultorioGroomingSection(patientId = "") {
+  pendingGroomingPatientId = String(patientId || "").trim();
+  setSectionSubsection("consultorio", "grooming");
+  setActiveSection("consultorio");
+  window.scrollTo({ top: 0, behavior: "smooth" });
+  if (typeof window.requestAnimationFrame === "function") {
+    window.requestAnimationFrame(() => elements.groomingPatientSelect?.focus());
+  }
+}
+
 function closeConsultorioPatientProfile(options = {}) {
   const { preservePatient = false } = options;
   closePatientConsultationModal();
@@ -7245,6 +7269,195 @@ function buildConsultorioReferralsWorkspace(patient, profileConfig) {
   `;
 }
 
+function buildConsultorioConsentsWorkspace(patient) {
+  const entries = getConsultorioScopedConsents()
+    .slice()
+    .sort((left, right) => String(right.signed_at || "").localeCompare(String(left.signed_at || "")));
+  const content = entries.length
+    ? `
+      <div class="consultorio-consents-grid">
+        ${entries
+          .map(
+            (consent) => `
+              <article class="consultorio-consent-card">
+                <div class="consultorio-consent-card__header">
+                  <div>
+                    <span class="consultorio-consent-card__date">${escapeHtml(
+                      formatDateTime(consent?.signed_at)
+                    )}</span>
+                    <h5>${escapeHtml(
+                      consent?.procedure_name || consent?.consent_type || "Consentimiento"
+                    )}</h5>
+                  </div>
+                  <span class="pill pill--confirmed">${escapeHtml(
+                    consent?.consent_type || "Consentimiento"
+                  )}</span>
+                </div>
+                <p class="consultorio-consent-card__meta"><strong>Tutor:</strong> ${escapeHtml(
+                  consent?.owner_signature_name || consent?.owner_name || "Sin dato"
+                )}</p>
+                <p class="consultorio-consent-card__meta"><strong>Historia:</strong> ${escapeHtml(
+                  consent?.record_label || "Sin adjuntar"
+                )}</p>
+                <p class="consultorio-consent-card__meta"><strong>Consulta:</strong> ${escapeHtml(
+                  consent?.consultation_label || "Sin adjuntar"
+                )}</p>
+                <p class="consultorio-consent-card__summary">${escapeHtml(
+                  truncate(
+                    consent?.notes || consent?.owner_statement || "Sin observaciones registradas.",
+                    180
+                  )
+                )}</p>
+              </article>
+            `
+          )
+          .join("")}
+      </div>
+    `
+    : `
+      <div class="consultorio-module-empty consultorio-module-empty--consents">
+        <span class="consultorio-module-empty__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 11l2 2 4-4"></path>
+            <rect x="4" y="3" width="16" height="18" rx="2"></rect>
+          </svg>
+        </span>
+        <strong>No hay consentimientos registrados</strong>
+      </div>
+    `;
+  return `
+    <article class="consultorio-profile-shell consultorio-consents-shell">
+      <div class="consultorio-profile-table-toolbar consultorio-consents-shell__toolbar">
+        <div class="consultorio-profile-toolbar__group">
+          <span class="consultorio-profile-toolbar__icon consultorio-consents-shell__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 11l2 2 4-4"></path>
+              <rect x="4" y="3" width="16" height="18" rx="2"></rect>
+            </svg>
+          </span>
+          <div class="consultorio-profile-toolbar__title">
+            <h4>Consentimientos de <span class="consultorio-profile-toolbar__accent">${escapeHtml(
+              patient?.name || "Paciente"
+            )}</span></h4>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button
+            class="consultorio-consents-shell__button"
+            type="button"
+            data-open-consents-section="true"
+          >
+            <span aria-hidden="true">+</span>
+            Registrar consentimiento
+          </button>
+        </div>
+      </div>
+      <div class="consultorio-consents-shell__body">
+        ${content}
+      </div>
+    </article>
+  `;
+}
+
+function buildConsultorioGroomingWorkspace(patient) {
+  const entries = getConsultorioScopedGrooming()
+    .slice()
+    .sort((left, right) => String(right.service_at || "").localeCompare(String(left.service_at || "")));
+  const content = entries.length
+    ? `
+      <div class="consultorio-grooming-grid">
+        ${entries
+          .map(
+            (item) => `
+              <article class="consultorio-grooming-card">
+                <div class="consultorio-grooming-card__header">
+                  <div>
+                    <span class="consultorio-grooming-card__date">${escapeHtml(
+                      formatDateTime(item?.service_at)
+                    )}</span>
+                    <h5>${escapeHtml(item?.service_name || item?.document_type || "Servicio")}</h5>
+                  </div>
+                  <span class="${statusClass(item?.status)}">${escapeHtml(
+                    humanStatus(item?.status)
+                  )}</span>
+                </div>
+                <p class="consultorio-grooming-card__meta"><strong>Documento:</strong> ${escapeHtml(
+                  item?.document_type || "Sin tipo"
+                )}</p>
+                <p class="consultorio-grooming-card__meta"><strong>Responsable:</strong> ${escapeHtml(
+                  item?.stylist_name || "Sin responsable"
+                )}</p>
+                ${
+                  item?.next_visit_at
+                    ? `<p class="consultorio-grooming-card__meta"><strong>Proxima visita:</strong> ${escapeHtml(
+                        formatDateTime(item.next_visit_at)
+                      )}</p>`
+                    : ""
+                }
+                <p class="consultorio-grooming-card__summary">${escapeHtml(
+                  truncate(
+                    item?.recommendations ||
+                      item?.products_used ||
+                      item?.notes ||
+                      "Sin observaciones registradas.",
+                    180
+                  )
+                )}</p>
+              </article>
+            `
+          )
+          .join("")}
+      </div>
+    `
+    : `
+      <div class="consultorio-module-empty consultorio-module-empty--grooming">
+        <span class="consultorio-module-empty__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="6" cy="7" r="2"></circle>
+            <circle cx="6" cy="17" r="2"></circle>
+            <path d="M8 8l10 10"></path>
+            <path d="M8 16 18 6"></path>
+          </svg>
+        </span>
+        <strong>No hay registros de peluqueria</strong>
+      </div>
+    `;
+  return `
+    <article class="consultorio-profile-shell consultorio-grooming-shell">
+      <div class="consultorio-profile-table-toolbar consultorio-grooming-shell__toolbar">
+        <div class="consultorio-profile-toolbar__group">
+          <span class="consultorio-profile-toolbar__icon consultorio-grooming-shell__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="6" cy="7" r="2"></circle>
+              <circle cx="6" cy="17" r="2"></circle>
+              <path d="M8 8l10 10"></path>
+              <path d="M8 16 18 6"></path>
+            </svg>
+          </span>
+          <div class="consultorio-profile-toolbar__title">
+            <h4>Peluqueria de <span class="consultorio-profile-toolbar__accent">${escapeHtml(
+              patient?.name || "Paciente"
+            )}</span></h4>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button
+            class="consultorio-grooming-shell__button"
+            type="button"
+            data-open-grooming-section="true"
+          >
+            <span aria-hidden="true">+</span>
+            Registrar servicio
+          </button>
+        </div>
+      </div>
+      <div class="consultorio-grooming-shell__body">
+        ${content}
+      </div>
+    </article>
+  `;
+}
+
 function buildConsultorioFollowupWorkspace(patient, profileConfig) {
   const entries = getConsultorioScopedConsultations(profileConfig?.consultationTypes || null);
   const content = entries.length
@@ -7493,6 +7706,10 @@ function renderConsultorioPatientProfile() {
         ? buildConsultorioDocumentsWorkspace(patient, profileConfig)
         : profileConfig?.value === "remisiones"
         ? buildConsultorioReferralsWorkspace(patient, profileConfig)
+        : profileConfig?.value === "consents"
+        ? buildConsultorioConsentsWorkspace(patient)
+        : profileConfig?.value === "grooming"
+        ? buildConsultorioGroomingWorkspace(patient)
         : profileConfig?.value === "seguimiento"
         ? buildConsultorioFollowupWorkspace(patient, profileConfig)
         : buildConsultorioProfileTimelineMarkup(profileConfig, timelineItems);
@@ -8965,6 +9182,8 @@ function renderAppointmentPatientDropdown() {
 }
 
 function renderSelects() {
+  const activeSection = getActiveSectionId();
+  const consultorioSubsection = getSubsectionOption("consultorio")?.value || "";
   const scopedPatient = isConsultorioPatientProfileActive() ? getConsultorioPatient() : null;
   const scopedRecords = scopedPatient
     ? state.records.filter((record) => record.patient_id === scopedPatient.id)
@@ -8974,6 +9193,22 @@ function renderSelects() {
     : state.consents;
   const scopedConsultations = scopedPatient
     ? state.consultations.filter((consultation) => consultation.patient_id === scopedPatient.id)
+    : state.consultations;
+  const consentSelectedPatientId = scopedPatient?.id
+    ? String(scopedPatient.id)
+    : activeSection === "consents"
+    ? String(elements.consentPatientSelect?.value || pendingConsentPatientId || "").trim()
+    : "";
+  const groomingSelectedPatientId = scopedPatient?.id
+    ? String(scopedPatient.id)
+    : activeSection === "consultorio" && consultorioSubsection === "grooming"
+    ? String(elements.groomingPatientSelect?.value || pendingGroomingPatientId || "").trim()
+    : "";
+  const consentScopedRecords = consentSelectedPatientId
+    ? state.records.filter((record) => record.patient_id === consentSelectedPatientId)
+    : state.records;
+  const consentScopedConsultations = consentSelectedPatientId
+    ? state.consultations.filter((consultation) => consultation.patient_id === consentSelectedPatientId)
     : state.consultations;
   populateSelect(
     elements.patientOwnerSelect,
@@ -9002,8 +9237,14 @@ function renderSelects() {
     "Selecciona una opcion"
   );
   const recordLabel = (record) => `${record.patient_name} / ${formatDateTime(record.opened_at)}`;
-  [elements.consultationRecordSelect, elements.evolutionRecordSelect, elements.consentRecordSelect].forEach(
-    (select) => populateSelect(select, scopedRecords, recordLabel, "Selecciona historia")
+  [elements.consultationRecordSelect, elements.evolutionRecordSelect].forEach((select) =>
+    populateSelect(select, scopedRecords, recordLabel, "Selecciona historia")
+  );
+  populateSelect(
+    elements.consentRecordSelect,
+    consentScopedRecords,
+    recordLabel,
+    "Selecciona historia"
   );
   populateSelect(
     elements.consultationConsentSelect,
@@ -9013,7 +9254,7 @@ function renderSelects() {
   );
   populateSelect(
     elements.consentConsultationSelect,
-    scopedConsultations,
+    consentScopedConsultations,
     (consultation) => `${consultation.patient_name} / ${consultation.title}`,
     "Consulta opcional"
   );
@@ -9048,6 +9289,25 @@ function renderSelects() {
         }
       }
     );
+    pendingConsentPatientId = "";
+    pendingGroomingPatientId = "";
+    return;
+  }
+  if (consentSelectedPatientId && elements.consentPatientSelect) {
+    elements.consentPatientSelect.value = consentSelectedPatientId;
+    if (activeSection === "consents" && pendingConsentPatientId === consentSelectedPatientId) {
+      pendingConsentPatientId = "";
+    }
+  }
+  if (groomingSelectedPatientId && elements.groomingPatientSelect) {
+    elements.groomingPatientSelect.value = groomingSelectedPatientId;
+    if (
+      activeSection === "consultorio" &&
+      consultorioSubsection === "grooming" &&
+      pendingGroomingPatientId === groomingSelectedPatientId
+    ) {
+      pendingGroomingPatientId = "";
+    }
   }
 }
 
@@ -15798,6 +16058,16 @@ function bindForms() {
         openNewPatientEditor();
         return;
       }
+      const openConsentsSectionButton = event.target.closest("[data-open-consents-section]");
+      if (openConsentsSectionButton) {
+        openConsentsSection(consultorioPatientId);
+        return;
+      }
+      const openGroomingSectionButton = event.target.closest("[data-open-grooming-section]");
+      if (openGroomingSectionButton) {
+        openConsultorioGroomingSection(consultorioPatientId);
+        return;
+      }
       const openConsultationButton = event.target.closest("[data-open-patient-consultation-modal]");
       if (openConsultationButton) {
         const targetProfileView =
@@ -16792,6 +17062,8 @@ function bindForms() {
   elements.consentTypeSelect.addEventListener("change", () =>
     applyConsentTemplate(elements.consentTypeSelect.value)
   );
+  elements.consentPatientSelect?.addEventListener("change", renderSelects);
+  elements.groomingPatientSelect?.addEventListener("change", renderSelects);
 }
 
 function scheduleFullBootstrapLoad() {

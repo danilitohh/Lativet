@@ -1533,6 +1533,8 @@ button:active {
 .consultorio-deworming-shell,
 .consultorio-hospamb-shell,
 .consultorio-procedures-shell,
+.consultorio-consents-shell,
+.consultorio-grooming-shell,
 .consultorio-remissions-shell,
 .consultorio-laboratory-shell,
 .consultorio-followup-shell,
@@ -2159,6 +2161,158 @@ button:active {
 .consultorio-followup-card__footer {
   padding-top: 2px;
   border-top: 1px solid #eef2f8;
+}
+
+.consultorio-consents-shell,
+.consultorio-grooming-shell {
+  min-height: 340px;
+  padding: 0;
+  border: 1px solid #e6ebf5;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: none;
+}
+
+.consultorio-consents-shell__toolbar,
+.consultorio-grooming-shell__toolbar {
+  padding: 12px 14px 10px;
+  border-bottom: 1px solid #edf1f8;
+}
+
+.consultorio-consents-shell__icon {
+  color: #3179ee;
+}
+
+.consultorio-grooming-shell__icon {
+  color: #e27a56;
+}
+
+.consultorio-consents-shell__button,
+.consultorio-grooming-shell__button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 32px;
+  padding: 5px 10px;
+  border-radius: 4px;
+  color: #fff;
+  font-size: 0.76rem;
+  font-weight: 700;
+  box-shadow: none;
+}
+
+.consultorio-consents-shell__button {
+  background: linear-gradient(135deg, #24c9a3, #18b18d);
+}
+
+.consultorio-consents-shell__button:hover {
+  background: linear-gradient(135deg, #1fb896, #14997b);
+}
+
+.consultorio-grooming-shell__button {
+  background: linear-gradient(135deg, #f39a5d, #e57a48);
+}
+
+.consultorio-grooming-shell__button:hover {
+  background: linear-gradient(135deg, #ea8c4b, #d86d39);
+}
+
+.consultorio-consents-shell__body,
+.consultorio-grooming-shell__body {
+  padding: 14px;
+}
+
+.consultorio-consents-grid,
+.consultorio-grooming-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 12px;
+}
+
+.consultorio-consent-card,
+.consultorio-grooming-card {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid #e6ebf5;
+  border-radius: 12px;
+  background: #fbfdff;
+}
+
+.consultorio-consent-card__header,
+.consultorio-grooming-card__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.consultorio-consent-card__date,
+.consultorio-consent-card__meta,
+.consultorio-grooming-card__date,
+.consultorio-grooming-card__meta {
+  margin: 0;
+  color: #6e7b98;
+  font-size: 0.74rem;
+}
+
+.consultorio-consent-card__header h5,
+.consultorio-grooming-card__header h5 {
+  margin: 4px 0 0;
+  color: #263655;
+  font-family: var(--font-head);
+  font-size: 0.92rem;
+}
+
+.consultorio-consent-card__summary,
+.consultorio-grooming-card__summary {
+  margin: 0;
+  color: #42516e;
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.consultorio-consent-card__meta strong,
+.consultorio-grooming-card__meta strong {
+  color: #43516d;
+}
+
+.consultorio-module-empty--consents,
+.consultorio-module-empty--grooming {
+  min-height: 300px;
+  margin-top: 0;
+  border: 0;
+  background: transparent;
+}
+
+.consultorio-module-empty--consents .consultorio-module-empty__icon,
+.consultorio-module-empty--grooming .consultorio-module-empty__icon {
+  width: 58px;
+  height: 58px;
+}
+
+.consultorio-module-empty--consents .consultorio-module-empty__icon {
+  color: #6673ab;
+}
+
+.consultorio-module-empty--grooming .consultorio-module-empty__icon {
+  color: #e0815c;
+}
+
+.consultorio-module-empty--consents strong,
+.consultorio-module-empty--grooming strong {
+  font-family: var(--font-head);
+  font-size: 1.22rem;
+  font-weight: 600;
+}
+
+.consultorio-module-empty--consents strong {
+  color: #6573a9;
+}
+
+.consultorio-module-empty--grooming strong {
+  color: #c96c49;
 }
 
 .consultorio-laboratory-entry {
