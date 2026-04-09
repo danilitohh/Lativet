@@ -3792,6 +3792,7 @@ function isConsultorioWorkspaceOnlyView(profileConfig) {
     "laboratorio",
     "documents",
     "seguimiento",
+    "remisiones",
   ].includes(profileConfig?.value || "");
 }
 
@@ -3960,6 +3961,146 @@ function getConsultorioProfileCount(option) {
   return getConsultorioScopedConsultations(option.consultationTypes).length;
 }
 
+function getConsultorioProfileViewIconSvg(value) {
+  return (
+    {
+      records: `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M8 3h6l5 5v13H8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"></path>
+          <path d="M14 3v5h5"></path>
+          <path d="M10 13h6"></path>
+          <path d="M10 17h6"></path>
+          <path d="M10 9h2"></path>
+        </svg>
+      `,
+      consultations: `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="11" r="7"></circle>
+          <path d="M12 8v6"></path>
+          <path d="M9 11h6"></path>
+          <path d="M8 19l-2.4 2"></path>
+          <path d="M16 19l2.4 2"></path>
+        </svg>
+      `,
+      vacunacion: `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <path d="m14 4 6 6"></path>
+          <path d="m17 7-8.5 8.5"></path>
+          <path d="m12 2 3 3"></path>
+          <path d="m4 14 6 6"></path>
+          <path d="M2 22l4-4"></path>
+          <path d="M7 17l-2-2"></path>
+        </svg>
+      `,
+      formula: `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M10.5 5.5 18.5 13.5a3.54 3.54 0 1 1-5 5l-8-8a3.54 3.54 0 0 1 5-5Z"></path>
+          <path d="m8 8 8 8"></path>
+        </svg>
+      `,
+      desparasitacion: `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M8 6c0-1.66 1.79-3 4-3s4 1.34 4 3-1.79 3-4 3-4-1.34-4-3Z"></path>
+          <path d="M8 18c0-1.66 1.79-3 4-3s4 1.34 4 3-1.79 3-4 3-4-1.34-4-3Z"></path>
+          <path d="M12 9v6"></path>
+          <path d="M7 12h10"></path>
+        </svg>
+      `,
+      hospamb: `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 21V7a2 2 0 0 1 2-2h8v16"></path>
+          <path d="M13 10h6a2 2 0 0 1 2 2v9"></path>
+          <path d="M8 9h0"></path>
+          <path d="M8 13h0"></path>
+          <path d="M8 17h0"></path>
+          <path d="M16 14h2"></path>
+          <path d="M17 13v2"></path>
+        </svg>
+      `,
+      cirugia: `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M15 4V2"></path>
+          <path d="M9 4V2"></path>
+          <path d="M10 10 4.5 15.5a2.12 2.12 0 1 0 3 3L13 13"></path>
+          <path d="m14 9 1-1"></path>
+          <path d="M5 8h14"></path>
+          <path d="M7 4h10a2 2 0 0 1 2 2v2H5V6a2 2 0 0 1 2-2Z"></path>
+        </svg>
+      `,
+      orders: `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"></path>
+          <path d="M14 2v5h5"></path>
+          <path d="M9 12h6"></path>
+          <path d="M9 16h6"></path>
+          <path d="M9 8h2"></path>
+        </svg>
+      `,
+      laboratorio: `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M10 2v7.31"></path>
+          <path d="M14 9.3V2"></path>
+          <path d="M8.5 2h7"></path>
+          <path d="M14 9.3 19.74 19a2 2 0 0 1-1.72 3H5.98a2 2 0 0 1-1.72-3L10 9.3"></path>
+          <path d="M6.85 15h10.3"></path>
+        </svg>
+      `,
+      imagenes: `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="5" width="18" height="14" rx="2"></rect>
+          <path d="m3 15 4-4 4 4 3-3 4 4"></path>
+          <circle cx="8.5" cy="9.5" r="1.2"></circle>
+        </svg>
+      `,
+      seguimiento: `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 21s-6.5-4.35-6.5-10A3.5 3.5 0 0 1 9 7.5c1.28 0 2.42.69 3 1.72A3.34 3.34 0 0 1 15 7.5a3.5 3.5 0 0 1 3.5 3.5c0 5.65-6.5 10-6.5 10Z"></path>
+          <path d="M8 13h2l1.1-2 1.8 4 1.1-2H16"></path>
+        </svg>
+      `,
+      documents: `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"></path>
+          <path d="M14 2v5h5"></path>
+          <path d="M9 13h6"></path>
+          <path d="M9 17h6"></path>
+          <path d="M9 9h2"></path>
+        </svg>
+      `,
+      remisiones: `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M6 18V9h8.5L19 13v5"></path>
+          <path d="M6 18H4a1 1 0 0 1-1-1v-4a4 4 0 0 1 4-4h1"></path>
+          <path d="M14 9v4h5"></path>
+          <path d="M9 8V4"></path>
+          <path d="M7 6h4"></path>
+          <path d="M16.5 18a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3Z"></path>
+          <path d="M7.5 18a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3Z"></path>
+        </svg>
+      `,
+      consents: `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 11l2 2 4-4"></path>
+          <rect x="4" y="3" width="16" height="18" rx="2"></rect>
+        </svg>
+      `,
+      grooming: `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="6" cy="7" r="2"></circle>
+          <circle cx="6" cy="17" r="2"></circle>
+          <path d="M8 8l10 10"></path>
+          <path d="M8 16 18 6"></path>
+        </svg>
+      `,
+    }[value] ||
+    `
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="8"></circle>
+      </svg>
+    `
+  );
+}
+
 function buildConsultorioProfileNavMarkup(options = {}) {
   const { diagnosticMode = false } = options;
   return CONSULTORIO_PROFILE_VIEWS.map(
@@ -3971,7 +4112,12 @@ function buildConsultorioProfileNavMarkup(options = {}) {
         type="button"
         data-consultorio-profile-view="${escapeHtml(option.value)}"
       >
-        <span class="consultorio-profile-nav__label">${escapeHtml(option.label)}</span>
+        <span class="consultorio-profile-nav__main">
+          <span class="consultorio-profile-nav__icon" aria-hidden="true">
+            ${getConsultorioProfileViewIconSvg(option.value)}
+          </span>
+          <span class="consultorio-profile-nav__label">${escapeHtml(option.label)}</span>
+        </span>
         <strong>${getConsultorioProfileCount(option)}</strong>
       </button>
     `
@@ -6908,6 +7054,120 @@ function buildConsultorioDocumentsWorkspace(patient, profileConfig) {
   `;
 }
 
+function buildConsultorioReferralsWorkspace(patient, profileConfig) {
+  const entries = getConsultorioScopedConsultations(profileConfig?.consultationTypes || null)
+    .slice()
+    .sort((left, right) => String(right.consultation_at || "").localeCompare(String(left.consultation_at || "")));
+  const content = entries.length
+    ? `
+      <div class="consultorio-remissions-shell__body">
+        <div class="consultorio-remissions-grid">
+          ${entries
+            .map((consultation) => {
+              const details = parseConsultorioConsultationDetails(consultation);
+              const attachments = parseConsultorioAttachments(consultation?.attachments_summary || "");
+              const summary = truncate(
+                details.interpretation ||
+                  details.objective ||
+                  details.therapeuticPlan ||
+                  details.diagnosticPlan ||
+                  details.subjective ||
+                  consultation?.summary ||
+                  "Sin resumen clinico registrado.",
+                220
+              );
+              return `
+                <article class="consultorio-remission-card">
+                  <div class="consultorio-remission-card__header">
+                    <div>
+                      <span class="consultorio-remission-card__date">${escapeHtml(
+                        formatDateTime(consultation?.consultation_at)
+                      )}</span>
+                      <h5>${escapeHtml(consultation?.title || "Remision")}</h5>
+                    </div>
+                    <button
+                      class="ghost-button consultorio-remission-card__action"
+                      type="button"
+                      data-edit-patient-consultation="${escapeHtml(consultation.id)}"
+                    >
+                      Editar
+                    </button>
+                  </div>
+                  <p class="consultorio-remission-card__summary">${escapeHtml(summary)}</p>
+                  ${
+                    attachments.length
+                      ? `
+                        <div class="consultorio-remission-card__gallery">
+                          ${buildConsultorioAttachmentPreviewMarkup(attachments)}
+                        </div>
+                      `
+                      : ""
+                  }
+                  <footer class="consultorio-remission-card__footer">
+                    <span>${escapeHtml(consultation?.professional_name || "Sin usuario")}</span>
+                    <span>${escapeHtml(consultation?.consultation_type || "Remision")}</span>
+                  </footer>
+                </article>
+              `;
+            })
+            .join("")}
+        </div>
+      </div>
+    `
+    : `
+      <div class="consultorio-remissions-empty">
+        <span class="consultorio-remissions-empty__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 18V9h8.5L19 13v5"></path>
+            <path d="M6 18H4a1 1 0 0 1-1-1v-4a4 4 0 0 1 4-4h1"></path>
+            <path d="M14 9v4h5"></path>
+            <path d="M9 8V4"></path>
+            <path d="M7 6h4"></path>
+            <path d="M16.5 18a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3Z"></path>
+            <path d="M7.5 18a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3Z"></path>
+          </svg>
+        </span>
+        <strong>No hay registros de remisi\u00f3n</strong>
+      </div>
+    `;
+  return `
+    <article class="consultorio-profile-shell consultorio-remissions-shell">
+      <div class="consultorio-profile-table-toolbar consultorio-remissions-shell__toolbar">
+        <div class="consultorio-profile-toolbar__group">
+          <span class="consultorio-profile-toolbar__icon consultorio-remissions-shell__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M6 18V9h8.5L19 13v5"></path>
+              <path d="M6 18H4a1 1 0 0 1-1-1v-4a4 4 0 0 1 4-4h1"></path>
+              <path d="M14 9v4h5"></path>
+              <path d="M9 8V4"></path>
+              <path d="M7 6h4"></path>
+              <path d="M16.5 18a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3Z"></path>
+              <path d="M7.5 18a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3Z"></path>
+            </svg>
+          </span>
+          <div class="consultorio-profile-toolbar__title">
+            <h4>Remisiones de <span class="consultorio-profile-toolbar__accent">${escapeHtml(
+              patient?.name || "Paciente"
+            )}</span></h4>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button
+            class="consultorio-remissions-shell__button"
+            type="button"
+            data-open-patient-consultation-modal="true"
+            data-consultation-profile-view="remisiones"
+          >
+            <span aria-hidden="true">+</span>
+            Registrar remisi\u00f3n
+          </button>
+        </div>
+      </div>
+      ${content}
+    </article>
+  `;
+}
+
 function buildConsultorioFollowupWorkspace(patient, profileConfig) {
   const entries = getConsultorioScopedConsultations(profileConfig?.consultationTypes || null);
   const content = entries.length
@@ -7154,6 +7414,8 @@ function renderConsultorioPatientProfile() {
         ? buildConsultorioImagingWorkspace(patient, profileConfig)
         : profileConfig?.value === "documents"
         ? buildConsultorioDocumentsWorkspace(patient, profileConfig)
+        : profileConfig?.value === "remisiones"
+        ? buildConsultorioReferralsWorkspace(patient, profileConfig)
         : profileConfig?.value === "seguimiento"
         ? buildConsultorioFollowupWorkspace(patient, profileConfig)
         : buildConsultorioProfileTimelineMarkup(profileConfig, timelineItems);
