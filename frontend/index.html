@@ -1848,6 +1848,63 @@
             </label>
           </div>
 
+          <div id="patientRemissionFields" class="consultorio-remission-fields is-hidden">
+            <div class="consultorio-remission-fields__top">
+              <label class="consultorio-consultation-form__field consultorio-remission-fields__date">
+                <span>Fecha remisi&oacute;n</span>
+                <input id="patientRemissionDateInput" name="referral_date" type="datetime-local" />
+              </label>
+
+              <div class="consultorio-consultation-form__field consultorio-remission-fields__professional">
+                <div class="consultorio-remission-fields__label-row">
+                  <span>Profesional que realiza la remisi&oacute;n</span>
+                  <button
+                    id="patientRemissionAddUserButton"
+                    class="inline-link consultorio-remission-fields__link"
+                    type="button"
+                  >
+                    + Agregar usuario
+                  </button>
+                </div>
+                <select id="patientRemissionProfessionalSelect" name="referral_professional">
+                  <option value="">Selecciona un profesional</option>
+                </select>
+              </div>
+
+              <label class="consultorio-consultation-form__field">
+                <span>Centro veterinario destino</span>
+                <input
+                  id="patientRemissionDestinationInput"
+                  name="referral_destination"
+                  type="text"
+                  placeholder="Cl&iacute;nica, laboratorio o centro destino"
+                />
+              </label>
+            </div>
+
+            <div class="consultorio-remission-fields__notes">
+              <label class="consultorio-consultation-form__field">
+                <span>Procedimiento/Raz&oacute;n</span>
+                <textarea
+                  id="patientRemissionReasonInput"
+                  name="referral_reason"
+                  rows="6"
+                  placeholder="Procedimientos a remitir, ex&aacute;menes, hospitalizaci&oacute;n, etc."
+                ></textarea>
+              </label>
+
+              <label class="consultorio-consultation-form__field">
+                <span>Observaciones</span>
+                <textarea
+                  id="patientRemissionObservationsInput"
+                  name="referral_observations"
+                  rows="6"
+                  placeholder="Detalles, recomendaciones y observaciones sobre la remisi&oacute;n"
+                ></textarea>
+              </label>
+            </div>
+          </div>
+
           <div id="patientDocumentFields" class="consultorio-document-fields is-hidden">
             <div class="consultorio-document-fields__top">
               <div class="consultorio-consultation-form__field consultorio-document-fields__format">

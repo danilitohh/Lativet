@@ -2663,6 +2663,13 @@ function cacheElements() {
     "patientImagingAttachmentsList",
     "patientImagingAttachmentsValue",
     "patientImagingObservationsInput",
+    "patientRemissionFields",
+    "patientRemissionDateInput",
+    "patientRemissionProfessionalSelect",
+    "patientRemissionAddUserButton",
+    "patientRemissionDestinationInput",
+    "patientRemissionReasonInput",
+    "patientRemissionObservationsInput",
     "patientOrderFields",
     "patientOrderDateInput",
     "patientOrderItemsList",
@@ -3829,7 +3836,7 @@ function getConsultorioProfileModalEntityLabel(consultationType) {
       "Imagen diagnostica": "Imagen diagnostica",
       Seguimiento: "Seguimiento",
       Documento: "Documento",
-      Remision: "Remision",
+      Remision: "Remisi\u00f3n",
     }[consultationType || ""] || "Consulta"
   );
 }
@@ -6839,6 +6846,71 @@ function parseConsultorioImagingDetails(consultation) {
   };
 }
 
+function parseConsultorioReferralDetails(consultation) {
+  const details = parseConsultorioConsultationDetails(consultation);
+  const summary = parseConsultorioStructuredText(consultation?.summary || "", {
+    "procedimiento/razon": "reason",
+    observaciones: "observations",
+  });
+  const indications = parseConsultorioStructuredText(consultation?.indications || "", {
+    "centro veterinario destino": "destination",
+    "profesional remitente": "professional",
+  });
+  let stored = null;
+  const rawReference = String(consultation?.document_reference || "").trim();
+  if (rawReference.startsWith("{")) {
+    try {
+      const parsed = JSON.parse(rawReference);
+      if (parsed?.kind === "remission") {
+        stored = parsed;
+      }
+    } catch (error) {
+      stored = null;
+    }
+  }
+  const reason =
+    String(stored?.reason || "").trim() ||
+    summary.reason ||
+    String(consultation?.title || "").trim() ||
+    details.subjective ||
+    "Remision";
+  const observations =
+    String(stored?.observations || "").trim() ||
+    summary.observations ||
+    details.objective ||
+    details.interpretation ||
+    details.therapeuticPlan ||
+    "";
+  return {
+    referralDate: toInputDateTime(
+      String(stored?.referralDate || "").trim() ||
+        consultation?.consultation_at ||
+        new Date().toISOString()
+    ),
+    professional:
+      String(stored?.professional || "").trim() ||
+      indications.professional ||
+      String(consultation?.professional_name || "").trim() ||
+      getDefaultConsultorioProfessionalName(),
+    destination:
+      String(stored?.destination || "").trim() ||
+      indications.destination ||
+      String(consultation?.referred_to || "").trim() ||
+      details.diagnosticPlan ||
+      "",
+    reason,
+    observations,
+    title: String(consultation?.title || "").trim() || reason,
+    summary: truncate(
+      observations ||
+        reason ||
+        String(consultation?.summary || "").trim() ||
+        "Sin resumen clinico registrado.",
+      220
+    ),
+  };
+}
+
 function buildConsultorioImagingSummary(payload) {
   return buildConsultorioStructuredText([
     ["Ayuda diagnostica", payload.imaging_aid],
@@ -7064,18 +7136,8 @@ function buildConsultorioReferralsWorkspace(patient, profileConfig) {
         <div class="consultorio-remissions-grid">
           ${entries
             .map((consultation) => {
-              const details = parseConsultorioConsultationDetails(consultation);
+              const details = parseConsultorioReferralDetails(consultation);
               const attachments = parseConsultorioAttachments(consultation?.attachments_summary || "");
-              const summary = truncate(
-                details.interpretation ||
-                  details.objective ||
-                  details.therapeuticPlan ||
-                  details.diagnosticPlan ||
-                  details.subjective ||
-                  consultation?.summary ||
-                  "Sin resumen clinico registrado.",
-                220
-              );
               return `
                 <article class="consultorio-remission-card">
                   <div class="consultorio-remission-card__header">
@@ -7083,7 +7145,7 @@ function buildConsultorioReferralsWorkspace(patient, profileConfig) {
                       <span class="consultorio-remission-card__date">${escapeHtml(
                         formatDateTime(consultation?.consultation_at)
                       )}</span>
-                      <h5>${escapeHtml(consultation?.title || "Remision")}</h5>
+                      <h5>${escapeHtml(details.reason || details.title || "Remision")}</h5>
                     </div>
                     <button
                       class="ghost-button consultorio-remission-card__action"
@@ -7093,7 +7155,7 @@ function buildConsultorioReferralsWorkspace(patient, profileConfig) {
                       Editar
                     </button>
                   </div>
-                  <p class="consultorio-remission-card__summary">${escapeHtml(summary)}</p>
+                  <p class="consultorio-remission-card__summary">${escapeHtml(details.summary)}</p>
                   ${
                     attachments.length
                       ? `
@@ -7104,8 +7166,8 @@ function buildConsultorioReferralsWorkspace(patient, profileConfig) {
                       : ""
                   }
                   <footer class="consultorio-remission-card__footer">
-                    <span>${escapeHtml(consultation?.professional_name || "Sin usuario")}</span>
-                    <span>${escapeHtml(consultation?.consultation_type || "Remision")}</span>
+                    <span>${escapeHtml(details.professional || "Sin usuario")}</span>
+                    <span>${escapeHtml(details.destination || consultation?.consultation_type || "Remision")}</span>
                   </footer>
                 </article>
               `;
@@ -12256,12 +12318,29 @@ function renderPatientImagingProfessionalOptions(currentProfessional = "") {
   elements.patientImagingProfessionalSelect.value = selected;
 }
 
+function renderPatientRemissionProfessionalOptions(currentProfessional = "") {
+  if (!elements.patientRemissionProfessionalSelect) {
+    return;
+  }
+  const selected = String(currentProfessional || "").trim();
+  const options = getConsultorioLaboratoryProfessionalOptions(selected);
+  elements.patientRemissionProfessionalSelect.innerHTML = [
+    '<option value="">Selecciona un profesional</option>',
+    ...options.map(
+      (name) => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`
+    ),
+  ].join("");
+  elements.patientRemissionProfessionalSelect.value = selected;
+}
+
 function loadConsultorioLaboratoryUsersIfNeeded() {
   if (
     loadedBootstrapSections.has("users") ||
     pendingBootstrapSections.has("users") ||
     !elements.patientConsultationForm ||
-    !["laboratory", "imaging"].includes(elements.patientConsultationForm.dataset.consultationMode)
+    !["laboratory", "imaging", "remission"].includes(
+      elements.patientConsultationForm.dataset.consultationMode
+    )
   ) {
     return;
   }
@@ -12271,13 +12350,23 @@ function loadConsultorioLaboratoryUsersIfNeeded() {
       if (
         !elements.patientConsultationModal ||
         elements.patientConsultationModal.classList.contains("is-hidden") ||
-        !["laboratory", "imaging"].includes(elements.patientConsultationForm?.dataset.consultationMode)
+        !["laboratory", "imaging", "remission"].includes(
+          elements.patientConsultationForm?.dataset.consultationMode
+        )
       ) {
         return;
       }
       if (elements.patientConsultationForm?.dataset.consultationMode === "laboratory") {
         const items = getPatientLaboratoryItems({ includeEmpty: true });
         renderPatientLaboratoryItems(items);
+        return;
+      }
+      if (elements.patientConsultationForm?.dataset.consultationMode === "remission") {
+        renderPatientRemissionProfessionalOptions(
+          elements.patientRemissionProfessionalSelect?.value ||
+            elements.patientConsultationForm?.elements?.referral_professional?.value ||
+            ""
+        );
         return;
       }
       renderPatientImagingProfessionalOptions(
@@ -13390,6 +13479,8 @@ function openPatientConsultationModal(consultation = null) {
     isLaboratoryConsultationType(defaultConsultationType) || profileConfig?.value === "laboratorio";
   const isImagingMode =
     isImagingConsultationType(defaultConsultationType) || profileConfig?.value === "imagenes";
+  const isRemissionMode =
+    defaultConsultationType === "Remision" || profileConfig?.value === "remisiones";
   const isOrderMode =
     (defaultConsultationType === "Documento" && profileConfig?.value === "orders") ||
     false;
@@ -13413,6 +13504,8 @@ function openPatientConsultationModal(consultation = null) {
     ? "laboratory"
     : isImagingMode
     ? "imaging"
+    : isRemissionMode
+    ? "remission"
     : isDocumentMode
     ? "documents"
     : isFollowupMode
@@ -13432,6 +13525,7 @@ function openPatientConsultationModal(consultation = null) {
   const hospAmbDetails = parseConsultorioHospAmbDetails(consultation);
   const laboratoryDetails = parseConsultorioLaboratoryDetails(consultation);
   const imagingDetails = parseConsultorioImagingDetails(consultation);
+  const remissionDetails = parseConsultorioReferralDetails(consultation);
   const followupDetails = parseConsultorioFollowupDetails(consultation);
   const orderDetails = parseConsultorioOrderDetails(consultation);
   form.elements.id.value = consultation?.id || "";
@@ -13539,7 +13633,28 @@ function openPatientConsultationModal(consultation = null) {
     form.elements.imaging_observations.value = imagingDetails.observations || "";
   }
   setPatientImagingAttachments(imagingDetails.attachments || []);
-  if (isLaboratoryMode || isImagingMode) {
+  if (form.elements.referral_date) {
+    form.elements.referral_date.value =
+      remissionDetails.referralDate || toInputDateTime(new Date().toISOString());
+  }
+  renderPatientRemissionProfessionalOptions(
+    remissionDetails.professional ||
+      consultation?.professional_name ||
+      getDefaultConsultorioProfessionalName()
+  );
+  if (form.elements.referral_professional) {
+    form.elements.referral_professional.value = remissionDetails.professional || "";
+  }
+  if (form.elements.referral_destination) {
+    form.elements.referral_destination.value = remissionDetails.destination || "";
+  }
+  if (form.elements.referral_reason) {
+    form.elements.referral_reason.value = remissionDetails.reason || "";
+  }
+  if (form.elements.referral_observations) {
+    form.elements.referral_observations.value = remissionDetails.observations || "";
+  }
+  if (isLaboratoryMode || isImagingMode || isRemissionMode) {
     loadConsultorioLaboratoryUsersIfNeeded();
   }
   resetPatientDocumentTemplateWorkflowState();
@@ -13695,6 +13810,8 @@ function openPatientConsultationModal(consultation = null) {
       ? "Imagenologia"
       : isHospAmbMode
       ? "Hospitalizaci\u00f3n/ambulatorio"
+      : isRemissionMode
+      ? "Remisi\u00f3n"
       : profileConfig?.value === "orders" && defaultConsultationType === "Documento"
       ? "Orden"
       : getConsultorioProfileModalEntityLabel(defaultConsultationType);
@@ -13746,6 +13863,9 @@ function openPatientConsultationModal(consultation = null) {
   if (elements.patientImagingFields) {
     elements.patientImagingFields.classList.toggle("is-hidden", !isImagingMode);
   }
+  if (elements.patientRemissionFields) {
+    elements.patientRemissionFields.classList.toggle("is-hidden", !isRemissionMode);
+  }
   if (elements.patientDocumentFields) {
     elements.patientDocumentFields.classList.toggle("is-hidden", !isDocumentMode);
   }
@@ -13766,6 +13886,7 @@ function openPatientConsultationModal(consultation = null) {
         isProcedureMode ||
         isLaboratoryMode ||
         isImagingMode ||
+        isRemissionMode ||
         isDocumentMode ||
         isOrderMode
     );
@@ -13824,6 +13945,17 @@ function openPatientConsultationModal(consultation = null) {
       <path d="M12 9v10"></path>
     </svg>
   `;
+  const remissionModalIconSvg = `
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M6 18V9h8.5L19 13v5"></path>
+      <path d="M6 18H4a1 1 0 0 1-1-1v-4a4 4 0 0 1 4-4h1"></path>
+      <path d="M14 9v4h5"></path>
+      <path d="M9 8V4"></path>
+      <path d="M7 6h4"></path>
+      <circle cx="7.5" cy="18" r="1.5"></circle>
+      <circle cx="16.5" cy="18" r="1.5"></circle>
+    </svg>
+  `;
   const documentModalIconSvg = `
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
       <path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"></path>
@@ -13844,6 +13976,7 @@ function openPatientConsultationModal(consultation = null) {
   elements.patientConsultationModal.classList.toggle("modal-shell--orders", isOrderMode);
   elements.patientConsultationModal.classList.toggle("modal-shell--laboratory", isLaboratoryMode);
   elements.patientConsultationModal.classList.toggle("modal-shell--imaging", isImagingMode);
+  elements.patientConsultationModal.classList.toggle("modal-shell--remission", isRemissionMode);
   elements.patientConsultationModal.classList.toggle("modal-shell--documents", isDocumentMode);
   elements.patientConsultationModal.classList.toggle("modal-shell--followup", isFollowupMode);
   modalCard?.classList.toggle("consultorio-consultation-modal--hospamb", isHospAmbMode);
@@ -13851,6 +13984,7 @@ function openPatientConsultationModal(consultation = null) {
   modalCard?.classList.toggle("consultorio-consultation-modal--orders", isOrderMode);
   modalCard?.classList.toggle("consultorio-consultation-modal--laboratory", isLaboratoryMode);
   modalCard?.classList.toggle("consultorio-consultation-modal--imaging", isImagingMode);
+  modalCard?.classList.toggle("consultorio-consultation-modal--remission", isRemissionMode);
   modalCard?.classList.toggle("consultorio-consultation-modal--documents", isDocumentMode);
   modalCard?.classList.toggle("consultorio-consultation-modal--followup", isFollowupMode);
   modalCard?.classList.toggle("consultorio-consultation-modal--vaccination", isVaccinationMode);
@@ -13859,6 +13993,8 @@ function openPatientConsultationModal(consultation = null) {
   if (elements.patientConsultationModalIcon) {
     elements.patientConsultationModalIcon.innerHTML = isOrderMode
       ? orderModalIconSvg
+      : isRemissionMode
+      ? remissionModalIconSvg
       : isImagingMode
       ? imagingModalIconSvg
       : isDocumentMode
@@ -13884,6 +14020,7 @@ function openPatientConsultationModal(consultation = null) {
       isProcedureMode ||
       isLaboratoryMode ||
       isImagingMode ||
+      isRemissionMode ||
       isDocumentMode ||
       isFollowupMode ||
       isOrderMode
@@ -13900,6 +14037,7 @@ function openPatientConsultationModal(consultation = null) {
         isProcedureMode ||
         isLaboratoryMode ||
         isImagingMode ||
+        isRemissionMode ||
         isDocumentMode ||
         isFollowupMode ||
         isOrderMode
@@ -13916,6 +14054,7 @@ function openPatientConsultationModal(consultation = null) {
         isProcedureMode ||
         isLaboratoryMode ||
         isImagingMode ||
+        isRemissionMode ||
         isDocumentMode ||
         isFollowupMode ||
         isOrderMode
@@ -13938,6 +14077,8 @@ function openPatientConsultationModal(consultation = null) {
     form.elements.laboratory_date.focus();
   } else if (isImagingMode && form.elements.imaging_date) {
     form.elements.imaging_date.focus();
+  } else if (isRemissionMode && form.elements.referral_date) {
+    form.elements.referral_date.focus();
   } else if (isDocumentMode && form.elements.document_format) {
     form.elements.document_format.focus();
   } else if (isFollowupMode && form.elements.followup_date) {
@@ -14456,6 +14597,11 @@ async function handleUserSubmit(event) {
       elements.patientImagingProfessionalSelect.value = payload.full_name;
       elements.patientImagingProfessionalSelect.focus();
     }
+    if (modalContext.source === "remission" && elements.patientRemissionProfessionalSelect) {
+      renderPatientRemissionProfessionalOptions(payload.full_name);
+      elements.patientRemissionProfessionalSelect.value = payload.full_name;
+      elements.patientRemissionProfessionalSelect.focus();
+    }
     resetUserModalContext();
   } catch (error) {
     setUserFormError(error.message || "No fue posible guardar el usuario.");
@@ -14649,6 +14795,7 @@ async function handlePatientConsultationSubmit(event) {
   const isOrderMode = form.dataset.consultationMode === "orders";
   const isLaboratoryMode = form.dataset.consultationMode === "laboratory";
   const isImagingMode = form.dataset.consultationMode === "imaging";
+  const isRemissionMode = form.dataset.consultationMode === "remission";
   const isDocumentMode = form.dataset.consultationMode === "documents";
   const isFollowupMode = form.dataset.consultationMode === "followup";
   payload.consultation_type =
@@ -14845,6 +14992,47 @@ async function handlePatientConsultationSubmit(event) {
       observations: String(payload.imaging_observations || "").trim(),
       professional: String(payload.imaging_professional || "").trim(),
     });
+  } else if (isRemissionMode) {
+    const referralDate = String(payload.referral_date || "").trim();
+    const referralProfessional = String(payload.referral_professional || "").trim();
+    const referralDestination = String(payload.referral_destination || "").trim();
+    const referralReason = String(payload.referral_reason || "").trim();
+    const referralObservations = String(payload.referral_observations || "").trim();
+    if (!referralDate) {
+      throw new Error("Selecciona la fecha y hora de la remision.");
+    }
+    if (!referralProfessional) {
+      throw new Error("Selecciona el profesional que realiza la remision.");
+    }
+    if (!referralDestination) {
+      throw new Error("Escribe el centro veterinario destino.");
+    }
+    if (!referralReason) {
+      throw new Error("Escribe el procedimiento o razon de la remision.");
+    }
+    payload.consultation_type = "Remision";
+    payload.title = referralReason;
+    payload.consultation_at = referralDate;
+    payload.professional_name = referralProfessional;
+    payload.referred_to = referralDestination;
+    payload.next_control = "";
+    payload.summary = buildConsultorioStructuredText([
+      ["Procedimiento/Razon", referralReason],
+      ["Observaciones", referralObservations],
+    ]);
+    payload.indications = buildConsultorioStructuredText([
+      ["Centro veterinario destino", referralDestination],
+      ["Profesional remitente", referralProfessional],
+    ]);
+    payload.attachments_summary = "";
+    payload.document_reference = JSON.stringify({
+      kind: "remission",
+      referralDate,
+      professional: referralProfessional,
+      destination: referralDestination,
+      reason: referralReason,
+      observations: referralObservations,
+    });
   } else if (isFollowupMode) {
     if (!payload.followup_date) {
       throw new Error("Selecciona la fecha y hora del seguimiento.");
@@ -15025,7 +15213,7 @@ async function handlePatientConsultationSubmit(event) {
     );
     payload.document_reference = "";
   }
-  payload.referred_to = "";
+  payload.referred_to = isRemissionMode ? String(payload.referral_destination || "").trim() : "";
   payload.consent_required = false;
   payload.consent_id = "";
   payload.professional_name = payload.professional_name || getDefaultConsultorioProfessionalName();
@@ -15047,6 +15235,8 @@ async function handlePatientConsultationSubmit(event) {
     ? "Documento"
     : isImagingMode
     ? "Imagenologia"
+    : isRemissionMode
+    ? "Remisi\u00f3n"
     : isLaboratoryMode
     ? "Examen de laboratorio"
     : getConsultorioProfileModalEntityLabel(payload.consultation_type);
@@ -16214,6 +16404,14 @@ function bindForms() {
   if (elements.patientImagingAddUserButton) {
     elements.patientImagingAddUserButton.addEventListener("click", () => {
       openUserModal(null, { source: "imaging" });
+      if (!isAdminUser()) {
+        setUserFormError("Solo los administradores pueden registrar usuarios.");
+      }
+    });
+  }
+  if (elements.patientRemissionAddUserButton) {
+    elements.patientRemissionAddUserButton.addEventListener("click", () => {
+      openUserModal(null, { source: "remission" });
       if (!isAdminUser()) {
         setUserFormError("Solo los administradores pueden registrar usuarios.");
       }
