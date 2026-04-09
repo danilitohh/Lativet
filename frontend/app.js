@@ -14012,53 +14012,12 @@ function openPatientConsultationModal(consultation = null) {
     elements.closePatientConsultationModalButton.innerHTML = "&times;";
   }
   if (elements.patientConsultationRecordLabel) {
-    elements.patientConsultationRecordLabel.textContent =
-      isVaccinationMode ||
-      isFormulaMode ||
-      isDewormingMode ||
-      isHospAmbMode ||
-      isProcedureMode ||
-      isLaboratoryMode ||
-      isImagingMode ||
-      isRemissionMode ||
-      isDocumentMode ||
-      isFollowupMode ||
-      isOrderMode
-        ? ""
-        : record
-        ? `Historia clinica vinculada: ${record.id}`
-        : "La historia clinica se creara automaticamente al guardar esta consulta.";
-    elements.patientConsultationRecordLabel.classList.toggle(
-      "is-hidden",
-      isVaccinationMode ||
-        isFormulaMode ||
-        isDewormingMode ||
-        isHospAmbMode ||
-        isProcedureMode ||
-        isLaboratoryMode ||
-        isImagingMode ||
-        isRemissionMode ||
-        isDocumentMode ||
-        isFollowupMode ||
-        isOrderMode
-    );
+    elements.patientConsultationRecordLabel.textContent = "";
+    elements.patientConsultationRecordLabel.classList.add("is-hidden");
   }
   form
     .querySelector(".consultorio-consultation-form__footer")
-    ?.classList.toggle(
-      "consultorio-consultation-form__footer--align-end",
-      isVaccinationMode ||
-        isFormulaMode ||
-        isDewormingMode ||
-        isHospAmbMode ||
-        isProcedureMode ||
-        isLaboratoryMode ||
-        isImagingMode ||
-        isRemissionMode ||
-        isDocumentMode ||
-        isFollowupMode ||
-        isOrderMode
-    );
+    ?.classList.add("consultorio-consultation-form__footer--align-end");
   elements.patientConsultationModal.classList.remove("is-hidden");
   elements.patientConsultationModal.setAttribute("aria-hidden", "false");
   document.body?.classList.add("modal-open");

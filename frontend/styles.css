@@ -52,6 +52,25 @@ body {
   display: none !important;
 }
 
+html,
+body,
+.modal-shell,
+.modal-card,
+textarea {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar,
+.modal-shell::-webkit-scrollbar,
+.modal-card::-webkit-scrollbar,
+textarea::-webkit-scrollbar {
+  width: 0 !important;
+  height: 0 !important;
+  display: none !important;
+}
+
 button,
 input,
 select,
@@ -5938,6 +5957,7 @@ textarea:focus {
   z-index: 80;
   display: grid;
   place-items: center;
+  overflow: auto;
   padding: 24px;
 }
 
