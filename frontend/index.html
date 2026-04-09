@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Lativet Web</title>
-    <link rel="stylesheet" href="/styles.css?v=20260331-21" />
+    <link rel="stylesheet" href="/styles.css?v=20260409-03" />
   </head>
   <body>
     <div class="page-shell">
@@ -36,6 +36,7 @@
           <button class="switcher-tab" type="button" data-section-target="agenda">Agenda</button>
           <button class="switcher-tab" type="button" data-section-target="sales">Ventas</button>
           <button class="switcher-tab" type="button" data-section-target="consultorio">Consultorio</button>
+          <button class="switcher-tab" type="button" data-section-target="consents">Consentimientos</button>
           <button class="switcher-tab" type="button" data-section-target="hospamb">Hosp./Amb.</button>
           <button class="switcher-tab" type="button" data-section-target="requests">Solicitudes</button>
           <button class="switcher-tab" type="button" data-section-target="reports">Informes</button>
@@ -639,7 +640,7 @@
               <p class="eyebrow">Consultorio</p>
               <h2>Pacientes y peluqueria</h2>
               <p class="section-copy">
-                Desde el perfil del paciente podras desplegar historia clinica, vacunas, formulas, seguimiento, remisiones y consentimientos.
+                Desde el perfil del paciente podras desplegar historia clinica, vacunas, formulas, seguimiento y remisiones.
               </p>
             </div>
           </div>
@@ -811,28 +812,6 @@
           </div>
 
           <div class="two-column-grid">
-            <article id="consultorioConsentFormPanel" class="panel-card">
-              <div class="panel-heading"><div><p class="eyebrow">Consentimientos</p><h3>Registro legal</h3></div></div>
-              <form id="consentForm" class="form-grid">
-                <label class="full"><span>Paciente</span><select id="consentPatientSelect" name="patient_id" required></select></label>
-                <label><span>Historia relacionada</span><select id="consentRecordSelect" name="record_id"></select></label>
-                <label><span>Consulta relacionada</span><select id="consentConsultationSelect" name="consultation_id"></select></label>
-                <label><span>Fecha de firma</span><input name="signed_at" type="datetime-local" required /></label>
-                <label><span>Tipo</span><select id="consentTypeSelect" name="consent_type" required><option value="">Selecciona</option><option>Cirugia</option><option>Anestesia</option><option>Procedimiento invasivo</option><option>Hospitalizacion</option><option>Eutanasia</option><option>Tratamiento de riesgo</option></select></label>
-                <label class="full"><span>Procedimiento</span><input name="procedure_name" required /></label>
-                <label class="full"><span>Riesgos explicados</span><textarea name="risks_explained" rows="3" required></textarea></label>
-                <label class="full"><span>Beneficios esperados</span><textarea name="benefits_expected" rows="2"></textarea></label>
-                <label class="full"><span>Alternativas</span><textarea name="alternatives" rows="2"></textarea></label>
-                <label><span>Nombre de quien autoriza</span><input name="owner_signature_name" required /></label>
-                <label><span>Identificacion</span><input name="owner_identification" required /></label>
-                <label><span>Profesional</span><input name="professional_name" required /></label>
-                <label><span>Matricula</span><input name="professional_license" required /></label>
-                <label class="full"><span>Manifestacion del tutor</span><textarea name="owner_statement" rows="3" required></textarea></label>
-                <label class="full"><span>Notas</span><textarea name="notes" rows="2"></textarea></label>
-                <div class="full form-actions"><button class="primary-button" type="submit">Guardar consentimiento</button></div>
-              </form>
-            </article>
-
             <article id="consultorioGroomingFormPanel" class="panel-card">
               <div class="panel-heading"><div><p class="eyebrow">Peluqueria</p><h3>Documento de servicio</h3></div></div>
               <form id="groomingForm" class="form-grid">
@@ -863,11 +842,6 @@
               <div class="panel-heading"><div><p class="eyebrow">Consultas</p><h3>Consultas internas</h3></div></div>
               <div id="consultationsList" class="list-surface"></div>
             </article>
-            <article id="consultorioConsentsPanel" class="panel-card">
-              <div class="panel-heading"><div><p class="eyebrow">Consentimientos</p><h3>Archivo legal</h3></div></div>
-              <div id="consentTypeList" class="summary-list"></div>
-              <div id="consentsList" class="list-surface"></div>
-            </article>
             <article id="consultorioGroomingPanel" class="panel-card">
               <div class="panel-heading"><div><p class="eyebrow">Peluqueria</p><h3>Documentos recientes</h3></div></div>
               <div id="groomingList" class="list-surface"></div>
@@ -897,6 +871,59 @@
               <div id="consultorioPatientProfileSummary" class="consultorio-profile-summary"></div>
             </div>
           </article>
+        </section>
+
+        <section id="consents" class="workspace-section">
+          <div class="section-hero">
+            <div>
+              <p class="eyebrow">Consentimientos</p>
+              <h2>Registro legal y archivo firmado</h2>
+              <p class="section-copy">
+                Centraliza consentimientos informados vinculados a pacientes, historias clinicas y consultas.
+              </p>
+            </div>
+          </div>
+
+          <div class="menu-strip">
+            <article class="menu-card">
+              <h3>Registro legal</h3>
+              <p>Genera consentimientos con datos del tutor, profesional y procedimiento.</p>
+            </article>
+            <article class="menu-card">
+              <h3>Archivo firmado</h3>
+              <p>Consulta rapidamente el historial legal y su clasificacion por tipo.</p>
+            </article>
+          </div>
+
+          <div class="two-column-grid">
+            <article id="consentsFormPanel" class="panel-card">
+              <div class="panel-heading"><div><p class="eyebrow">Consentimientos</p><h3>Registro legal</h3></div></div>
+              <form id="consentForm" class="form-grid">
+                <label class="full"><span>Paciente</span><select id="consentPatientSelect" name="patient_id" required></select></label>
+                <label><span>Historia relacionada</span><select id="consentRecordSelect" name="record_id"></select></label>
+                <label><span>Consulta relacionada</span><select id="consentConsultationSelect" name="consultation_id"></select></label>
+                <label><span>Fecha de firma</span><input name="signed_at" type="datetime-local" required /></label>
+                <label><span>Tipo</span><select id="consentTypeSelect" name="consent_type" required><option value="">Selecciona</option><option>Cirugia</option><option>Anestesia</option><option>Procedimiento invasivo</option><option>Hospitalizacion</option><option>Eutanasia</option><option>Tratamiento de riesgo</option></select></label>
+                <label class="full"><span>Procedimiento</span><input name="procedure_name" required /></label>
+                <label class="full"><span>Riesgos explicados</span><textarea name="risks_explained" rows="3" required></textarea></label>
+                <label class="full"><span>Beneficios esperados</span><textarea name="benefits_expected" rows="2"></textarea></label>
+                <label class="full"><span>Alternativas</span><textarea name="alternatives" rows="2"></textarea></label>
+                <label><span>Nombre de quien autoriza</span><input name="owner_signature_name" required /></label>
+                <label><span>Identificacion</span><input name="owner_identification" required /></label>
+                <label><span>Profesional</span><input name="professional_name" required /></label>
+                <label><span>Matricula</span><input name="professional_license" required /></label>
+                <label class="full"><span>Manifestacion del tutor</span><textarea name="owner_statement" rows="3" required></textarea></label>
+                <label class="full"><span>Notas</span><textarea name="notes" rows="2"></textarea></label>
+                <div class="full form-actions"><button class="primary-button" type="submit">Guardar consentimiento</button></div>
+              </form>
+            </article>
+
+            <article id="consentsArchivePanel" class="panel-card">
+              <div class="panel-heading"><div><p class="eyebrow">Consentimientos</p><h3>Archivo legal</h3></div></div>
+              <div id="consentTypeList" class="summary-list"></div>
+              <div id="consentsList" class="list-surface"></div>
+            </article>
+          </div>
         </section>
 
         <section id="hospamb" class="workspace-section">
@@ -2622,6 +2649,6 @@
     </div>
   </div>
 
-  <script src="/app.js?v=20260331-21"></script>
+  <script src="/app.js?v=20260409-03"></script>
 </body>
 </html>

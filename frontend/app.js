@@ -81,6 +81,7 @@ const permissionOptions = [
   { key: "agenda", label: "Agenda" },
   { key: "sales", label: "Ventas" },
   { key: "consultorio", label: "Consultorio" },
+  { key: "consents", label: "Consentimientos" },
   { key: "hospamb", label: "Hosp./Amb." },
   { key: "requests", label: "Solicitudes" },
   { key: "reports", label: "Informes" },
@@ -220,7 +221,7 @@ const CONSULTORIO_PROFILE_VIEWS = [
   {
     value: "consents",
     label: "Consentimientos",
-    panels: ["consultorioConsentFormPanel", "consultorioConsentsPanel"],
+    panels: ["consentsFormPanel", "consentsArchivePanel"],
     dataRequirements: ["owners", "patients", "records", "consultations", "consents"],
   },
   {
@@ -240,11 +241,9 @@ const CONSULTORIO_PANEL_IDS = [
   "consultorioRecordFormPanel",
   "consultorioConsultationFormPanel",
   "consultorioEvolutionFormPanel",
-  "consultorioConsentFormPanel",
   "consultorioGroomingFormPanel",
   "consultorioRecordsPanel",
   "consultorioConsultationsPanel",
-  "consultorioConsentsPanel",
   "consultorioGroomingPanel",
 ];
 const SECTION_DATA_REQUIREMENTS = {
@@ -261,6 +260,7 @@ const SECTION_DATA_REQUIREMENTS = {
     "billing_summary",
   ],
   consultorio: ["owners", "patients"],
+  consents: ["owners", "patients", "records", "consultations", "consents"],
   hospamb: ["consultations"],
   requests: ["requests"],
   reports: ["reports"],
@@ -1265,6 +1265,21 @@ const sectionSubsections = {
         value: "grooming",
         label: "Peluqueria",
         panels: ["consultorioGroomingFormPanel", "consultorioGroomingPanel"],
+      },
+    ],
+  },
+  consents: {
+    label: "Que quieres revisar en consentimientos",
+    options: [
+      {
+        value: "general",
+        label: "Registro y archivo",
+        panels: ["consentsFormPanel", "consentsArchivePanel"],
+      },
+      {
+        value: "archive",
+        label: "Archivo legal",
+        panels: ["consentsArchivePanel"],
       },
     ],
   },
@@ -9110,6 +9125,10 @@ function renderSection(sectionId) {
       renderGrooming();
       renderSelects();
       return;
+    case "consents":
+      renderConsents();
+      renderSelects();
+      return;
     case CONSULTORIO_PATIENT_PROFILE_SECTION_ID:
       syncConsultorioSelectionState();
       renderConsultorioPatientProfile();
@@ -15266,7 +15285,7 @@ async function handleConsentSubmit(event) {
   resetForm(event.currentTarget);
   setDateTimeDefaults();
   await refreshData();
-  setActiveSection("consultorio");
+  setActiveSection("consents");
   if (result?.pdf?.error) {
     showStatus(`Consentimiento guardado. PDF no generado: ${result.pdf.error}`, "info");
     return;
