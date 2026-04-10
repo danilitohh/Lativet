@@ -2454,6 +2454,15 @@ function restoreAppViewState() {
       typeof parsed.activeSectionId === "string" && validSections.has(parsed.activeSectionId)
         ? parsed.activeSectionId
         : "dashboard";
+    if (targetSectionId === "consents") {
+      targetSectionId =
+        consultorioPatientProfileOpen && consultorioPatientId
+          ? CONSULTORIO_PATIENT_PROFILE_SECTION_ID
+          : "consultorio";
+      if (consultorioPatientId) {
+        consultorioProfileView = "consents";
+      }
+    }
     if (
       targetSectionId === CONSULTORIO_PATIENT_PROFILE_SECTION_ID &&
       !consultorioPatientProfileOpen
@@ -2780,6 +2789,7 @@ function cacheElements() {
     "evolutionForm",
     "consentForm",
     "groomingForm",
+    "consentsPanelsHome",
     "patientsList",
     "recordsList",
     "consultationsList",
@@ -5670,6 +5680,36 @@ function getConsultorioVisiblePanels() {
   return new Set(["consultorioOwnersPanel", "consultorioOwnerDetailPanel"]);
 }
 
+function getConsentPanelsHomeContainer() {
+  return elements.consentsPanelsHome || elements.consentsFormPanel?.parentElement || null;
+}
+
+function restoreConsentPanelsHome() {
+  const homeContainer = getConsentPanelsHomeContainer();
+  if (!homeContainer) {
+    return;
+  }
+  [elements.consentsFormPanel, elements.consentsArchivePanel].forEach((panel) => {
+    if (panel && panel.parentElement !== homeContainer) {
+      homeContainer.appendChild(panel);
+    }
+  });
+}
+
+function mountConsentPanelsInProfile() {
+  const mountPoint = elements.consultorioPatientProfileSummary?.querySelector(
+    "[data-consultorio-consents-mount]"
+  );
+  if (!mountPoint) {
+    return;
+  }
+  [elements.consentsFormPanel, elements.consentsArchivePanel].forEach((panel) => {
+    if (panel && panel.parentElement !== mountPoint) {
+      mountPoint.appendChild(panel);
+    }
+  });
+}
+
 function setConsultorioProfileView(value) {
   if (!CONSULTORIO_PROFILE_VIEW_MAP[value]) {
     return;
@@ -5702,7 +5742,23 @@ function openConsultorioPatientProfile(patient) {
 }
 
 function openConsentsSection(patientId = "") {
-  pendingConsentPatientId = String(patientId || "").trim();
+  const targetPatientId = String(patientId || consultorioPatientId || "").trim();
+  const targetPatient = targetPatientId ? getPatientById(targetPatientId) : null;
+  if (targetPatient) {
+    consultorioPatientId = targetPatient.id;
+    consultorioOwnerId = targetPatient.owner_id || consultorioOwnerId;
+    consultorioPatientProfileOpen = true;
+    consultorioPatientProfileNotesVisible = false;
+    consultorioProfileView = "consents";
+    setSectionSubsection("consultorio", "patients");
+    setActiveSection(CONSULTORIO_PATIENT_PROFILE_SECTION_ID);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    if (typeof window.requestAnimationFrame === "function") {
+      window.requestAnimationFrame(() => elements.consentTypeSelect?.focus());
+    }
+    return;
+  }
+  pendingConsentPatientId = targetPatientId;
   setSectionSubsection("consents", "general");
   setActiveSection("consents");
   window.scrollTo({ top: 0, behavior: "smooth" });
@@ -7270,61 +7326,6 @@ function buildConsultorioReferralsWorkspace(patient, profileConfig) {
 }
 
 function buildConsultorioConsentsWorkspace(patient) {
-  const entries = getConsultorioScopedConsents()
-    .slice()
-    .sort((left, right) => String(right.signed_at || "").localeCompare(String(left.signed_at || "")));
-  const content = entries.length
-    ? `
-      <div class="consultorio-consents-grid">
-        ${entries
-          .map(
-            (consent) => `
-              <article class="consultorio-consent-card">
-                <div class="consultorio-consent-card__header">
-                  <div>
-                    <span class="consultorio-consent-card__date">${escapeHtml(
-                      formatDateTime(consent?.signed_at)
-                    )}</span>
-                    <h5>${escapeHtml(
-                      consent?.procedure_name || consent?.consent_type || "Consentimiento"
-                    )}</h5>
-                  </div>
-                  <span class="pill pill--confirmed">${escapeHtml(
-                    consent?.consent_type || "Consentimiento"
-                  )}</span>
-                </div>
-                <p class="consultorio-consent-card__meta"><strong>Tutor:</strong> ${escapeHtml(
-                  consent?.owner_signature_name || consent?.owner_name || "Sin dato"
-                )}</p>
-                <p class="consultorio-consent-card__meta"><strong>Historia:</strong> ${escapeHtml(
-                  consent?.record_label || "Sin adjuntar"
-                )}</p>
-                <p class="consultorio-consent-card__meta"><strong>Consulta:</strong> ${escapeHtml(
-                  consent?.consultation_label || "Sin adjuntar"
-                )}</p>
-                <p class="consultorio-consent-card__summary">${escapeHtml(
-                  truncate(
-                    consent?.notes || consent?.owner_statement || "Sin observaciones registradas.",
-                    180
-                  )
-                )}</p>
-              </article>
-            `
-          )
-          .join("")}
-      </div>
-    `
-    : `
-      <div class="consultorio-module-empty consultorio-module-empty--consents">
-        <span class="consultorio-module-empty__icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M9 11l2 2 4-4"></path>
-            <rect x="4" y="3" width="16" height="18" rx="2"></rect>
-          </svg>
-        </span>
-        <strong>No hay consentimientos registrados</strong>
-      </div>
-    `;
   return `
     <article class="consultorio-profile-shell consultorio-consents-shell">
       <div class="consultorio-profile-table-toolbar consultorio-consents-shell__toolbar">
@@ -7339,21 +7340,21 @@ function buildConsultorioConsentsWorkspace(patient) {
             <h4>Consentimientos de <span class="consultorio-profile-toolbar__accent">${escapeHtml(
               patient?.name || "Paciente"
             )}</span></h4>
+            <p class="meta-copy">Registro legal y archivo firmado del paciente en una sola vista.</p>
           </div>
-        </div>
-        <div class="form-actions">
-          <button
-            class="consultorio-consents-shell__button"
-            type="button"
-            data-open-consents-section="true"
-          >
-            <span aria-hidden="true">+</span>
-            Registrar consentimiento
-          </button>
         </div>
       </div>
       <div class="consultorio-consents-shell__body">
-        ${content}
+        <div class="consultorio-consents-shell__intro">
+          <p class="eyebrow">Consentimientos</p>
+          <h5>Registro legal y archivo firmado</h5>
+          <p>
+            Centraliza consentimientos informados vinculados a ${escapeHtml(
+              patient?.name || "este paciente"
+            )}, sus historias clinicas y sus consultas.
+          </p>
+        </div>
+        <div class="two-column-grid consultorio-consents-shell__workspace" data-consultorio-consents-mount></div>
       </div>
     </article>
   `;
@@ -7577,6 +7578,7 @@ function renderConsultorioPatientProfile() {
   if (!elements.consultorioPatientProfilePanel) {
     return;
   }
+  restoreConsentPanelsHome();
   const profileLayout = elements.consultorioPatientProfilePanel.querySelector(
     ".consultorio-profile-layout"
   );
@@ -7719,6 +7721,7 @@ function renderConsultorioPatientProfile() {
         ${contentMarkup}
       </div>
     `;
+    mountConsentPanelsInProfile();
   }
 }
 
@@ -9281,6 +9284,9 @@ function renderSelects() {
       )}`,
     "Selecciona factura pendiente"
   );
+  if (elements.consentPatientSelect) {
+    elements.consentPatientSelect.disabled = Boolean(scopedPatient);
+  }
   if (scopedPatient) {
     [elements.recordPatientSelect, elements.consentPatientSelect, elements.groomingPatientSelect].forEach(
       (select) => {
@@ -9386,12 +9392,16 @@ function renderSection(sectionId) {
       renderSelects();
       return;
     case "consents":
+      restoreConsentPanelsHome();
       renderConsents();
       renderSelects();
       return;
     case CONSULTORIO_PATIENT_PROFILE_SECTION_ID:
       syncConsultorioSelectionState();
       renderConsultorioPatientProfile();
+      if (consultorioProfileView === "consents") {
+        renderConsents();
+      }
       renderSelects();
       return;
     case "hospamb":
@@ -15541,11 +15551,19 @@ async function handleEvolutionSubmit(event) {
 
 async function handleConsentSubmit(event) {
   event.preventDefault();
-  const result = await api.saveConsent(serializeForm(event.currentTarget));
+  const payload = serializeForm(event.currentTarget);
+  if (isConsultorioPatientProfileActive() && consultorioPatientId) {
+    payload.patient_id = consultorioPatientId;
+  }
+  const result = await api.saveConsent(payload);
   resetForm(event.currentTarget);
   setDateTimeDefaults();
   await refreshData();
-  setActiveSection("consents");
+  if (isConsultorioPatientProfileActive()) {
+    setConsultorioProfileView("consents");
+  } else {
+    setActiveSection("consents");
+  }
   if (result?.pdf?.error) {
     showStatus(`Consentimiento guardado. PDF no generado: ${result.pdf.error}`, "info");
     return;

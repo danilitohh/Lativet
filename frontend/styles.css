@@ -2223,11 +2223,32 @@ button:active {
   padding: 14px;
 }
 
+.consultorio-consents-shell__intro {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 14px;
+}
+
+.consultorio-consents-shell__intro h5 {
+  margin: 0;
+  font-size: 1.02rem;
+  color: #233046;
+}
+
+.consultorio-consents-shell__intro p:last-child {
+  margin: 0;
+  color: #5b6983;
+}
+
 .consultorio-consents-grid,
 .consultorio-grooming-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: 12px;
+}
+
+.consultorio-consents-shell__workspace {
+  align-items: start;
 }
 
 .consultorio-consent-card,
