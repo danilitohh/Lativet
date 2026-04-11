@@ -73,17 +73,17 @@ let pendingAppointmentDraft = null;
 let returnToAppointmentModal = false;
 let pendingConsentPatientId = "";
 let pendingGroomingPatientId = "";
-const GROOMING_DOCUMENT_TYPE_LABEL = "Registro de peluqueria y spa";
+const GROOMING_DOCUMENT_TYPE_LABEL = "Registro de peluquería y spa";
 const GROOMING_SERVICE_TYPE_OPTIONS = [
-  "Bano",
-  "Bano medicado",
+  "Baño",
+  "Baño medicado",
   "Corte",
-  "Corte higienico",
+  "Corte higiénico",
   "Spa",
   "Cepillado",
   "Deslanado",
-  "Corte de unas",
-  "Limpieza de oidos",
+  "Corte de uñas",
+  "Limpieza de oídos",
   "Paquete completo",
 ];
 const GROOMING_RABIES_STATUS_LABELS = {
@@ -242,7 +242,7 @@ const CONSULTORIO_PROFILE_VIEWS = [
   },
   {
     value: "grooming",
-    label: "Peluqueria",
+    label: "Peluquería",
     panels: ["consultorioGroomingFormPanel", "consultorioGroomingPanel"],
     dataRequirements: ["owners", "patients", "grooming_documents"],
   },
@@ -1279,7 +1279,7 @@ const sectionSubsections = {
       },
       {
         value: "grooming",
-        label: "Peluqueria",
+        label: "Peluquería",
         panels: ["consultorioGroomingFormPanel", "consultorioGroomingPanel"],
       },
     ],
@@ -3681,7 +3681,7 @@ function getOwnerLatestActivity(ownerId) {
     activities.push({
       at: document.service_at,
       patientName: document.patient_name,
-      label: document.service_name || "Peluqueria",
+      label: document.service_name || "Peluquería",
     });
   });
   activities.sort((left, right) => String(right.at || "").localeCompare(String(left.at || "")));
@@ -3808,8 +3808,8 @@ function getConsultorioProfileTimelineItems(option = getConsultorioProfileViewCo
   const buildGroomingItem = (document) => ({
     id: `grooming-${document.id}`,
     at: document.service_at,
-    typeLabel: "Peluqueria",
-    title: document.service_name || document.document_type || "Servicio de peluqueria",
+    typeLabel: "Peluquería",
+    title: document.service_name || document.document_type || "Servicio de peluquería",
     tone: statusClass(document.status || "scheduled"),
     lines: [
       `Documento: ${document.document_type || "Sin tipo"}`,
@@ -7551,7 +7551,7 @@ function buildConsultorioGroomingWorkspace(patient) {
             <path d="M8 16 18 6"></path>
           </svg>
         </span>
-        <strong>No hay registros de peluqueria</strong>
+        <strong>No hay registros de peluquería</strong>
       </div>
     `;
   return `
@@ -7567,7 +7567,7 @@ function buildConsultorioGroomingWorkspace(patient) {
             </svg>
           </span>
           <div class="consultorio-profile-toolbar__title">
-            <h4>Peluqueria de <span class="consultorio-profile-toolbar__accent">${escapeHtml(
+            <h4>Peluquería de <span class="consultorio-profile-toolbar__accent">${escapeHtml(
               patient?.name || "Paciente"
             )}</span></h4>
           </div>
@@ -8878,8 +8878,8 @@ function renderGrooming() {
       </article>
     `,
     isConsultorioPatientProfileActive()
-      ? "Este paciente aun no tiene documentos de peluqueria."
-      : "Aun no hay documentos de peluqueria."
+      ? "Este paciente aun no tiene documentos de peluquería."
+      : "Aun no hay documentos de peluquería."
   );
 }
 
@@ -9003,7 +9003,7 @@ function renderReports() {
   renderSummary(
     elements.reportsGroomingStatusList,
     Object.entries(reports.grooming_by_status || {}),
-    "Sin datos de peluqueria."
+    "Sin datos de peluquería."
   );
   renderList(
     elements.reportsRecentRecordsList,
@@ -15962,14 +15962,14 @@ async function handleGroomingSubmit(event) {
   event.preventDefault();
   const services = getGroomingServiceItems();
   if (!services.length) {
-    throw new Error("Agrega al menos un servicio de peluqueria.");
+    throw new Error("Agrega al menos un servicio de peluquería.");
   }
   syncGroomingServiceItemsValue();
   await api.saveGrooming(serializeForm(event.currentTarget));
   closeGroomingModal();
   await refreshData({
     sections: ["grooming_documents"],
-    message: "Documento de peluqueria guardado.",
+    message: "Documento de peluquería guardado.",
   });
 }
 
