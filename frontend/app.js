@@ -85,6 +85,7 @@ const GROOMING_SERVICE_TYPE_OPTIONS = [
   "Corte de uñas",
   "Limpieza de oídos",
   "Paquete completo",
+  "Otro",
 ];
 const GROOMING_RABIES_STATUS_LABELS = {
   vigente: "Vigente",
@@ -10637,11 +10638,13 @@ function renderGroomingServiceItems(items = []) {
   if (!elements.groomingServicesList || !elements.groomingServicesValue) {
     return;
   }
-  const normalizedItems = (Array.isArray(items) ? items : [])
-    .map((item) => normalizeGroomingServiceItem(item))
-    .filter((item) => hasGroomingServiceItemContent(item));
+  const normalizedItems = (Array.isArray(items) ? items : []).map((item) =>
+    normalizeGroomingServiceItem(item)
+  );
   const rows = normalizedItems.length ? normalizedItems : [normalizeGroomingServiceItem()];
-  elements.groomingServicesValue.value = serializeGroomingServiceDetails(rows);
+  elements.groomingServicesValue.value = serializeGroomingServiceDetails(
+    rows.filter((item) => hasGroomingServiceItemContent(item))
+  );
   elements.groomingServicesList.innerHTML = rows
     .map((item, index) => {
       const staffOptions = getGroomingStaffOptions(item.professional);
