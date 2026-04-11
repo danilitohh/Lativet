@@ -73,6 +73,26 @@ let pendingAppointmentDraft = null;
 let returnToAppointmentModal = false;
 let pendingConsentPatientId = "";
 let pendingGroomingPatientId = "";
+const GROOMING_DOCUMENT_TYPE_LABEL = "Registro de peluqueria y spa";
+const GROOMING_SERVICE_TYPE_OPTIONS = [
+  "Bano",
+  "Bano medicado",
+  "Corte",
+  "Corte higienico",
+  "Spa",
+  "Cepillado",
+  "Deslanado",
+  "Corte de unas",
+  "Limpieza de oidos",
+  "Paquete completo",
+];
+const GROOMING_RABIES_STATUS_LABELS = {
+  vigente: "Vigente",
+  vencida: "Vencida",
+  pendiente: "Pendiente",
+  no_registra: "Sin registro",
+  no_aplica: "No aplica",
+};
 const notifications = [];
 let unreadNotifications = 0;
 const MAX_NOTIFICATIONS = 60;
@@ -2577,6 +2597,28 @@ function cacheElements() {
     "cancelProcedureOrderModalButton",
     "procedureOrderForm",
     "procedureOrderNameInput",
+    "groomingModal",
+    "closeGroomingModalButton",
+    "cancelGroomingModalButton",
+    "openGroomingModalButton",
+    "groomingModalTitle",
+    "groomingModalSubtitle",
+    "groomingServicesList",
+    "groomingAddServiceButton",
+    "groomingServicesValue",
+    "groomingServiceAtInput",
+    "groomingStatusSelect",
+    "groomingRabiesStatusSelect",
+    "groomingNextVisitInput",
+    "groomingNotesInput",
+    "groomingBeforePhotoFileInput",
+    "groomingBeforePhotoFileButton",
+    "groomingBeforePhotosList",
+    "groomingBeforePhotosValue",
+    "groomingAfterPhotoFileInput",
+    "groomingAfterPhotoFileButton",
+    "groomingAfterPhotosList",
+    "groomingAfterPhotosValue",
     "patientConsultationModalTitle",
     "patientConsultationModalSubtitle",
     "patientConsultationModalBadge",
@@ -3983,6 +4025,138 @@ function getConsultorioScopedGrooming() {
     return state.grooming_documents;
   }
   return state.grooming_documents.filter((item) => item.patient_id === consultorioPatientId);
+}
+
+function normalizeGroomingServiceItem(item = {}) {
+  if (!item || typeof item !== "object") {
+    return {
+      serviceType: "",
+      motive: "",
+      professional: "",
+      details: "",
+    };
+  }
+  return {
+    serviceType: String(item.serviceType || item.type || item.service_type || "").trim(),
+    motive: String(item.motive || item.reason || item.service || "").trim(),
+    professional: String(item.professional || item.staff || item.stylist || "").trim(),
+    details: String(item.details || item.notes || item.description || "").trim(),
+  };
+}
+
+function hasGroomingServiceItemContent(item = {}) {
+  const normalized = normalizeGroomingServiceItem(item);
+  return Boolean(
+    normalized.serviceType || normalized.motive || normalized.professional || normalized.details
+  );
+}
+
+function parseGroomingServiceDetails(value) {
+  const rawValue = String(value || "").trim();
+  if (!rawValue) {
+    return [];
+  }
+  try {
+    const parsed = JSON.parse(rawValue);
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+    return parsed
+      .map((item) => normalizeGroomingServiceItem(item))
+      .filter((item) => hasGroomingServiceItemContent(item));
+  } catch (error) {
+    return [];
+  }
+}
+
+function serializeGroomingServiceDetails(items = []) {
+  const normalizedItems = (Array.isArray(items) ? items : [])
+    .map((item) => normalizeGroomingServiceItem(item))
+    .filter((item) => hasGroomingServiceItemContent(item));
+  return normalizedItems.length ? JSON.stringify(normalizedItems) : "";
+}
+
+function getGroomingStaffOptions(selected = "") {
+  const values = new Set();
+  (state.users || []).forEach((user) => {
+    if (user?.is_active === false) {
+      return;
+    }
+    const name = String(user?.full_name || "").trim();
+    if (name) {
+      values.add(name);
+    }
+  });
+  getProfessionalOptions().forEach((option) => {
+    const label = String(option?.label || option?.id || "").trim();
+    if (label) {
+      values.add(label);
+    }
+  });
+  const normalizedSelected = String(selected || "").trim();
+  if (normalizedSelected) {
+    values.add(normalizedSelected);
+  }
+  return Array.from(values).sort((left, right) => left.localeCompare(right, "es"));
+}
+
+function buildGroomingServicePrimaryLabel(item = {}) {
+  const normalized = normalizeGroomingServiceItem(item);
+  return normalized.motive || normalized.serviceType || "Servicio";
+}
+
+function buildGroomingServiceSummary(items = [], fallback = "") {
+  const labels = (Array.isArray(items) ? items : [])
+    .map((item) => buildGroomingServicePrimaryLabel(item))
+    .filter(Boolean);
+  const joined = labels.join(" / ");
+  return joined || String(fallback || "").trim() || "Servicio";
+}
+
+function buildGroomingProfessionalSummary(items = [], fallback = "") {
+  const labels = Array.from(
+    new Set(
+      (Array.isArray(items) ? items : [])
+        .map((item) => normalizeGroomingServiceItem(item).professional)
+        .filter(Boolean)
+    )
+  );
+  const joined = labels.join(", ");
+  return joined || String(fallback || "").trim() || "Sin responsable";
+}
+
+function getGroomingDocumentDetails(item = {}) {
+  const parsedServices = parseGroomingServiceDetails(item?.service_details_json);
+  const services = parsedServices.length
+    ? parsedServices
+    : [
+        normalizeGroomingServiceItem({
+          serviceType: item?.document_type || "",
+          motive: item?.service_name || "",
+          professional: item?.stylist_name || "",
+          details: item?.recommendations || item?.products_used || "",
+        }),
+      ].filter((service) => hasGroomingServiceItemContent(service));
+  const beforePhotos = parseConsultorioAttachments(item?.before_photos || "");
+  const afterPhotos = parseConsultorioAttachments(item?.after_photos || "");
+  return {
+    services,
+    beforePhotos,
+    afterPhotos,
+    summaryName: buildGroomingServiceSummary(services, item?.service_name),
+    professionalSummary: buildGroomingProfessionalSummary(services, item?.stylist_name),
+    observations:
+      item?.notes ||
+      item?.recommendations ||
+      item?.products_used ||
+      "Sin observaciones registradas.",
+    rabiesStatus: GROOMING_RABIES_STATUS_LABELS[item?.rabies_status] || "Sin registro",
+    nextVisitAt: item?.next_visit_at ? formatDateTime(item.next_visit_at) : "",
+  };
+}
+
+function getGroomingDocumentById(groomingId) {
+  return (state.grooming_documents || []).find((item) => item.id === groomingId) || null;
 }
 
 function getConsultorioProfileCount(option) {
@@ -10411,6 +10585,173 @@ function getPatientProcedureAttachments() {
   return getConsultorioAttachmentFieldItems(elements.patientProcedureAttachmentsValue);
 }
 
+async function addGroomingBeforeAttachmentImages(fileList) {
+  const files = Array.from(fileList || []);
+  if (!files.length) {
+    return;
+  }
+  const currentItems = getGroomingBeforeAttachments();
+  for (const file of files) {
+    currentItems.push(await buildConsultorioImageAttachment(file));
+  }
+  setGroomingBeforeAttachments(currentItems);
+}
+
+function setGroomingBeforeAttachments(items = []) {
+  renderConsultorioAttachmentFieldState(
+    elements.groomingBeforePhotosValue,
+    elements.groomingBeforePhotosList,
+    items
+  );
+}
+
+function getGroomingBeforeAttachments() {
+  return getConsultorioAttachmentFieldItems(elements.groomingBeforePhotosValue);
+}
+
+async function addGroomingAfterAttachmentImages(fileList) {
+  const files = Array.from(fileList || []);
+  if (!files.length) {
+    return;
+  }
+  const currentItems = getGroomingAfterAttachments();
+  for (const file of files) {
+    currentItems.push(await buildConsultorioImageAttachment(file));
+  }
+  setGroomingAfterAttachments(currentItems);
+}
+
+function setGroomingAfterAttachments(items = []) {
+  renderConsultorioAttachmentFieldState(
+    elements.groomingAfterPhotosValue,
+    elements.groomingAfterPhotosList,
+    items
+  );
+}
+
+function getGroomingAfterAttachments() {
+  return getConsultorioAttachmentFieldItems(elements.groomingAfterPhotosValue);
+}
+
+function renderGroomingServiceItems(items = []) {
+  if (!elements.groomingServicesList || !elements.groomingServicesValue) {
+    return;
+  }
+  const normalizedItems = (Array.isArray(items) ? items : [])
+    .map((item) => normalizeGroomingServiceItem(item))
+    .filter((item) => hasGroomingServiceItemContent(item));
+  const rows = normalizedItems.length ? normalizedItems : [normalizeGroomingServiceItem()];
+  elements.groomingServicesValue.value = serializeGroomingServiceDetails(rows);
+  elements.groomingServicesList.innerHTML = rows
+    .map((item, index) => {
+      const staffOptions = getGroomingStaffOptions(item.professional);
+      return `
+        <article class="consultorio-order-item grooming-service-item" data-grooming-service-item="${escapeHtml(
+          String(index)
+        )}">
+          <div class="consultorio-order-item__header">
+            <div class="consultorio-order-item__title">
+              <span class="consultorio-order-item__icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="6" cy="7" r="2"></circle>
+                  <circle cx="6" cy="17" r="2"></circle>
+                  <path d="M8 8l10 10"></path>
+                  <path d="M8 16 18 6"></path>
+                </svg>
+              </span>
+              <strong>${rows.length > 1 ? `Servicio ${index + 1}` : "Servicio"}</strong>
+            </div>
+            <div class="consultorio-order-item__actions">
+              <button
+                class="inline-link consultorio-order-item__remove"
+                type="button"
+                data-remove-grooming-service-item="${escapeHtml(String(index))}"
+              >
+                Eliminar
+              </button>
+            </div>
+          </div>
+
+          <div class="consultorio-order-item__grid grooming-service-item__grid">
+            <label class="consultorio-consultation-form__field">
+              <span>Tipo de servicio</span>
+              <select data-grooming-service-field="serviceType">
+                <option value="">Selecciona una opcion</option>
+                ${GROOMING_SERVICE_TYPE_OPTIONS.map(
+                  (option) =>
+                    `<option value="${escapeHtml(option)}"${
+                      option === item.serviceType ? " selected" : ""
+                    }>${escapeHtml(option)}</option>`
+                ).join("")}
+              </select>
+            </label>
+
+            <label class="consultorio-consultation-form__field">
+              <span>Motivo / servicio</span>
+              <input
+                data-grooming-service-field="motive"
+                type="text"
+                value="${escapeHtml(item.motive)}"
+                placeholder="Motivo, paquete o especificacion"
+              />
+            </label>
+
+            <label class="consultorio-consultation-form__field">
+              <span>Encargado</span>
+              <select data-grooming-service-field="professional">
+                <option value="">Selecciona una opcion</option>
+                ${staffOptions
+                  .map(
+                    (option) =>
+                      `<option value="${escapeHtml(option)}"${
+                        option === item.professional ? " selected" : ""
+                      }>${escapeHtml(option)}</option>`
+                  )
+                  .join("")}
+              </select>
+            </label>
+
+            <label class="consultorio-consultation-form__field full grooming-service-item__details">
+              <span>Detalles</span>
+              <textarea
+                data-grooming-service-field="details"
+                rows="2"
+                placeholder="Detalles y observaciones del servicio"
+              >${escapeHtml(item.details)}</textarea>
+            </label>
+          </div>
+        </article>
+      `;
+    })
+    .join("");
+}
+
+function getGroomingServiceItems({ includeEmpty = false } = {}) {
+  if (!elements.groomingServicesList) {
+    return [];
+  }
+  const items = Array.from(
+    elements.groomingServicesList.querySelectorAll("[data-grooming-service-item]")
+  ).map((item) =>
+    normalizeGroomingServiceItem({
+      serviceType:
+        item.querySelector('[data-grooming-service-field="serviceType"]')?.value || "",
+      motive: item.querySelector('[data-grooming-service-field="motive"]')?.value || "",
+      professional:
+        item.querySelector('[data-grooming-service-field="professional"]')?.value || "",
+      details: item.querySelector('[data-grooming-service-field="details"]')?.value || "",
+    })
+  );
+  return includeEmpty ? items : items.filter((item) => hasGroomingServiceItemContent(item));
+}
+
+function syncGroomingServiceItemsValue() {
+  if (!elements.groomingServicesValue) {
+    return;
+  }
+  elements.groomingServicesValue.value = serializeGroomingServiceDetails(getGroomingServiceItems());
+}
+
 function buildConsultorioDocumentPlaceholder(label = "por completar") {
   const normalized = String(label || "").trim().toLowerCase();
   return `[Completar ${normalized || "este campo"}]`;
@@ -12258,6 +12599,79 @@ function syncModalOpenState() {
     (modal) => !modal.classList.contains("is-hidden")
   );
   document.body?.classList.toggle("modal-open", anyModalOpen);
+}
+
+function getPreferredGroomingPatientId(patientId = "") {
+  const normalizedPatientId = String(patientId || "").trim();
+  if (normalizedPatientId) {
+    return normalizedPatientId;
+  }
+  if (isConsultorioPatientProfileActive() && consultorioPatientId) {
+    return String(consultorioPatientId || "").trim();
+  }
+  const consultorioSubsection = getSubsectionOption("consultorio")?.value || "";
+  if (getActiveSectionId() === "consultorio" && consultorioSubsection === "grooming") {
+    return String(pendingGroomingPatientId || "").trim();
+  }
+  return "";
+}
+
+function openGroomingModal(options = {}) {
+  if (!elements.groomingModal || !elements.groomingForm) {
+    return;
+  }
+  const { patientId = "" } = options || {};
+  const resolvedPatientId = getPreferredGroomingPatientId(patientId);
+  const patient = resolvedPatientId ? getPatientById(resolvedPatientId) : null;
+  resetForm(elements.groomingForm);
+  setDateTimeDefaults();
+  renderSelects();
+  renderGroomingServiceItems([]);
+  setGroomingBeforeAttachments([]);
+  setGroomingAfterAttachments([]);
+  if (elements.groomingPatientSelect && resolvedPatientId) {
+    elements.groomingPatientSelect.value = resolvedPatientId;
+  }
+  if (elements.groomingModalTitle) {
+    elements.groomingModalTitle.textContent = patient
+      ? `Registro de peluqueria de ${patient.name || "la mascota"}`
+      : "Registro de peluqueria y spa";
+  }
+  if (elements.groomingModalSubtitle) {
+    elements.groomingModalSubtitle.textContent = patient
+      ? `Captura detallada del servicio realizado a ${patient.name || "la mascota"}.`
+      : "Captura detallada del servicio realizado al paciente.";
+  }
+  elements.groomingModal.classList.remove("is-hidden");
+  elements.groomingModal.setAttribute("aria-hidden", "false");
+  syncModalOpenState();
+  const focusTarget = resolvedPatientId
+    ? elements.groomingServiceAtInput || elements.groomingStatusSelect || elements.groomingPatientSelect
+    : elements.groomingPatientSelect || elements.groomingServiceAtInput;
+  focusTarget?.focus();
+}
+
+function closeGroomingModal() {
+  if (!elements.groomingModal) {
+    return;
+  }
+  elements.groomingModal.classList.add("is-hidden");
+  elements.groomingModal.setAttribute("aria-hidden", "true");
+  if (elements.groomingForm) {
+    resetForm(elements.groomingForm);
+  }
+  renderGroomingServiceItems([]);
+  setGroomingBeforeAttachments([]);
+  setGroomingAfterAttachments([]);
+  setDateTimeDefaults();
+  if (elements.groomingModalTitle) {
+    elements.groomingModalTitle.textContent = "Registro de peluqueria y spa";
+  }
+  if (elements.groomingModalSubtitle) {
+    elements.groomingModalSubtitle.textContent =
+      "Captura detallada del servicio realizado al paciente.";
+  }
+  syncModalOpenState();
 }
 
 function openLabTestModal({ index = null, category = "", name = "", target = "order" } = {}) {
@@ -15532,11 +15946,13 @@ async function handleConsentSubmit(event) {
 
 async function handleGroomingSubmit(event) {
   event.preventDefault();
+  syncGroomingServiceItemsValue();
   await api.saveGrooming(serializeForm(event.currentTarget));
-  resetForm(event.currentTarget);
-  setDateTimeDefaults();
-  await refreshData("Documento de peluqueria guardado.");
-  setActiveSection("consultorio");
+  closeGroomingModal();
+  await refreshData({
+    sections: ["grooming_documents"],
+    message: "Documento de peluqueria guardado.",
+  });
 }
 
 async function handleBackupClick() {
@@ -16027,7 +16443,7 @@ function bindForms() {
       }
       const openGroomingSectionButton = event.target.closest("[data-open-grooming-section]");
       if (openGroomingSectionButton) {
-        openConsultorioGroomingSection(consultorioPatientId);
+        openGroomingModal({ patientId: consultorioPatientId });
         return;
       }
       const openConsultationButton = event.target.closest("[data-open-patient-consultation-modal]");
@@ -16870,6 +17286,102 @@ function bindForms() {
   elements.closeAppointmentModalButton.addEventListener("click", closeAppointmentModal);
   if (elements.closeAppointmentDetailButton) {
     elements.closeAppointmentDetailButton.addEventListener("click", closeAppointmentDetailModal);
+  }
+  if (elements.openGroomingModalButton) {
+    elements.openGroomingModalButton.addEventListener("click", () => openGroomingModal());
+  }
+  if (elements.closeGroomingModalButton) {
+    elements.closeGroomingModalButton.addEventListener("click", closeGroomingModal);
+  }
+  if (elements.cancelGroomingModalButton) {
+    elements.cancelGroomingModalButton.addEventListener("click", closeGroomingModal);
+  }
+  if (elements.groomingModal) {
+    elements.groomingModal.addEventListener("click", (event) => {
+      if (event.target.dataset.closeGroomingModal) {
+        closeGroomingModal();
+      }
+    });
+  }
+  if (elements.groomingAddServiceButton) {
+    elements.groomingAddServiceButton.addEventListener("click", () => {
+      const items = getGroomingServiceItems({ includeEmpty: true });
+      items.push(normalizeGroomingServiceItem());
+      renderGroomingServiceItems(items);
+      syncGroomingServiceItemsValue();
+      elements.groomingServicesList
+        ?.querySelector('[data-grooming-service-item]:last-child [data-grooming-service-field="serviceType"]')
+        ?.focus();
+    });
+  }
+  if (elements.groomingServicesList) {
+    elements.groomingServicesList.addEventListener("click", (event) => {
+      const removeButton = event.target.closest("[data-remove-grooming-service-item]");
+      if (!removeButton) {
+        return;
+      }
+      const index = Number(removeButton.dataset.removeGroomingServiceItem);
+      const items = getGroomingServiceItems({ includeEmpty: true });
+      items.splice(index, 1);
+      renderGroomingServiceItems(items);
+      syncGroomingServiceItemsValue();
+    });
+    elements.groomingServicesList.addEventListener("input", syncGroomingServiceItemsValue);
+    elements.groomingServicesList.addEventListener("change", syncGroomingServiceItemsValue);
+  }
+  if (elements.groomingBeforePhotoFileButton && elements.groomingBeforePhotoFileInput) {
+    elements.groomingBeforePhotoFileButton.addEventListener("click", () => {
+      elements.groomingBeforePhotoFileInput.click();
+    });
+    elements.groomingBeforePhotoFileInput.addEventListener(
+      "change",
+      wrapAsync(async (event) => {
+        try {
+          await addGroomingBeforeAttachmentImages(event.currentTarget.files);
+        } finally {
+          event.currentTarget.value = "";
+        }
+      })
+    );
+  }
+  if (elements.groomingAfterPhotoFileButton && elements.groomingAfterPhotoFileInput) {
+    elements.groomingAfterPhotoFileButton.addEventListener("click", () => {
+      elements.groomingAfterPhotoFileInput.click();
+    });
+    elements.groomingAfterPhotoFileInput.addEventListener(
+      "change",
+      wrapAsync(async (event) => {
+        try {
+          await addGroomingAfterAttachmentImages(event.currentTarget.files);
+        } finally {
+          event.currentTarget.value = "";
+        }
+      })
+    );
+  }
+  if (elements.groomingBeforePhotosList) {
+    elements.groomingBeforePhotosList.addEventListener("click", (event) => {
+      const removeButton = event.target.closest("[data-remove-patient-consultation-attachment]");
+      if (!removeButton) {
+        return;
+      }
+      const index = Number(removeButton.dataset.removePatientConsultationAttachment);
+      const items = getGroomingBeforeAttachments();
+      items.splice(index, 1);
+      setGroomingBeforeAttachments(items);
+    });
+  }
+  if (elements.groomingAfterPhotosList) {
+    elements.groomingAfterPhotosList.addEventListener("click", (event) => {
+      const removeButton = event.target.closest("[data-remove-patient-consultation-attachment]");
+      if (!removeButton) {
+        return;
+      }
+      const index = Number(removeButton.dataset.removePatientConsultationAttachment);
+      const items = getGroomingAfterAttachments();
+      items.splice(index, 1);
+      setGroomingAfterAttachments(items);
+    });
   }
   if (elements.appointmentRegisterOwnerButton) {
     elements.appointmentRegisterOwnerButton.addEventListener("click", () => openOwnerModalFromAppointment());
