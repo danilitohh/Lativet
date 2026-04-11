@@ -91,6 +91,19 @@ def optional_datetime(data: dict, key: str, label: str) -> str | None:
     return parse_datetime(value, label)
 
 
+def optional_json(data: dict, key: str, label: str, *, array_only: bool = False) -> str:
+    value = _strip(data.get(key))
+    if not value:
+        return ""
+    try:
+        parsed = json.loads(value)
+    except json.JSONDecodeError as exc:
+        raise ValidationError(f"El campo '{label}' debe contener JSON valido.") from exc
+    if array_only and not isinstance(parsed, list):
+        raise ValidationError(f"El campo '{label}' debe ser una lista JSON.")
+    return json.dumps(parsed, ensure_ascii=False)
+
+
 def to_bool(value: object) -> bool:
     if isinstance(value, bool):
         return value
@@ -342,6 +355,15 @@ def validate_grooming_document(payload: dict) -> dict:
     status = optional_text(payload, "status") or "scheduled"
     if status not in {"scheduled", "in_progress", "completed", "cancelled"}:
         raise ValidationError("El estado de peluqueria no es valido.")
+    rabies_status = optional_text(payload, "rabies_status")
+    if rabies_status and rabies_status not in {
+        "vigente",
+        "vencida",
+        "pendiente",
+        "no_registra",
+        "no_aplica",
+    }:
+        raise ValidationError("El estado de vacunacion antirrabica no es valido.")
     return {
         "id": optional_text(payload, "id"),
         "patient_id": required_text(payload, "patient_id", "Paciente"),
@@ -349,12 +371,31 @@ def validate_grooming_document(payload: dict) -> dict:
         or datetime.now().replace(microsecond=0).isoformat(timespec="seconds"),
         "document_type": required_text(payload, "document_type", "Tipo de documento"),
         "service_name": required_text(payload, "service_name", "Servicio"),
-        "stylist_name": required_text(payload, "stylist_name", "Responsable"),
+        "stylist_name": optional_text(payload, "stylist_name"),
         "status": status,
         "notes": optional_text(payload, "notes"),
         "recommendations": optional_text(payload, "recommendations"),
         "products_used": optional_text(payload, "products_used"),
         "next_visit_at": optional_datetime(payload, "next_visit_at", "Proxima visita"),
+        "service_details_json": optional_json(
+            payload,
+            "service_details_json",
+            "Servicios",
+            array_only=True,
+        ),
+        "before_photos": optional_json(
+            payload,
+            "before_photos",
+            "Fotos antes",
+            array_only=True,
+        ),
+        "after_photos": optional_json(
+            payload,
+            "after_photos",
+            "Fotos despues",
+            array_only=True,
+        ),
+        "rabies_status": rabies_status,
     }
 
 

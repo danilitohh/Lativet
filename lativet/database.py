@@ -457,6 +457,10 @@ class Database:
                 recommendations TEXT,
                 products_used TEXT,
                 next_visit_at TEXT,
+                service_details_json TEXT,
+                before_photos TEXT,
+                after_photos TEXT,
+                rabies_status TEXT,
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL,
                 FOREIGN KEY (patient_id) REFERENCES patients(id),
@@ -659,6 +663,10 @@ class Database:
         self._ensure_column("patients", "age_years", "REAL")
         self._ensure_column("owners", "alternate_phone", "TEXT")
         self._ensure_column("staff_users", "password_hash", "TEXT")
+        self._ensure_column("grooming_documents", "service_details_json", "TEXT")
+        self._ensure_column("grooming_documents", "before_photos", "TEXT")
+        self._ensure_column("grooming_documents", "after_photos", "TEXT")
+        self._ensure_column("grooming_documents", "rabies_status", "TEXT")
         self._ensure_control_reminder_schema()
 
     def _ensure_column(self, table: str, column: str, definition: str) -> None:
@@ -2359,7 +2367,9 @@ class Database:
                     UPDATE grooming_documents
                     SET patient_id = ?, owner_id = ?, service_at = ?, document_type = ?,
                         service_name = ?, stylist_name = ?, status = ?, notes = ?,
-                        recommendations = ?, products_used = ?, next_visit_at = ?, updated_at = ?
+                        recommendations = ?, products_used = ?, next_visit_at = ?,
+                        service_details_json = ?, before_photos = ?, after_photos = ?,
+                        rabies_status = ?, updated_at = ?
                     WHERE id = ?
                     """,
                     (
@@ -2374,6 +2384,10 @@ class Database:
                         data["recommendations"],
                         data["products_used"],
                         data["next_visit_at"],
+                        data["service_details_json"],
+                        data["before_photos"],
+                        data["after_photos"],
+                        data["rabies_status"],
                         timestamp,
                         grooming_id,
                     ),
@@ -2385,8 +2399,9 @@ class Database:
                     INSERT INTO grooming_documents (
                         id, patient_id, owner_id, service_at, document_type, service_name,
                         stylist_name, status, notes, recommendations, products_used,
-                        next_visit_at, created_at, updated_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        next_visit_at, service_details_json, before_photos, after_photos,
+                        rabies_status, created_at, updated_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         grooming_id,
@@ -2401,6 +2416,10 @@ class Database:
                         data["recommendations"],
                         data["products_used"],
                         data["next_visit_at"],
+                        data["service_details_json"],
+                        data["before_photos"],
+                        data["after_photos"],
+                        data["rabies_status"],
                         timestamp,
                         timestamp,
                     ),

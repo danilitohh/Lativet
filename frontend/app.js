@@ -10649,9 +10649,9 @@ function renderGroomingServiceItems(items = []) {
         <article class="consultorio-order-item grooming-service-item" data-grooming-service-item="${escapeHtml(
           String(index)
         )}">
-          <div class="consultorio-order-item__header">
-            <div class="consultorio-order-item__title">
-              <span class="consultorio-order-item__icon" aria-hidden="true">
+          <div class="consultorio-order-item__header grooming-service-item__header">
+            <div class="consultorio-order-item__title grooming-service-item__title">
+              <span class="consultorio-order-item__icon grooming-service-item__icon" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                   <circle cx="6" cy="7" r="2"></circle>
                   <circle cx="6" cy="17" r="2"></circle>
@@ -10663,11 +10663,11 @@ function renderGroomingServiceItems(items = []) {
             </div>
             <div class="consultorio-order-item__actions">
               <button
-                class="inline-link consultorio-order-item__remove"
+                class="inline-link consultorio-order-item__remove grooming-service-item__remove"
                 type="button"
                 data-remove-grooming-service-item="${escapeHtml(String(index))}"
               >
-                Eliminar
+                × Eliminar
               </button>
             </div>
           </div>
@@ -10692,14 +10692,14 @@ function renderGroomingServiceItems(items = []) {
                 data-grooming-service-field="motive"
                 type="text"
                 value="${escapeHtml(item.motive)}"
-                placeholder="Motivo, paquete o especificacion"
+                placeholder="Opcional. Motivo o especificacion del servicio"
               />
             </label>
 
             <label class="consultorio-consultation-form__field">
               <span>Encargado</span>
               <select data-grooming-service-field="professional">
-                <option value="">Selecciona una opcion</option>
+                <option value="">Opcional. Selecciona una opcion</option>
                 ${staffOptions
                   .map(
                     (option) =>
@@ -10716,7 +10716,7 @@ function renderGroomingServiceItems(items = []) {
               <textarea
                 data-grooming-service-field="details"
                 rows="2"
-                placeholder="Detalles y observaciones del servicio"
+                placeholder="Detalles y observaciones"
               >${escapeHtml(item.details)}</textarea>
             </label>
           </div>
@@ -10746,10 +10746,19 @@ function getGroomingServiceItems({ includeEmpty = false } = {}) {
 }
 
 function syncGroomingServiceItemsValue() {
-  if (!elements.groomingServicesValue) {
+  if (!elements.groomingServicesValue || !elements.groomingForm) {
     return;
   }
-  elements.groomingServicesValue.value = serializeGroomingServiceDetails(getGroomingServiceItems());
+  const services = getGroomingServiceItems();
+  elements.groomingServicesValue.value = serializeGroomingServiceDetails(services);
+  const serviceNameField = elements.groomingForm.elements?.service_name;
+  if (serviceNameField) {
+    serviceNameField.value = buildGroomingServiceSummary(services, "");
+  }
+  const stylistField = elements.groomingForm.elements?.stylist_name;
+  if (stylistField) {
+    stylistField.value = buildGroomingProfessionalSummary(services, "");
+  }
 }
 
 function buildConsultorioDocumentPlaceholder(label = "por completar") {
@@ -12623,30 +12632,33 @@ function openGroomingModal(options = {}) {
   const { patientId = "" } = options || {};
   const resolvedPatientId = getPreferredGroomingPatientId(patientId);
   const patient = resolvedPatientId ? getPatientById(resolvedPatientId) : null;
+  const patientName = String(patient?.name || "").trim();
   resetForm(elements.groomingForm);
   setDateTimeDefaults();
   renderSelects();
   renderGroomingServiceItems([]);
+  syncGroomingServiceItemsValue();
   setGroomingBeforeAttachments([]);
   setGroomingAfterAttachments([]);
   if (elements.groomingPatientSelect && resolvedPatientId) {
     elements.groomingPatientSelect.value = resolvedPatientId;
   }
   if (elements.groomingModalTitle) {
-    elements.groomingModalTitle.textContent = patient
-      ? `Registro de peluqueria de ${patient.name || "la mascota"}`
-      : "Registro de peluqueria y spa";
+    elements.groomingModalTitle.textContent = patientName
+      ? `${GROOMING_DOCUMENT_TYPE_LABEL} - ${patientName.toUpperCase()}`
+      : GROOMING_DOCUMENT_TYPE_LABEL;
   }
   if (elements.groomingModalSubtitle) {
-    elements.groomingModalSubtitle.textContent = patient
-      ? `Captura detallada del servicio realizado a ${patient.name || "la mascota"}.`
-      : "Captura detallada del servicio realizado al paciente.";
+    elements.groomingModalSubtitle.textContent = patientName
+      ? `Paciente: ${patientName}`
+      : "Selecciona el paciente para registrar el servicio.";
   }
+  elements.groomingModal.classList.toggle("grooming-modal-shell--patient-locked", Boolean(patientName));
   elements.groomingModal.classList.remove("is-hidden");
   elements.groomingModal.setAttribute("aria-hidden", "false");
   syncModalOpenState();
   const focusTarget = resolvedPatientId
-    ? elements.groomingServiceAtInput || elements.groomingStatusSelect || elements.groomingPatientSelect
+    ? elements.groomingServiceAtInput || elements.groomingPatientSelect
     : elements.groomingPatientSelect || elements.groomingServiceAtInput;
   focusTarget?.focus();
 }
@@ -12655,17 +12667,19 @@ function closeGroomingModal() {
   if (!elements.groomingModal) {
     return;
   }
+  elements.groomingModal.classList.remove("grooming-modal-shell--patient-locked");
   elements.groomingModal.classList.add("is-hidden");
   elements.groomingModal.setAttribute("aria-hidden", "true");
   if (elements.groomingForm) {
     resetForm(elements.groomingForm);
   }
   renderGroomingServiceItems([]);
+  syncGroomingServiceItemsValue();
   setGroomingBeforeAttachments([]);
   setGroomingAfterAttachments([]);
   setDateTimeDefaults();
   if (elements.groomingModalTitle) {
-    elements.groomingModalTitle.textContent = "Registro de peluqueria y spa";
+    elements.groomingModalTitle.textContent = GROOMING_DOCUMENT_TYPE_LABEL;
   }
   if (elements.groomingModalSubtitle) {
     elements.groomingModalSubtitle.textContent =
@@ -15946,6 +15960,10 @@ async function handleConsentSubmit(event) {
 
 async function handleGroomingSubmit(event) {
   event.preventDefault();
+  const services = getGroomingServiceItems();
+  if (!services.length) {
+    throw new Error("Agrega al menos un servicio de peluqueria.");
+  }
   syncGroomingServiceItemsValue();
   await api.saveGrooming(serializeForm(event.currentTarget));
   closeGroomingModal();

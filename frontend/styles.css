@@ -6325,6 +6325,347 @@ body.auth-locked .page-shell > :not(#loginModal) {
   display: block;
 }
 
+#groomingModal {
+  padding: 10px 14px;
+}
+
+#groomingModal .modal-backdrop {
+  background: rgba(24, 33, 53, 0.34);
+  backdrop-filter: blur(3px);
+}
+
+.grooming-modal {
+  width: min(1080px, calc(100vw - 28px));
+  max-height: calc(100vh - 20px);
+  padding: 0;
+  border: 1px solid #dce3f0;
+  border-radius: 6px;
+  background: #ffffff;
+  box-shadow: 0 28px 72px rgba(15, 23, 42, 0.22);
+}
+
+.grooming-modal__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 14px;
+  border-bottom: 1px solid #e3e8f3;
+}
+
+.grooming-modal__heading-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.grooming-modal__title {
+  margin: 0;
+  font-size: 0.98rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: #4f5674;
+}
+
+.grooming-modal__subtitle {
+  margin: 0;
+  color: #8a92ae;
+  font-size: 0.72rem;
+}
+
+.grooming-modal__close {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: #c3c8d8;
+  font-size: 1.35rem;
+  line-height: 1;
+  box-shadow: none;
+}
+
+.grooming-modal__close:hover {
+  background: #f4f6fb;
+  color: #7f88a4;
+  transform: none;
+}
+
+.grooming-modal__form {
+  display: grid;
+  gap: 0;
+  padding: 0;
+  margin: 0;
+}
+
+.grooming-modal__body {
+  display: grid;
+  gap: 14px;
+  padding: 16px 14px 0;
+}
+
+.grooming-modal__row {
+  display: grid;
+}
+
+.grooming-modal__row--date {
+  grid-template-columns: minmax(250px, 340px);
+}
+
+.grooming-modal-shell--patient-locked .grooming-modal__row--patient {
+  display: none;
+}
+
+.grooming-modal .consultorio-consultation-form__field {
+  display: grid;
+  gap: 6px;
+}
+
+.grooming-modal .consultorio-consultation-form__field > span {
+  font-size: 0.76rem;
+  color: #6f78a2;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.grooming-modal input,
+.grooming-modal select,
+.grooming-modal textarea {
+  border: 1px solid #d8e0f0;
+  border-radius: 4px;
+  background: #fff;
+  padding: 8px 10px;
+  color: #4a556c;
+  font-size: 0.8rem;
+  line-height: 1.35;
+  box-shadow: none;
+}
+
+.grooming-modal input,
+.grooming-modal select {
+  min-height: 34px;
+}
+
+.grooming-modal textarea {
+  min-height: 38px;
+  resize: vertical;
+}
+
+.grooming-modal input::placeholder,
+.grooming-modal textarea::placeholder {
+  color: #a4acc0;
+}
+
+.grooming-modal input:focus,
+.grooming-modal select:focus,
+.grooming-modal textarea:focus {
+  outline: none;
+  border-color: rgba(93, 112, 234, 0.48);
+  box-shadow: 0 0 0 2px rgba(93, 112, 234, 0.1);
+}
+
+.grooming-modal__date-field input {
+  max-width: 340px;
+}
+
+.grooming-modal__services {
+  gap: 12px;
+  padding: 16px 10px 12px;
+  border: 1px solid rgba(162, 236, 228, 0.9);
+  border-radius: 10px;
+  background: #fff;
+}
+
+.grooming-modal__services .consultorio-order-builder__legend {
+  width: fit-content;
+  margin: -26px 0 0 8px;
+  padding: 0 8px;
+  background: #fff;
+  color: #1fc9c0;
+  font-size: 0.78rem;
+}
+
+.grooming-modal__services .consultorio-order-builder__list {
+  gap: 10px;
+}
+
+.grooming-modal__services .consultorio-order-builder__footer {
+  padding-top: 12px;
+  border-top: 1px solid #edf2f8;
+}
+
+.grooming-modal__services .consultorio-order-builder__add {
+  min-height: 30px;
+  padding: 0;
+  color: #7d8df0;
+  font-size: 0.8rem;
+}
+
+.grooming-service-item {
+  gap: 12px;
+  padding: 0;
+  border: 1px solid #edf1f8;
+  border-radius: 6px;
+  background: #fff;
+  box-shadow: 0 8px 20px rgba(25, 39, 67, 0.05);
+}
+
+.grooming-service-item__header {
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  border-bottom: 1px solid #edf1f8;
+}
+
+.grooming-service-item__title strong {
+  color: #67729a;
+  font-size: 0.92rem;
+}
+
+.grooming-service-item__icon {
+  width: 18px;
+  height: 18px;
+  color: #7d85a3;
+}
+
+.grooming-service-item__remove {
+  color: #97a0c0;
+  font-size: 0.74rem;
+}
+
+.grooming-service-item__remove:hover {
+  color: #737da4;
+  transform: none;
+}
+
+.grooming-service-item__grid {
+  grid-template-columns: minmax(220px, 1.05fr) minmax(240px, 1fr) minmax(220px, 1fr);
+  gap: 14px 16px;
+  align-items: end;
+  padding: 12px 16px 16px;
+}
+
+.grooming-service-item__details {
+  grid-column: 1 / -1;
+}
+
+.grooming-service-item__details textarea {
+  min-height: 32px;
+}
+
+.grooming-modal__notes-field textarea {
+  min-height: 96px;
+}
+
+.grooming-modal__attachments-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px 28px;
+  align-items: start;
+}
+
+.grooming-modal__attachment-field {
+  align-content: start;
+}
+
+.grooming-modal__attachment-field .form-actions {
+  justify-content: flex-start;
+}
+
+.grooming-modal__upload-trigger {
+  min-height: 32px;
+  padding: 7px 14px;
+  border: 1px solid #7283f0;
+  border-radius: 4px;
+  background: #fff;
+  color: #6676ec;
+  font-size: 0.78rem;
+  font-weight: 600;
+  box-shadow: none;
+}
+
+.grooming-modal__upload-trigger:hover {
+  border-color: #5b6de9;
+  background: #f8f9ff;
+  color: #5667eb;
+  transform: none;
+}
+
+.grooming-modal__attachments-list {
+  gap: 8px;
+  min-height: 36px;
+  margin-top: 4px;
+}
+
+.grooming-modal__attachments-list .consultorio-consultation-attachment {
+  padding: 8px 10px;
+  border-color: #e6ebf4;
+  border-radius: 6px;
+  background: #fafcff;
+}
+
+.grooming-modal__attachments-list .consultorio-consultation-attachment__thumbnail {
+  width: 44px;
+  height: 44px;
+  border-radius: 6px;
+}
+
+.grooming-modal__bottom-grid {
+  display: grid;
+  grid-template-columns: minmax(240px, 0.7fr) minmax(240px, 0.7fr);
+  gap: 16px 18px;
+  padding-bottom: 16px;
+}
+
+.grooming-modal__footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  justify-content: flex-end;
+  padding: 14px;
+  border-top: 1px solid #e3e8f3;
+  background: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(8px);
+}
+
+.grooming-modal__footer .form-actions {
+  gap: 10px;
+  flex-wrap: nowrap;
+}
+
+.grooming-modal__footer .consultorio-consultation-form__cancel,
+.grooming-modal__footer .consultorio-consultation-form__submit {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 7px 16px;
+  border-radius: 4px;
+  font-size: 0.78rem;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.grooming-modal__footer .consultorio-consultation-form__cancel {
+  border: 1px solid #d9dff0;
+  background: #fff;
+  color: #5d6782;
+}
+
+.grooming-modal__footer .consultorio-consultation-form__submit {
+  border: 1px solid #5f70ea;
+  background: #5f70ea;
+  color: #fff;
+}
+
+.grooming-modal__footer .consultorio-consultation-form__submit:hover,
+.grooming-modal__footer .consultorio-consultation-form__cancel:hover {
+  transform: none;
+}
+
 .appointment-modal__row {
   display: grid;
   gap: 10px;
@@ -6981,6 +7322,60 @@ body.auth-locked .page-shell > :not(#loginModal) {
 
   .hero-copy h2 {
     font-size: 2rem;
+  }
+}
+
+@media (max-width: 900px) {
+  #groomingModal {
+    padding: 8px;
+  }
+
+  .grooming-modal {
+    width: min(100%, calc(100vw - 16px));
+    max-height: calc(100vh - 16px);
+  }
+
+  .grooming-modal__body {
+    padding: 14px 12px 0;
+  }
+
+  .grooming-modal__row--date,
+  .grooming-modal__attachments-grid,
+  .grooming-modal__bottom-grid,
+  .grooming-service-item__grid {
+    grid-template-columns: 1fr;
+  }
+
+  .grooming-modal__date-field input {
+    max-width: none;
+  }
+
+  .grooming-modal__footer {
+    padding: 12px;
+  }
+}
+
+@media (max-width: 640px) {
+  .grooming-modal__header {
+    padding: 8px 10px;
+  }
+
+  .grooming-modal__title {
+    font-size: 0.88rem;
+  }
+
+  .grooming-modal__subtitle {
+    font-size: 0.68rem;
+  }
+
+  .grooming-service-item__header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .grooming-modal__footer .form-actions {
+    width: 100%;
+    justify-content: flex-end;
   }
 }
 

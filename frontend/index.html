@@ -812,20 +812,16 @@
 
           <div class="two-column-grid">
             <article id="consultorioGroomingFormPanel" class="panel-card">
-              <div class="panel-heading"><div><p class="eyebrow">Peluqueria</p><h3>Documento de servicio</h3></div></div>
-              <form id="groomingForm" class="form-grid">
-                <label class="full"><span>Paciente</span><select id="groomingPatientSelect" name="patient_id" required></select></label>
-                <label><span>Fecha</span><input name="service_at" type="datetime-local" /></label>
-                <label><span>Tipo de documento</span><input name="document_type" placeholder="Orden, ficha o salida" required /></label>
-                <label class="full"><span>Servicio</span><input name="service_name" placeholder="Bano, corte, spa" required /></label>
-                <label><span>Responsable</span><input name="stylist_name" required /></label>
-                <label><span>Estado</span><select name="status"><option value="scheduled">Programado</option><option value="in_progress">En proceso</option><option value="completed">Completado</option><option value="cancelled">Cancelado</option></select></label>
-                <label class="full"><span>Productos usados</span><textarea name="products_used" rows="2"></textarea></label>
-                <label class="full"><span>Recomendaciones</span><textarea name="recommendations" rows="2"></textarea></label>
-                <label><span>Proxima visita</span><input name="next_visit_at" type="datetime-local" /></label>
-                <label class="full"><span>Notas</span><textarea name="notes" rows="2"></textarea></label>
-                <div class="full form-actions"><button class="primary-button" type="submit">Guardar documento</button></div>
-              </form>
+              <div class="panel-heading"><div><p class="eyebrow">Peluqueria</p><h3>Registro guiado de servicio</h3></div></div>
+              <div class="grooming-launch-panel">
+                <p class="section-copy">
+                  Abre un modal completo para registrar fecha, varios servicios, encargado, observaciones,
+                  fotos antes/despues y proxima cita del paciente.
+                </p>
+                <div class="form-actions">
+                  <button id="openGroomingModalButton" class="primary-button" type="button">Abrir registro de peluqueria</button>
+                </div>
+              </div>
             </article>
           </div>
 
@@ -2624,6 +2620,113 @@
       </div>
     </div>
 
+    <div id="groomingModal" class="modal-shell is-hidden" aria-hidden="true">
+      <div class="modal-backdrop" data-close-grooming-modal="true"></div>
+      <div class="modal-card grooming-modal" role="dialog" aria-modal="true" aria-labelledby="groomingModalTitle">
+        <div class="grooming-modal__header">
+          <div class="grooming-modal__heading-copy">
+            <h3 id="groomingModalTitle" class="grooming-modal__title">Registro de peluqueria y spa</h3>
+            <p id="groomingModalSubtitle" class="grooming-modal__subtitle">Captura detallada del servicio realizado al paciente.</p>
+          </div>
+          <button id="closeGroomingModalButton" class="grooming-modal__close" type="button" aria-label="Cerrar">&times;</button>
+        </div>
+
+        <form id="groomingForm" class="consultorio-consultation-form grooming-modal__form">
+          <input name="id" type="hidden" />
+          <input name="document_type" type="hidden" value="Registro de peluqueria y spa" />
+          <input id="groomingServiceNameValue" name="service_name" type="hidden" />
+          <input id="groomingStylistNameValue" name="stylist_name" type="hidden" />
+          <input id="groomingStatusSelect" name="status" type="hidden" value="scheduled" />
+          <textarea id="groomingServicesValue" name="service_details_json" class="is-hidden"></textarea>
+          <textarea id="groomingBeforePhotosValue" name="before_photos" class="is-hidden"></textarea>
+          <textarea id="groomingAfterPhotosValue" name="after_photos" class="is-hidden"></textarea>
+
+          <div class="grooming-modal__body">
+            <div class="grooming-modal__row grooming-modal__row--patient">
+              <label class="consultorio-consultation-form__field full grooming-modal__patient-field">
+                <span>Paciente</span>
+                <select id="groomingPatientSelect" name="patient_id" required></select>
+              </label>
+            </div>
+
+            <div class="grooming-modal__row grooming-modal__row--date">
+              <label class="consultorio-consultation-form__field grooming-modal__date-field">
+                <span>Fecha y hora</span>
+                <input id="groomingServiceAtInput" name="service_at" type="datetime-local" />
+              </label>
+            </div>
+
+            <section class="consultorio-order-builder grooming-modal__services">
+              <p class="consultorio-order-builder__legend">Servicios</p>
+              <div id="groomingServicesList" class="consultorio-order-builder__list"></div>
+              <div class="consultorio-order-builder__footer">
+                <button id="groomingAddServiceButton" class="consultorio-order-builder__add" type="button">+ Agregar servicio</button>
+              </div>
+            </section>
+
+            <label class="consultorio-consultation-form__field full grooming-modal__notes-field">
+              <span>Observaciones</span>
+              <textarea id="groomingNotesInput" name="notes" rows="4" placeholder="Observaciones generales"></textarea>
+            </label>
+
+            <div class="grooming-modal__attachments-grid">
+              <div class="consultorio-consultation-form__field grooming-modal__attachment-field">
+                <span>Foto antes</span>
+                <div class="form-actions">
+                  <input id="groomingBeforePhotoFileInput" type="file" accept="image/*" multiple class="is-hidden" />
+                  <button id="groomingBeforePhotoFileButton" class="grooming-modal__upload-trigger" type="button">+ Agregar</button>
+                </div>
+                <div id="groomingBeforePhotosList" class="consultorio-consultation-attachments grooming-modal__attachments-list"></div>
+              </div>
+
+              <div class="consultorio-consultation-form__field grooming-modal__attachment-field">
+                <span>Foto despues</span>
+                <div class="form-actions">
+                  <input id="groomingAfterPhotoFileInput" type="file" accept="image/*" multiple class="is-hidden" />
+                  <button id="groomingAfterPhotoFileButton" class="grooming-modal__upload-trigger" type="button">+ Agregar</button>
+                </div>
+                <div id="groomingAfterPhotosList" class="consultorio-consultation-attachments grooming-modal__attachments-list"></div>
+              </div>
+            </div>
+
+            <div class="grooming-modal__bottom-grid">
+              <label class="consultorio-consultation-form__field">
+                <span>Proxima cita</span>
+                <input id="groomingNextVisitInput" name="next_visit_at" type="date" />
+              </label>
+              <label class="consultorio-consultation-form__field">
+                <span>Vacunacion antirrabica vigente</span>
+                <select id="groomingRabiesStatusSelect" name="rabies_status">
+                  <option value="">Selecciona una opcion</option>
+                  <option value="vigente">Vigente</option>
+                  <option value="vencida">Vencida</option>
+                  <option value="pendiente">Pendiente</option>
+                  <option value="no_registra">Sin registro</option>
+                  <option value="no_aplica">No aplica</option>
+                </select>
+              </label>
+            </div>
+          </div>
+
+          <div class="consultorio-consultation-form__footer consultorio-consultation-form__footer--align-end grooming-modal__footer">
+            <div class="form-actions">
+              <button id="cancelGroomingModalButton" class="consultorio-consultation-form__cancel" type="button">Cerrar</button>
+              <button class="consultorio-consultation-form__submit" type="submit">
+                <span class="consultorio-consultation-form__submit-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M5 4h11l3 3v13H5z"></path>
+                    <path d="M8 4v6h8V4"></path>
+                    <path d="M9 20v-6h6v6"></path>
+                  </svg>
+                </span>
+                <span>Guardar registro</span>
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+
 
     </main>
 
@@ -2648,6 +2751,6 @@
     </div>
   </div>
 
-  <script src="/app.js?v=20260409-03"></script>
+  <script src="/app.js?v=20260411-01"></script>
 </body>
 </html>
