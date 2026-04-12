@@ -1293,8 +1293,6 @@ const sectionSubsections = {
           "salesDocumentFormPanel",
           "salesPaymentFormPanel",
           "salesDocumentsPanel",
-          "salesDocumentDetailPanel",
-          "salesClientsPanel",
         ],
       },
       {
@@ -4268,6 +4266,7 @@ function renderSales() {
     salesSelectedDocument = null;
   }
   const documentMode = getSalesDocumentModeMeta();
+  const showDocumentDetailAction = getActiveSalesSubsectionValue() !== "factura";
   const filteredBillingDocuments = state.billing_documents.filter(
     (document) => !activeDocumentType || document.document_type === activeDocumentType
   );
@@ -4328,7 +4327,11 @@ function renderSales() {
         <p>Total: ${formatMoney(document.total || 0)} / Pagado: ${formatMoney(document.amount_paid || 0)}</p>
         <p>Saldo: ${formatMoney(document.balance_due || 0)} / Lineas: ${document.lines_count || 0}</p>
         <div class="item-actions">
-          <button data-view-billing-document="${escapeHtml(document.id)}" type="button">Ver detalle</button>
+          ${
+            showDocumentDetailAction
+              ? `<button data-view-billing-document="${escapeHtml(document.id)}" type="button">Ver detalle</button>`
+              : ""
+          }
           <button data-download-billing-document="${escapeHtml(document.id)}" type="button">PDF</button>
           ${
             document.document_type === "factura" && document.status === "Pendiente"
