@@ -5304,28 +5304,38 @@ button:active {
 
 #sales .sales-form-row label {
   flex: 0 1 180px;
-  min-width: 0;
+  min-width: 120px;
   max-width: 220px;
 }
 
 #sales .sales-form-row .sales-field--xs {
-  flex-basis: 96px;
-  max-width: 96px;
+  flex-basis: 120px;
+  min-width: 120px;
+  max-width: 120px;
 }
 
 #sales .sales-form-row .sales-field--sm {
-  flex-basis: 132px;
-  max-width: 132px;
+  flex-basis: 156px;
+  min-width: 156px;
+  max-width: 156px;
 }
 
 #sales .sales-form-row .sales-field--md {
-  flex-basis: 168px;
-  max-width: 168px;
+  flex-basis: 188px;
+  min-width: 188px;
+  max-width: 188px;
 }
 
 #sales .sales-form-row .sales-field--grow {
   flex: 1 1 240px;
+  min-width: 240px;
   max-width: 360px;
+}
+
+#sales .sales-form-row input,
+#sales .sales-form-row select,
+#sales .sales-form-row textarea {
+  min-width: 0;
 }
 
 #sales .sales-form-actions-inline {
