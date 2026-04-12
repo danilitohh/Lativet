@@ -1293,10 +1293,8 @@ const sectionSubsections = {
         label: "Inventario",
         panels: [
           "salesSummaryMetricsBlock",
-          "salesSummaryPanel",
           "salesCatalogFormPanel",
           "salesStockFormPanel",
-          "salesCatalogPanel",
           "salesStockHistoryPanel",
         ],
       },
