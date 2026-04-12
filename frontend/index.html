@@ -644,46 +644,14 @@
             <div id="stockMovementsList" class="list-surface"></div>
           </article>
 
-          <div class="two-column-grid">
-            <article id="salesDocumentDetailPanel" class="panel-card">
-              <div class="panel-heading">
-                <div>
-                  <p class="eyebrow">Documentos</p>
-                  <h3>Detalle del documento</h3>
-                </div>
-              </div>
-              <div id="salesDocumentDetail" class="sales-detail-shell"></div>
-            </article>
-
-            <article id="salesReportsFiltersPanel" class="panel-card">
-              <div class="panel-heading">
-                <div>
-                  <p class="eyebrow">Reportes</p>
-                  <h3>Filtros y exportacion</h3>
-                </div>
-              </div>
-              <form id="salesReportForm" class="form-grid">
-                <label><span>Desde</span><input name="start_date" type="date" /></label>
-                <label><span>Hasta</span><input name="end_date" type="date" /></label>
-                <label><span>Corte de inventario</span><input name="as_of_date" type="date" /></label>
-                <div class="full form-actions">
-                  <button class="primary-button" type="submit">Actualizar reporte</button>
-                  <button id="salesReportPdfButton" class="secondary-button" type="button">Exportar PDF</button>
-                  <button id="salesInventoryPdfButton" class="ghost-button" type="button">Inventario PDF</button>
-                </div>
-              </form>
-              <div id="salesReportSummaryMini" class="summary-list"></div>
-            </article>
-          </div>
-
-          <article id="salesReportsPanel" class="panel-card panel-card--wide">
+          <article id="salesDocumentDetailPanel" class="panel-card">
             <div class="panel-heading">
               <div>
-                <p class="eyebrow">Reportes</p>
-                <h3>Ventas, cartera, caja e inventario</h3>
+                <p class="eyebrow">Documentos</p>
+                <h3>Detalle del documento</h3>
               </div>
             </div>
-            <div id="salesReportsContent" class="sales-report-shell"></div>
+            <div id="salesDocumentDetail" class="sales-detail-shell"></div>
           </article>
 
         </section>
@@ -1047,7 +1015,7 @@
             </div>
           </div>
 
-          <div class="menu-strip">
+          <div class="menu-strip menu-strip--five">
             <article class="menu-card">
               <h3>Dashboard clasico</h3>
               <p>Totales operativos y actividad reciente.</p>
@@ -1063,6 +1031,10 @@
             <article class="menu-card">
               <h3>Ultima gestion</h3>
               <p>Eventos recientes sobre la base local.</p>
+            </article>
+            <article class="menu-card">
+              <h3>Financieros</h3>
+              <p>Ventas, cartera, caja e inventario con filtros y exportacion.</p>
             </article>
           </div>
 
@@ -1115,6 +1087,43 @@
             </article>
           </div>
 
+          <div class="two-column-grid">
+            <article id="salesReportsFiltersPanel" class="panel-card">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">Reportes</p>
+                  <h3>Filtros y exportacion</h3>
+                </div>
+              </div>
+              <form id="salesReportForm" class="form-grid">
+                <label><span>Desde</span><input name="start_date" type="date" /></label>
+                <label><span>Hasta</span><input name="end_date" type="date" /></label>
+                <label><span>Corte de inventario</span><input name="as_of_date" type="date" /></label>
+                <div class="full form-actions">
+                  <button class="primary-button" type="submit">Actualizar reporte</button>
+                  <button id="salesReportPdfButton" class="secondary-button" type="button">Exportar PDF</button>
+                  <button id="salesInventoryPdfButton" class="ghost-button" type="button">Inventario PDF</button>
+                </div>
+              </form>
+              <div id="salesReportSummaryMini" class="summary-list"></div>
+            </article>
+
+            <article id="reportsBillingDocumentsPanel" class="panel-card">
+              <div class="panel-heading"><div><p class="eyebrow">Documentos</p><h3>Facturacion reciente</h3></div></div>
+              <div id="reportsBillingDocumentsList" class="list-surface"></div>
+            </article>
+          </div>
+
+          <article id="salesReportsPanel" class="panel-card panel-card--wide">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Reportes</p>
+                <h3>Ventas, cartera, caja e inventario</h3>
+              </div>
+            </div>
+            <div id="salesReportsContent" class="sales-report-shell"></div>
+          </article>
+
           <div class="three-column-grid">
             <article id="reportsBillingSummaryPanel" class="panel-card">
               <div class="panel-heading"><div><p class="eyebrow">Ventas</p><h3>Resumen financiero</h3></div></div>
@@ -1131,10 +1140,6 @@
           </div>
 
           <div class="two-column-grid">
-            <article id="reportsBillingDocumentsPanel" class="panel-card">
-              <div class="panel-heading"><div><p class="eyebrow">Documentos</p><h3>Facturacion reciente</h3></div></div>
-              <div id="reportsBillingDocumentsList" class="list-surface"></div>
-            </article>
             <article id="reportsCashPanel" class="panel-card">
               <div class="panel-heading"><div><p class="eyebrow">Caja</p><h3>Movimientos recientes</h3></div></div>
               <div id="reportsCashMovementsList" class="list-surface"></div>

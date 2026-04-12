@@ -292,8 +292,6 @@ const SALES_PANEL_IDS = [
   "salesCashPanel",
   "salesStockHistoryPanel",
   "salesDocumentDetailPanel",
-  "salesReportsFiltersPanel",
-  "salesReportsPanel",
 ];
 const SECTION_DATA_REQUIREMENTS = {
   dashboard: ["dashboard"],
@@ -1334,8 +1332,6 @@ const sectionSubsections = {
           "salesCashSessionPanel",
           "salesCashFormPanel",
           "salesCashPanel",
-          "salesReportsFiltersPanel",
-          "salesReportsPanel",
         ],
       },
     ],
@@ -1405,7 +1401,15 @@ const sectionSubsections = {
       {
         value: "financial",
         label: "Financieros",
-        panels: ["reportsBillingSummaryPanel", "reportsProvidersPanel", "reportsCatalogPanel", "reportsBillingDocumentsPanel", "reportsCashPanel"],
+        panels: [
+          "salesReportsFiltersPanel",
+          "salesReportsPanel",
+          "reportsBillingSummaryPanel",
+          "reportsProvidersPanel",
+          "reportsCatalogPanel",
+          "reportsBillingDocumentsPanel",
+          "reportsCashPanel",
+        ],
       },
     ],
   },
@@ -4038,7 +4042,7 @@ function renderSalesReports() {
   }
   if (!state.sales_report?.summary) {
     elements.salesReportsContent.innerHTML =
-      '<div class="sales-report-empty">Actualiza el reporte para ver cartera, caja e inventario en este modulo.</div>';
+      '<div class="sales-report-empty">Actualiza el reporte para ver cartera, caja e inventario en informes.</div>';
     return;
   }
 
@@ -4385,11 +4389,6 @@ function renderSales() {
   );
 
   renderSalesDocumentDetail();
-  renderSalesReportMiniSummary();
-  renderSalesReports();
-  if (getActiveSalesSubsectionValue() === "caja" && !salesReportState.loaded && !salesReportState.loading) {
-    void loadSalesReport({ silent: true });
-  }
 }
 
 function renderDashboard() {
@@ -9907,6 +9906,7 @@ function renderRequests() {
 function renderReports() {
   const reports = state.reports || {};
   const totals = reports.totals || {};
+  const activeReportsView = getSubsectionOption("reports")?.value || "classic";
   elements.reportOwnersTotal.textContent = totals.owners ?? 0;
   elements.reportPatientsTotal.textContent = totals.patients ?? 0;
   elements.reportRecordsTotal.textContent = totals.records ?? 0;
@@ -10000,6 +10000,11 @@ function renderReports() {
     )}</p><p>${escapeHtml(humanStatus(movement.movement_type))}</p></article>`,
     "Sin movimientos de caja."
   );
+  renderSalesReportMiniSummary();
+  renderSalesReports();
+  if (activeReportsView === "financial" && !salesReportState.loaded && !salesReportState.loading) {
+    void loadSalesReport({ silent: true });
+  }
 }
 
 function renderCompliance() {
