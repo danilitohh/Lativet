@@ -276,6 +276,26 @@ const CONSULTORIO_PANEL_IDS = [
   "consultorioConsultationsPanel",
   "consultorioGroomingPanel",
 ];
+const SALES_PANEL_IDS = [
+  "salesSummaryMetricsBlock",
+  "salesProviderFormPanel",
+  "salesCatalogFormPanel",
+  "salesDocumentFormPanel",
+  "salesPaymentFormPanel",
+  "salesCashFormPanel",
+  "salesStockFormPanel",
+  "salesSummaryPanel",
+  "salesProvidersPanel",
+  "salesClientsPanel",
+  "salesDocumentsPanel",
+  "salesCatalogPanel",
+  "salesCashPanel",
+  "salesStockHistoryPanel",
+  "salesDocumentDetailPanel",
+  "salesReportsFiltersPanel",
+  "salesReportsPanel",
+  "salesSettingsPanel",
+];
 const SECTION_DATA_REQUIREMENTS = {
   dashboard: ["dashboard"],
   administration: ["users"],
@@ -3174,7 +3194,10 @@ function applySectionSubsection(sectionId) {
     return;
   }
   const visiblePanels = new Set(option.panels || []);
-  const allPanels = new Set(config.options.flatMap((item) => item.panels || []));
+  const allPanels =
+    sectionId === "sales"
+      ? new Set(SALES_PANEL_IDS)
+      : new Set(config.options.flatMap((item) => item.panels || []));
   allPanels.forEach((panelId) => {
     const panel = getElement(panelId);
     if (panel) {
