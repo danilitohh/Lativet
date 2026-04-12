@@ -949,6 +949,54 @@ class WebSmokeTests(unittest.TestCase):
         self.assertEqual(snapshot["reports"]["totals"]["providers"], 1)
         self.assertEqual(snapshot["reports"]["totals"]["catalog_items"], 1)
 
+    def test_http_supports_cash_opening_and_closing(self) -> None:
+        opened = self.assert_ok(
+            self.client.post(
+                "/api/cash-sessions/open",
+                json={
+                    "session_date": "2026-03-27",
+                    "cash_account": "caja_mayor",
+                    "opening_amount": "250000",
+                    "opening_notes": "Base inicial",
+                },
+            )
+        )
+        self.assertEqual(opened["status"], "open")
+        self.assertEqual(opened["cash_account"], "caja_mayor")
+
+        self.assert_ok(
+            self.client.post(
+                "/api/cash-movements",
+                json={
+                    "movement_type": "ingreso",
+                    "concept": "Venta del dia",
+                    "amount": "80000",
+                    "movement_date": "2026-03-27",
+                    "cash_account": "caja_mayor",
+                    "category": "Venta",
+                },
+            )
+        )
+
+        closed = self.assert_ok(
+            self.client.post(
+                "/api/cash-sessions/close",
+                json={
+                    "session_date": "2026-03-27",
+                    "cash_account": "caja_mayor",
+                    "closing_amount": "330000",
+                    "closing_notes": "Cierre correcto",
+                },
+            )
+        )
+        self.assertEqual(closed["status"], "closed")
+        self.assertEqual(closed["expected_closing_amount"], 330000.0)
+        self.assertEqual(closed["difference_amount"], 0.0)
+
+        snapshot = self.assert_ok(self.client.get("/api/bootstrap"))
+        self.assertEqual(len(snapshot["cash_sessions"]), 1)
+        self.assertEqual(snapshot["cash_sessions"][0]["cash_account_label"], "Caja mayor")
+
 
 if __name__ == "__main__":
     unittest.main()

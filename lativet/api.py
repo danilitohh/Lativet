@@ -268,6 +268,14 @@ class LativetService:
         return self._db.save_cash_movement(payload)
 
     @safe_api_call
+    def open_cash_session(self, payload: dict) -> dict:
+        return self._db.open_cash_session(payload)
+
+    @safe_api_call
+    def close_cash_session(self, payload: dict) -> dict:
+        return self._db.close_cash_session(payload)
+
+    @safe_api_call
     def save_stock_adjustment(self, payload: dict) -> dict:
         return self._db.adjust_catalog_stock(payload)
 

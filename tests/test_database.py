@@ -976,6 +976,70 @@ class DatabaseSmokeTests(unittest.TestCase):
         self.assertEqual(snapshot["reports"]["totals"]["providers"], 1)
         self.assertEqual(snapshot["reports"]["totals"]["catalog_items"], 1)
 
+    def test_cash_session_tracks_opening_and_closing_totals(self) -> None:
+        opened = self.db.open_cash_session(
+            {
+                "session_date": "2026-03-27",
+                "cash_account": "caja_menor",
+                "opening_amount": "150000",
+                "opening_notes": "Base del dia",
+            }
+        )
+        self.assertEqual(opened["status"], "open")
+        self.assertEqual(opened["opening_amount"], 150000.0)
+        self.assertEqual(opened["expected_closing_amount"], 150000.0)
+
+        self.db.save_cash_movement(
+            {
+                "movement_type": "ingreso",
+                "concept": "Venta mostrador",
+                "amount": "50000",
+                "movement_date": "2026-03-27",
+                "cash_account": "caja_menor",
+                "category": "Venta",
+            }
+        )
+        self.db.save_cash_movement(
+            {
+                "movement_type": "gasto",
+                "concept": "Pago transporte",
+                "amount": "10000",
+                "movement_date": "2026-03-27",
+                "cash_account": "caja_menor",
+                "category": "Operacion",
+            }
+        )
+
+        closed = self.db.close_cash_session(
+            {
+                "session_date": "2026-03-27",
+                "cash_account": "caja_menor",
+                "closing_amount": "192000",
+                "closing_notes": "Conteo final",
+            }
+        )
+        self.assertEqual(closed["status"], "closed")
+        self.assertEqual(closed["income_total"], 50000.0)
+        self.assertEqual(closed["expense_total"], 10000.0)
+        self.assertEqual(closed["expected_closing_amount"], 190000.0)
+        self.assertEqual(closed["difference_amount"], 2000.0)
+
+        sessions = self.db.list_cash_sessions()
+        self.assertEqual(len(sessions), 1)
+        self.assertEqual(sessions[0]["cash_account_label"], "Caja menor")
+
+        snapshot = self.db.bootstrap()
+        self.assertEqual(len(snapshot["cash_sessions"]), 1)
+
+        with self.assertRaises(ValidationError):
+            self.db.open_cash_session(
+                {
+                    "session_date": "2026-03-27",
+                    "cash_account": "caja_menor",
+                    "opening_amount": "50000",
+                }
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

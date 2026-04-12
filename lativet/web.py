@@ -289,6 +289,14 @@ def create_app(base_dir: Path | None = None, data_dir: Path | None = None) -> Fl
     def save_cash_movement():
         return respond(service.save_cash_movement(payload()))
 
+    @app.post("/api/cash-sessions/open")
+    def open_cash_session():
+        return respond(service.open_cash_session(payload()))
+
+    @app.post("/api/cash-sessions/close")
+    def close_cash_session():
+        return respond(service.close_cash_session(payload()))
+
     @app.post("/api/stock-adjustments")
     def save_stock_adjustment():
         return respond(service.save_stock_adjustment(payload()))

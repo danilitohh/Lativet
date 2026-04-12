@@ -7215,6 +7215,16 @@ body.auth-locked .page-shell > :not(#loginModal) {
   background: rgba(204, 251, 241, 0.9);
 }
 
+.sales-stock-badge--info {
+  color: #1d4ed8;
+  background: rgba(219, 234, 254, 0.96);
+}
+
+.sales-stock-badge--neutral {
+  color: #475467;
+  background: rgba(241, 245, 249, 0.95);
+}
+
 .sales-price-final {
   color: #0b5a53;
   font-weight: 800;
@@ -7250,6 +7260,71 @@ body.auth-locked .page-shell > :not(#loginModal) {
 .sales-pricing-save {
   min-width: 86px;
   padding-inline: 12px;
+}
+
+.sales-cash-session-shell {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.sales-cash-session-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.sales-cash-session-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.sales-cash-session-card {
+  padding: 14px;
+  border-radius: 18px;
+  border: 1px solid rgba(42, 126, 138, 0.14);
+  background: rgba(255, 255, 255, 0.92);
+  display: grid;
+  gap: 10px;
+}
+
+.sales-cash-session-card header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.sales-cash-session-card h4 {
+  margin: 0;
+  font-size: 0.92rem;
+}
+
+.sales-cash-session-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.sales-cash-session-form {
+  padding: 14px;
+  border-radius: 18px;
+  border: 1px solid rgba(42, 126, 138, 0.12);
+  background: rgba(244, 249, 250, 0.86);
+}
+
+.sales-cash-session-difference--balanced {
+  color: #0f766e;
+}
+
+.sales-cash-session-difference--positive {
+  color: #1d4ed8;
+}
+
+.sales-cash-session-difference--negative {
+  color: #b42318;
 }
 
 .sales-email-form {
@@ -7290,6 +7365,11 @@ body.auth-locked .page-shell > :not(#loginModal) {
   }
 
   .agenda-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .sales-cash-session-grid,
+  .sales-cash-session-actions {
     grid-template-columns: 1fr;
   }
 

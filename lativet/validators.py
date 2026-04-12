@@ -521,6 +521,36 @@ def validate_cash_movement(payload: dict) -> dict:
     }
 
 
+def validate_cash_session_open(payload: dict) -> dict:
+    opening_amount = optional_float(payload, "opening_amount")
+    if opening_amount is None or opening_amount < 0:
+        raise ValidationError("El monto de apertura no puede ser negativo.")
+    return {
+        "session_date": parse_date(
+            required_text(payload, "session_date", "Fecha de caja"),
+            "Fecha de caja",
+        ),
+        "cash_account": required_text(payload, "cash_account", "Cuenta de caja"),
+        "opening_amount": opening_amount,
+        "opening_notes": optional_text(payload, "opening_notes"),
+    }
+
+
+def validate_cash_session_close(payload: dict) -> dict:
+    closing_amount = optional_float(payload, "closing_amount")
+    if closing_amount is None or closing_amount < 0:
+        raise ValidationError("El monto de cierre no puede ser negativo.")
+    return {
+        "session_date": parse_date(
+            required_text(payload, "session_date", "Fecha de caja"),
+            "Fecha de caja",
+        ),
+        "cash_account": required_text(payload, "cash_account", "Cuenta de caja"),
+        "closing_amount": closing_amount,
+        "closing_notes": optional_text(payload, "closing_notes"),
+    }
+
+
 def validate_inventory_adjustment(payload: dict) -> dict:
     quantity = optional_float(payload, "quantity")
     if quantity is None or quantity <= 0:

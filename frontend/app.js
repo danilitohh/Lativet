@@ -15,6 +15,7 @@ const state = {
   billing_clients: [],
   billing_documents: [],
   cash_movements: [],
+  cash_sessions: [],
   stock_movements: [],
   users: [],
   billing_summary: {},
@@ -283,6 +284,7 @@ const SALES_PANEL_IDS = [
   "salesDocumentFormPanel",
   "salesPaymentFormPanel",
   "salesCashFormPanel",
+  "salesCashSessionPanel",
   "salesStockFormPanel",
   "salesSummaryPanel",
   "salesProvidersPanel",
@@ -305,6 +307,7 @@ const SECTION_DATA_REQUIREMENTS = {
     "billing_clients",
     "billing_documents",
     "cash_movements",
+    "cash_sessions",
     "stock_movements",
     "billing_summary",
   ],
@@ -1247,6 +1250,11 @@ const consentTemplates = {
   },
 };
 const billingCashAccounts = ["caja_menor", "caja_mayor", "transferencia"];
+const billingCashAccountLabels = {
+  caja_menor: "Caja menor",
+  caja_mayor: "Caja mayor",
+  transferencia: "Transferencias",
+};
 const sectionSubsections = {
   dashboard: {
     label: "Vista del dashboard",
@@ -1333,6 +1341,7 @@ const sectionSubsections = {
         panels: [
           "salesSummaryMetricsBlock",
           "salesSummaryPanel",
+          "salesCashSessionPanel",
           "salesCashFormPanel",
           "salesCashPanel",
           "salesReportsFiltersPanel",
@@ -1745,6 +1754,10 @@ function statusClass(status) {
   return `pill pill--${normalized}`;
 }
 
+function cashAccountLabel(value) {
+  return billingCashAccountLabels[value] || value || "Sin caja";
+}
+
 async function apiRequest(path, options = {}) {
   const response = await fetch(path, {
     headers: {
@@ -1822,6 +1835,10 @@ const api = {
     apiRequest("/api/google-calendar/disconnect", { method: "POST", body: "{}" }),
   saveCashMovement: (payload) =>
     apiRequest("/api/cash-movements", { method: "POST", body: JSON.stringify(payload) }),
+  openCashSession: (payload) =>
+    apiRequest("/api/cash-sessions/open", { method: "POST", body: JSON.stringify(payload) }),
+  closeCashSession: (payload) =>
+    apiRequest("/api/cash-sessions/close", { method: "POST", body: JSON.stringify(payload) }),
   saveStockAdjustment: (payload) =>
     apiRequest("/api/stock-adjustments", { method: "POST", body: JSON.stringify(payload) }),
   saveBillingDocument: (payload) =>
@@ -2940,6 +2957,8 @@ function cacheElements() {
     "billingSettingsForm",
     "billingPaymentForm",
     "cashMovementForm",
+    "cashSessionOpenForm",
+    "cashSessionCloseForm",
     "stockAdjustmentForm",
     "recordForm",
     "consultationForm",
@@ -2968,6 +2987,7 @@ function cacheElements() {
     "salesCatalogPanelTitle",
     "billingClientsList",
     "billingDocumentsList",
+    "cashSessionsSummary",
     "salesDocumentDetail",
     "salesReportsContent",
     "salesReportForm",
@@ -3771,6 +3791,109 @@ async function handleCatalogItemsClick(event) {
   await handleCatalogPricingSave(saveButton.dataset.savePricing || "");
 }
 
+function getSelectedCashSessionDate() {
+  return (
+    elements.cashSessionOpenForm?.elements?.session_date?.value ||
+    elements.cashSessionCloseForm?.elements?.session_date?.value ||
+    new Date().toISOString().slice(0, 10)
+  );
+}
+
+function getCashDayTotals(sessionDate, cashAccount) {
+  return state.cash_movements.reduce(
+    (totals, movement) => {
+      if (movement.movement_date !== sessionDate || movement.cash_account !== cashAccount) {
+        return totals;
+      }
+      const amount = Number(movement.amount || 0);
+      if (movement.movement_type === "ingreso") {
+        totals.income += amount;
+      } else if (movement.movement_type === "gasto") {
+        totals.expense += amount;
+      }
+      return totals;
+    },
+    { income: 0, expense: 0 }
+  );
+}
+
+function renderCashSessionsSummary() {
+  if (!elements.cashSessionsSummary) {
+    return;
+  }
+  const sessionDate = getSelectedCashSessionDate();
+  const cards = billingCashAccounts.map((cashAccount) => {
+    const session = state.cash_sessions.find(
+      (item) => item.session_date === sessionDate && item.cash_account === cashAccount
+    );
+    const dailyTotals = getCashDayTotals(sessionDate, cashAccount);
+    const openingAmount = Number(session?.opening_amount || 0);
+    const incomeTotal = Number(session?.income_total ?? dailyTotals.income);
+    const expenseTotal = Number(session?.expense_total ?? dailyTotals.expense);
+    const expectedClosingAmount = Number(
+      session?.expected_closing_amount ?? openingAmount + incomeTotal - expenseTotal
+    );
+    const closingAmountRaw = session?.closing_amount;
+    const closingAmount =
+      closingAmountRaw === null || closingAmountRaw === undefined || closingAmountRaw === ""
+        ? null
+        : Number(closingAmountRaw);
+    const differenceAmountRaw = session?.difference_amount;
+    const differenceAmount =
+      differenceAmountRaw === null ||
+      differenceAmountRaw === undefined ||
+      differenceAmountRaw === ""
+        ? null
+        : Number(differenceAmountRaw);
+    const statusLabel = !session ? "Sin apertura" : session.is_closed ? "Cerrada" : "Abierta";
+    const statusClassName = !session
+      ? "sales-stock-badge sales-stock-badge--neutral"
+      : session.is_closed
+      ? "sales-stock-badge sales-stock-badge--ok"
+      : "sales-stock-badge sales-stock-badge--info";
+    const differenceClass =
+      differenceAmount === null
+        ? ""
+        : differenceAmount === 0
+        ? "sales-cash-session-difference--balanced"
+        : differenceAmount > 0
+        ? "sales-cash-session-difference--positive"
+        : "sales-cash-session-difference--negative";
+    return `
+      <article class="sales-cash-session-card">
+        <header>
+          <h4>${escapeHtml(cashAccountLabel(cashAccount))}</h4>
+          <span class="${statusClassName}">${escapeHtml(statusLabel)}</span>
+        </header>
+        <div class="sales-detail-kv">
+          <span>Apertura</span>
+          <strong>${escapeHtml(formatMoney(openingAmount))}</strong>
+          <span>Ingresos del dia</span>
+          <strong>${escapeHtml(formatMoney(incomeTotal))}</strong>
+          <span>Gastos del dia</span>
+          <strong>${escapeHtml(formatMoney(expenseTotal))}</strong>
+          <span>Cierre esperado</span>
+          <strong>${escapeHtml(formatMoney(expectedClosingAmount))}</strong>
+          <span>Cierre registrado</span>
+          <strong>${escapeHtml(closingAmount === null ? "Pendiente" : formatMoney(closingAmount))}</strong>
+          <span>Diferencia</span>
+          <strong class="${differenceClass}">${escapeHtml(
+            differenceAmount === null ? "Pendiente" : formatMoney(differenceAmount)
+          )}</strong>
+        </div>
+      </article>
+    `;
+  });
+  elements.cashSessionsSummary.innerHTML = `
+    <div class="sales-cash-session-header">
+      <p class="sales-section-note">Control diario para ${escapeHtml(
+        formatDateTime(sessionDate)
+      )}.</p>
+    </div>
+    <div class="sales-cash-session-grid">${cards.join("")}</div>
+  `;
+}
+
 function renderSalesDocumentDetail() {
   if (!elements.salesDocumentDetail) {
     return;
@@ -4129,6 +4252,8 @@ function syncBillingDocumentFormState() {
     elements.billingCashAccountSelect,
     elements.billingPaymentForm?.elements?.cash_account,
     elements.cashMovementForm?.elements?.cash_account,
+    elements.cashSessionOpenForm?.elements?.cash_account,
+    elements.cashSessionCloseForm?.elements?.cash_account,
     elements.billingDocumentForm?.elements?.initial_payment_cash_account,
   ].forEach((field) => {
     if (field && !field.value) {
@@ -4255,13 +4380,17 @@ function renderSales() {
             humanStatus(movement.movement_type)
           )}</span>
         </header>
-        <p>${formatMoney(movement.amount || 0)} / ${escapeHtml(movement.cash_account || "Sin caja")}</p>
+        <p>${formatMoney(movement.amount || 0)} / ${escapeHtml(
+          cashAccountLabel(movement.cash_account)
+        )}</p>
         <p>${escapeHtml(movement.category || "Sin categoria")}</p>
         <p>${movement.auto_generated ? "Generado automaticamente" : "Movimiento manual"}</p>
       </article>
     `,
     "Aun no hay movimientos de caja."
   );
+
+  renderCashSessionsSummary();
 
   renderList(
     elements.stockMovementsList,
@@ -10301,6 +10430,8 @@ function setDateTimeDefaults() {
     "billingDocumentForm",
     "billingPaymentForm",
     "cashMovementForm",
+    "cashSessionOpenForm",
+    "cashSessionCloseForm",
     "stockAdjustmentForm",
     "recordForm",
     "consultationForm",
@@ -16253,6 +16384,44 @@ async function handleCashMovementSubmit(event) {
   setActiveSection("sales");
 }
 
+async function handleCashSessionOpenSubmit(event) {
+  event.preventDefault();
+  const payload = serializeForm(event.currentTarget);
+  const session = await api.openCashSession(payload);
+  if (event.currentTarget.elements.opening_amount) {
+    event.currentTarget.elements.opening_amount.value = "0";
+  }
+  if (event.currentTarget.elements.opening_notes) {
+    event.currentTarget.elements.opening_notes.value = "";
+  }
+  if (elements.cashSessionCloseForm?.elements?.session_date) {
+    elements.cashSessionCloseForm.elements.session_date.value = session.session_date || payload.session_date;
+  }
+  if (elements.cashSessionCloseForm?.elements?.cash_account) {
+    elements.cashSessionCloseForm.elements.cash_account.value = session.cash_account || payload.cash_account;
+  }
+  salesReportState.loaded = false;
+  await refreshData(`Apertura registrada en ${cashAccountLabel(session.cash_account)}.`);
+  setActiveSection("sales");
+  setSectionSubsection("sales", "caja");
+}
+
+async function handleCashSessionCloseSubmit(event) {
+  event.preventDefault();
+  const payload = serializeForm(event.currentTarget);
+  const session = await api.closeCashSession(payload);
+  if (event.currentTarget.elements.closing_amount) {
+    event.currentTarget.elements.closing_amount.value = "0";
+  }
+  if (event.currentTarget.elements.closing_notes) {
+    event.currentTarget.elements.closing_notes.value = "";
+  }
+  salesReportState.loaded = false;
+  await refreshData(`Cierre registrado en ${cashAccountLabel(session.cash_account)}.`);
+  setActiveSection("sales");
+  setSectionSubsection("sales", "caja");
+}
+
 async function handleStockAdjustmentSubmit(event) {
   event.preventDefault();
   await api.saveStockAdjustment(serializeForm(event.currentTarget));
@@ -18223,6 +18392,32 @@ function bindForms() {
   elements.billingDocumentForm.addEventListener("submit", wrapAsync(handleBillingDocumentSubmit));
   elements.billingPaymentForm.addEventListener("submit", wrapAsync(handleBillingPaymentSubmit));
   elements.cashMovementForm.addEventListener("submit", wrapAsync(handleCashMovementSubmit));
+  if (elements.cashSessionOpenForm) {
+    elements.cashSessionOpenForm.addEventListener("submit", wrapAsync(handleCashSessionOpenSubmit));
+    elements.cashSessionOpenForm.addEventListener("change", (event) => {
+      const field = event.target.closest('input[name="session_date"]');
+      if (!field) {
+        return;
+      }
+      if (elements.cashSessionCloseForm?.elements?.session_date) {
+        elements.cashSessionCloseForm.elements.session_date.value = field.value || "";
+      }
+      renderCashSessionsSummary();
+    });
+  }
+  if (elements.cashSessionCloseForm) {
+    elements.cashSessionCloseForm.addEventListener("submit", wrapAsync(handleCashSessionCloseSubmit));
+    elements.cashSessionCloseForm.addEventListener("change", (event) => {
+      const field = event.target.closest('input[name="session_date"]');
+      if (!field) {
+        return;
+      }
+      if (elements.cashSessionOpenForm?.elements?.session_date) {
+        elements.cashSessionOpenForm.elements.session_date.value = field.value || "";
+      }
+      renderCashSessionsSummary();
+    });
+  }
   elements.stockAdjustmentForm.addEventListener("submit", wrapAsync(handleStockAdjustmentSubmit));
   elements.consultationForm.addEventListener("submit", wrapAsync(handleConsultationSubmit));
   elements.evolutionForm.addEventListener("submit", wrapAsync(handleEvolutionSubmit));

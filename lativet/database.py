@@ -19,6 +19,8 @@ from .validators import (
     validate_billing_document,
     validate_billing_payment,
     validate_cash_movement,
+    validate_cash_session_close,
+    validate_cash_session_open,
     validate_catalog_item,
     validate_clinical_record,
     validate_consultation,
@@ -74,6 +76,11 @@ GROOMING_STATUSES = {"scheduled", "in_progress", "completed", "cancelled"}
 BILLING_DOCUMENT_TYPES = {"factura", "cotizacion"}
 BILLING_PAYMENT_METHODS = {"Pendiente", "Efectivo", "Transferencia", "Tarjeta", "Otro"}
 BILLING_CASH_ACCOUNTS = {"caja_menor", "caja_mayor", "transferencia"}
+BILLING_CASH_ACCOUNT_LABELS = {
+    "caja_menor": "Caja menor",
+    "caja_mayor": "Caja mayor",
+    "transferencia": "Transferencias",
+}
 TRUTHY_VALUES = {"1", "true", "on", "yes", "si", "s"}
 
 
@@ -571,6 +578,23 @@ class Database:
                 FOREIGN KEY (related_payment_id) REFERENCES billing_document_payments(id)
             );
 
+            CREATE TABLE IF NOT EXISTS billing_cash_sessions (
+                id TEXT PRIMARY KEY,
+                session_date TEXT NOT NULL,
+                cash_account TEXT NOT NULL,
+                opening_amount REAL NOT NULL DEFAULT 0,
+                opening_notes TEXT,
+                closing_amount REAL,
+                closing_notes TEXT,
+                expected_closing_amount REAL,
+                difference_amount REAL,
+                status TEXT NOT NULL DEFAULT 'open',
+                opened_at TEXT NOT NULL,
+                closed_at TEXT,
+                updated_at TEXT NOT NULL,
+                UNIQUE(session_date, cash_account)
+            );
+
             CREATE TABLE IF NOT EXISTS billing_stock_movements (
                 id TEXT PRIMARY KEY,
                 catalog_item_id TEXT NOT NULL,
@@ -634,6 +658,8 @@ class Database:
             CREATE INDEX IF NOT EXISTS idx_billing_document_items_document ON billing_document_items(document_id);
             CREATE INDEX IF NOT EXISTS idx_billing_payments_document ON billing_document_payments(document_id);
             CREATE INDEX IF NOT EXISTS idx_billing_cash_date ON billing_cash_movements(movement_date);
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_billing_cash_sessions_unique ON billing_cash_sessions(session_date, cash_account);
+            CREATE INDEX IF NOT EXISTS idx_billing_cash_sessions_date ON billing_cash_sessions(session_date, cash_account);
             CREATE INDEX IF NOT EXISTS idx_billing_stock_item ON billing_stock_movements(catalog_item_id);
             CREATE INDEX IF NOT EXISTS idx_staff_users_email ON staff_users(email);
             """
@@ -667,6 +693,7 @@ class Database:
         self._ensure_column("grooming_documents", "before_photos", "TEXT")
         self._ensure_column("grooming_documents", "after_photos", "TEXT")
         self._ensure_column("grooming_documents", "rabies_status", "TEXT")
+        self._ensure_cash_session_schema()
         self._ensure_control_reminder_schema()
 
     def _ensure_column(self, table: str, column: str, definition: str) -> None:
@@ -695,6 +722,40 @@ class Database:
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL
             )
+            """
+        )
+
+    def _ensure_cash_session_schema(self) -> None:
+        self.connection.execute(
+            """
+            CREATE TABLE IF NOT EXISTS billing_cash_sessions (
+                id TEXT PRIMARY KEY,
+                session_date TEXT NOT NULL,
+                cash_account TEXT NOT NULL,
+                opening_amount REAL NOT NULL DEFAULT 0,
+                opening_notes TEXT,
+                closing_amount REAL,
+                closing_notes TEXT,
+                expected_closing_amount REAL,
+                difference_amount REAL,
+                status TEXT NOT NULL DEFAULT 'open',
+                opened_at TEXT NOT NULL,
+                closed_at TEXT,
+                updated_at TEXT NOT NULL,
+                UNIQUE(session_date, cash_account)
+            )
+            """
+        )
+        self.connection.execute(
+            """
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_billing_cash_sessions_unique
+            ON billing_cash_sessions(session_date, cash_account)
+            """
+        )
+        self.connection.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_billing_cash_sessions_date
+            ON billing_cash_sessions(session_date, cash_account)
             """
         )
         self.connection.execute(
@@ -3041,6 +3102,161 @@ class Database:
         ).fetchall()
         return [self._row_to_dict(row) for row in rows]
 
+    def _get_cash_account_day_totals(self, session_date: str, cash_account: str) -> tuple[float, float]:
+        income_total = round_money(
+            self.connection.execute(
+                """
+                SELECT COALESCE(SUM(amount), 0) AS total
+                FROM billing_cash_movements
+                WHERE movement_date = ? AND cash_account = ? AND movement_type = 'ingreso'
+                """,
+                (session_date, cash_account),
+            ).fetchone()["total"]
+        )
+        expense_total = round_money(
+            self.connection.execute(
+                """
+                SELECT COALESCE(SUM(amount), 0) AS total
+                FROM billing_cash_movements
+                WHERE movement_date = ? AND cash_account = ? AND movement_type = 'gasto'
+                """,
+                (session_date, cash_account),
+            ).fetchone()["total"]
+        )
+        return income_total, expense_total
+
+    def _serialize_cash_session(self, row: sqlite3.Row | None) -> dict:
+        if row is None:
+            raise ValidationError("La sesion de caja no existe.")
+        session = self._row_to_dict(row)
+        income_total, expense_total = self._get_cash_account_day_totals(
+            session["session_date"],
+            session["cash_account"],
+        )
+        opening_amount = round_money(float(session.get("opening_amount") or 0))
+        expected_closing_amount = round_money(opening_amount + income_total - expense_total)
+        closing_raw = session.get("closing_amount")
+        closing_amount = (
+            round_money(float(closing_raw)) if closing_raw not in (None, "") else None
+        )
+        difference_amount = (
+            round_money(closing_amount - expected_closing_amount)
+            if closing_amount is not None
+            else None
+        )
+        session.update(
+            {
+                "cash_account_label": BILLING_CASH_ACCOUNT_LABELS.get(
+                    session.get("cash_account") or "",
+                    session.get("cash_account") or "",
+                ),
+                "income_total": income_total,
+                "expense_total": expense_total,
+                "expected_closing_amount": expected_closing_amount,
+                "difference_amount": difference_amount,
+                "is_closed": str(session.get("status") or "") == "closed",
+            }
+        )
+        return session
+
+    def get_cash_session(self, session_id: str) -> dict:
+        row = self.connection.execute(
+            "SELECT * FROM billing_cash_sessions WHERE id = ?",
+            (session_id,),
+        ).fetchone()
+        return self._serialize_cash_session(row)
+
+    def open_cash_session(self, payload: dict) -> dict:
+        data = validate_cash_session_open(payload)
+        if data["cash_account"] not in BILLING_CASH_ACCOUNTS:
+            raise ValidationError("La cuenta de caja no es valida.")
+        existing = self.connection.execute(
+            """
+            SELECT id
+            FROM billing_cash_sessions
+            WHERE session_date = ? AND cash_account = ?
+            """,
+            (data["session_date"], data["cash_account"]),
+        ).fetchone()
+        if existing:
+            raise ValidationError("Ya existe una apertura para esa caja en esa fecha.")
+        session_id = uuid.uuid4().hex
+        timestamp = now_iso()
+        with self._tx():
+            self.connection.execute(
+                """
+                INSERT INTO billing_cash_sessions (
+                    id, session_date, cash_account, opening_amount, opening_notes, closing_amount,
+                    closing_notes, expected_closing_amount, difference_amount, status, opened_at,
+                    closed_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    session_id,
+                    data["session_date"],
+                    data["cash_account"],
+                    data["opening_amount"],
+                    data["opening_notes"],
+                    None,
+                    "",
+                    data["opening_amount"],
+                    None,
+                    "open",
+                    timestamp,
+                    None,
+                    timestamp,
+                ),
+            )
+            self._record_audit("billing_cash_session", session_id, "open", "caja", data)
+        return self.get_cash_session(session_id)
+
+    def close_cash_session(self, payload: dict) -> dict:
+        data = validate_cash_session_close(payload)
+        if data["cash_account"] not in BILLING_CASH_ACCOUNTS:
+            raise ValidationError("La cuenta de caja no es valida.")
+        row = self.connection.execute(
+            """
+            SELECT *
+            FROM billing_cash_sessions
+            WHERE session_date = ? AND cash_account = ?
+            """,
+            (data["session_date"], data["cash_account"]),
+        ).fetchone()
+        if row is None:
+            raise ValidationError("Primero registra la apertura de caja para esa fecha.")
+        session = self._row_to_dict(row)
+        income_total, expense_total = self._get_cash_account_day_totals(
+            data["session_date"],
+            data["cash_account"],
+        )
+        expected_closing_amount = round_money(
+            float(session.get("opening_amount") or 0) + income_total - expense_total
+        )
+        closing_amount = round_money(data["closing_amount"])
+        difference_amount = round_money(closing_amount - expected_closing_amount)
+        timestamp = now_iso()
+        action = "close" if str(session.get("status") or "") != "closed" else "update_close"
+        with self._tx():
+            self.connection.execute(
+                """
+                UPDATE billing_cash_sessions
+                SET closing_amount = ?, closing_notes = ?, expected_closing_amount = ?,
+                    difference_amount = ?, status = 'closed', closed_at = ?, updated_at = ?
+                WHERE id = ?
+                """,
+                (
+                    closing_amount,
+                    data["closing_notes"],
+                    expected_closing_amount,
+                    difference_amount,
+                    timestamp,
+                    timestamp,
+                    session["id"],
+                ),
+            )
+            self._record_audit("billing_cash_session", session["id"], action, "caja", data)
+        return self.get_cash_session(session["id"])
+
     def save_cash_movement(self, payload: dict) -> dict:
         data = validate_cash_movement(payload)
         movement_id = data["id"] or uuid.uuid4().hex
@@ -3112,6 +3328,16 @@ class Database:
             """
         ).fetchall()
         return [self._row_to_dict(row) for row in rows]
+
+    def list_cash_sessions(self) -> list[dict]:
+        rows = self.connection.execute(
+            """
+            SELECT *
+            FROM billing_cash_sessions
+            ORDER BY session_date DESC, opened_at DESC, cash_account ASC
+            """
+        ).fetchall()
+        return [self._serialize_cash_session(row) for row in rows]
 
     def _normalize_sales_report_range(
         self, start_date_value: str | None = None, end_date_value: str | None = None
@@ -3266,11 +3492,6 @@ class Database:
             """,
             (start_date_iso, end_date_iso),
         ).fetchall()
-        cash_account_labels = {
-            "caja_menor": "Caja menor",
-            "caja_mayor": "Caja mayor",
-            "transferencia": "Transferencia",
-        }
         movement_records: list[dict] = []
         manual_cash_movements: list[dict] = []
         for row in movement_rows:
@@ -3287,7 +3508,7 @@ class Database:
             else:
                 payment_method = ""
                 origin = "Manual"
-            movement["cash_account_label"] = cash_account_labels.get(
+            movement["cash_account_label"] = BILLING_CASH_ACCOUNT_LABELS.get(
                 movement.get("cash_account") or "", movement.get("cash_account") or ""
             )
             movement["record_date"] = movement.get("movement_date") or ""
@@ -3932,6 +4153,7 @@ class Database:
                     "billing_clients": self.list_billing_clients(),
                     "billing_documents": self.list_billing_documents(),
                     "cash_movements": self.list_cash_movements(),
+                    "cash_sessions": self.list_cash_sessions(),
                     "stock_movements": self.list_stock_movements(),
                     "billing_summary": self.get_billing_summary(),
                     "requests": self.get_requests_summary(),
@@ -3973,6 +4195,8 @@ class Database:
             payload["billing_documents"] = self.list_billing_documents()
         if include("cash_movements"):
             payload["cash_movements"] = self.list_cash_movements()
+        if include("cash_sessions"):
+            payload["cash_sessions"] = self.list_cash_sessions()
         if include("stock_movements"):
             payload["stock_movements"] = self.list_stock_movements()
         if include("billing_summary"):
