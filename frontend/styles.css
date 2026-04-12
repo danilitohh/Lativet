@@ -5291,21 +5291,45 @@ button:active {
 }
 
 #sales .sales-form-row {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: 10px;
   align-items: end;
+  justify-content: flex-start;
 }
 
 #sales .sales-form-row--compact {
-  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+  justify-content: flex-start;
 }
 
 #sales .sales-form-row label {
+  flex: 0 1 180px;
   min-width: 0;
+  max-width: 220px;
+}
+
+#sales .sales-form-row .sales-field--xs {
+  flex-basis: 96px;
+  max-width: 96px;
+}
+
+#sales .sales-form-row .sales-field--sm {
+  flex-basis: 132px;
+  max-width: 132px;
+}
+
+#sales .sales-form-row .sales-field--md {
+  flex-basis: 168px;
+  max-width: 168px;
+}
+
+#sales .sales-form-row .sales-field--grow {
+  flex: 1 1 240px;
+  max-width: 360px;
 }
 
 #sales .sales-form-actions-inline {
+  flex: 0 0 auto;
   align-items: end;
   justify-content: flex-start;
   min-height: 100%;
