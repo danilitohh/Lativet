@@ -1293,8 +1293,10 @@ const sectionSubsections = {
         label: "Inventario",
         panels: [
           "salesSummaryMetricsBlock",
+          "salesProviderFormPanel",
           "salesCatalogFormPanel",
           "salesStockFormPanel",
+          "salesProvidersPanel",
           "salesStockHistoryPanel",
         ],
       },
@@ -1303,13 +1305,7 @@ const sectionSubsections = {
         label: "Precios",
         panels: [
           "salesSummaryMetricsBlock",
-          "salesSummaryPanel",
-          "salesProviderFormPanel",
-          "salesCatalogFormPanel",
-          "salesProvidersPanel",
           "salesCatalogPanel",
-          "salesClientsPanel",
-          "salesSettingsPanel",
         ],
       },
       {
@@ -1431,6 +1427,23 @@ function formatMoney(value) {
     minimumFractionDigits: amount % 1 === 0 ? 0 : 2,
     maximumFractionDigits: 2,
   });
+}
+
+function roundPricingMoney(value) {
+  return Math.round(Number(value || 0) * 100) / 100;
+}
+
+function formatEditableNumber(value) {
+  const amount = roundPricingMoney(value);
+  return Number.isInteger(amount)
+    ? amount.toString()
+    : amount.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
+}
+
+function computeCatalogSalePrice(purchaseCost, presentationTotal, marginPercent) {
+  const units = Number(presentationTotal || 1) > 0 ? Number(presentationTotal || 1) : 1;
+  const unitCost = roundPricingMoney(Number(purchaseCost || 0) / units);
+  return roundPricingMoney(unitCost * (1 + Number(marginPercent || 0) / 100));
 }
 
 function formatDateTime(value) {
@@ -2932,6 +2945,8 @@ function cacheElements() {
     "billingSummaryList",
     "providersList",
     "catalogItemsList",
+    "salesCatalogPanelEyebrow",
+    "salesCatalogPanelTitle",
     "billingClientsList",
     "billingDocumentsList",
     "salesDocumentDetail",
@@ -3455,6 +3470,21 @@ function resolveSalesSubsectionForDocument(document) {
   return document?.document_type === "cotizacion" ? "cotizacion" : "factura";
 }
 
+function getSalesCatalogPanelMeta() {
+  if (getActiveSalesSubsectionValue() === "precios") {
+    return {
+      eyebrow: "Precios",
+      title: "Tabla de precios de venta",
+      content: buildPricingTable(state.catalog_items),
+    };
+  }
+  return {
+    eyebrow: "Inventario",
+    title: "Productos registrados",
+    content: buildInventoryTable(state.catalog_items),
+  };
+}
+
 function syncSalesDocumentModeUI() {
   const mode = getSalesDocumentModeMeta();
   const hasFilteredDocumentMode = Boolean(mode.document_type);
@@ -3552,6 +3582,171 @@ function buildInventoryTable(items) {
       <div class="sales-table-scroll">${table}</div>
     </div>
   `;
+}
+
+function buildPricingTable(items) {
+  if (!items.length) {
+    return '<div class="sales-report-empty">Aun no hay productos para configurar precios.</div>';
+  }
+  const table = buildSalesHtmlTable(
+    [
+      { label: "Producto", align: "left" },
+      { label: "Categoria", align: "left" },
+      { label: "Proveedor", align: "left" },
+      { label: "Stock" },
+      { label: "Costo base" },
+      { label: "Margen %" },
+      { label: "Precio final" },
+      { label: "Accion" },
+    ],
+    items.map((item) => {
+      const itemId = String(item.id || "");
+      const stockQuantity = Number(item.stock_quantity || 0);
+      const minStock = Number(item.min_stock || 0);
+      const isLowStock = Boolean(item.track_inventory) && stockQuantity < minStock;
+      const purchaseCost = Number(item.purchase_cost || 0);
+      const marginPercent = Number(item.margin_percent || 0);
+      const previewPrice = computeCatalogSalePrice(
+        purchaseCost,
+        item.presentation_total,
+        marginPercent
+      );
+      return [
+        {
+          value: `<div class="sales-pricing-product"><strong>${escapeHtml(
+            item.name || "-"
+          )}</strong></div>`,
+          html: true,
+          align: "left",
+        },
+        { value: item.category || "-", align: "left" },
+        { value: item.provider_name || "Sin proveedor", align: "left" },
+        {
+          value: `<span class="${isLowStock ? "sales-stock-alert" : "sales-stock-ok"}">${escapeHtml(
+            stockQuantity.toString()
+          )}</span>`,
+          html: true,
+        },
+        {
+          value: `<input class="sales-pricing-input sales-pricing-input--money" data-pricing-cost="${escapeHtml(
+            itemId
+          )}" type="number" step="0.01" min="0" value="${escapeHtml(
+            formatEditableNumber(purchaseCost)
+          )}" />`,
+          html: true,
+        },
+        {
+          value: `<input class="sales-pricing-input" data-pricing-margin="${escapeHtml(
+            itemId
+          )}" type="number" step="0.01" min="0" value="${escapeHtml(
+            formatEditableNumber(marginPercent)
+          )}" />`,
+          html: true,
+        },
+        {
+          value: `<strong class="sales-price-final" data-pricing-final="${escapeHtml(
+            itemId
+          )}">${escapeHtml(formatMoney(previewPrice))}</strong>`,
+          html: true,
+        },
+        {
+          value: `<button class="secondary-button sales-pricing-save" data-save-pricing="${escapeHtml(
+            itemId
+          )}" type="button">Guardar</button>`,
+          html: true,
+        },
+      ];
+    }),
+    "Aun no hay productos para configurar precios."
+  );
+  return `
+    <div class="sales-inventory-shell">
+      <p class="sales-section-note sales-pricing-note">Aqui ajustas costo y margen. El precio final guardado es el que se usa en la factura.</p>
+      <div class="sales-table-scroll">${table}</div>
+    </div>
+  `;
+}
+
+function updatePricingPreview(itemId) {
+  if (!itemId || !elements.catalogItemsList) {
+    return;
+  }
+  const item = state.catalog_items.find((entry) => String(entry.id) === String(itemId));
+  if (!item) {
+    return;
+  }
+  const costInput = elements.catalogItemsList.querySelector(`[data-pricing-cost="${itemId}"]`);
+  const marginInput = elements.catalogItemsList.querySelector(`[data-pricing-margin="${itemId}"]`);
+  const priceTarget = elements.catalogItemsList.querySelector(`[data-pricing-final="${itemId}"]`);
+  if (!costInput || !marginInput || !priceTarget) {
+    return;
+  }
+  const purchaseCost = Math.max(0, Number(costInput.value || 0));
+  const marginPercent = Math.max(0, Number(marginInput.value || 0));
+  const previewPrice = computeCatalogSalePrice(
+    purchaseCost,
+    item.presentation_total,
+    marginPercent
+  );
+  priceTarget.textContent = formatMoney(previewPrice);
+}
+
+async function handleCatalogPricingSave(itemId) {
+  if (!itemId || !elements.catalogItemsList) {
+    return;
+  }
+  const item = state.catalog_items.find((entry) => String(entry.id) === String(itemId));
+  if (!item) {
+    throw new Error("No se encontro el producto para actualizar el precio.");
+  }
+  const costInput = elements.catalogItemsList.querySelector(`[data-pricing-cost="${itemId}"]`);
+  const marginInput = elements.catalogItemsList.querySelector(`[data-pricing-margin="${itemId}"]`);
+  const saveButton = elements.catalogItemsList.querySelector(`[data-save-pricing="${itemId}"]`);
+  const purchaseCost = Math.max(0, Number(costInput?.value || 0));
+  const marginPercent = Math.max(0, Number(marginInput?.value || 0));
+  const payload = {
+    id: item.id,
+    provider_id: item.provider_id || "",
+    name: item.name || "",
+    category: item.category || "",
+    purchase_cost: Number.isFinite(purchaseCost) ? purchaseCost : 0,
+    margin_percent: Number.isFinite(marginPercent) ? marginPercent : 0,
+    presentation_total: Number(item.presentation_total || 1) || 1,
+    stock_quantity: Number(item.stock_quantity || 0) || 0,
+    min_stock: Number(item.min_stock || 0) || 0,
+    track_inventory: Boolean(item.track_inventory),
+    notes: item.notes || "",
+  };
+  if (saveButton) {
+    saveButton.disabled = true;
+  }
+  try {
+    await api.saveCatalogItem(payload);
+    salesReportState.loaded = false;
+    await refreshData("Precio de venta actualizado.");
+    setActiveSection("sales");
+    setSectionSubsection("sales", "precios");
+  } finally {
+    if (saveButton) {
+      saveButton.disabled = false;
+    }
+  }
+}
+
+function handleCatalogItemsInput(event) {
+  const input = event.target.closest("[data-pricing-cost], [data-pricing-margin]");
+  if (!input) {
+    return;
+  }
+  updatePricingPreview(input.dataset.pricingCost || input.dataset.pricingMargin || "");
+}
+
+async function handleCatalogItemsClick(event) {
+  const saveButton = event.target.closest("[data-save-pricing]");
+  if (!saveButton) {
+    return;
+  }
+  await handleCatalogPricingSave(saveButton.dataset.savePricing || "");
 }
 
 function renderSalesDocumentDetail() {
@@ -3970,8 +4165,15 @@ function renderSales() {
     "Aun no hay proveedores registrados."
   );
 
+  const catalogPanelMeta = getSalesCatalogPanelMeta();
+  if (elements.salesCatalogPanelEyebrow) {
+    elements.salesCatalogPanelEyebrow.textContent = catalogPanelMeta.eyebrow;
+  }
+  if (elements.salesCatalogPanelTitle) {
+    elements.salesCatalogPanelTitle.textContent = catalogPanelMeta.title;
+  }
   if (elements.catalogItemsList) {
-    elements.catalogItemsList.innerHTML = buildInventoryTable(state.catalog_items);
+    elements.catalogItemsList.innerHTML = catalogPanelMeta.content;
   }
 
   renderList(
@@ -15726,12 +15928,24 @@ async function handleCatalogSubmit(event) {
   event.preventDefault();
   await api.saveCatalogItem(serializeForm(event.currentTarget));
   resetForm(event.currentTarget);
-  event.currentTarget.elements.track_inventory.checked = true;
-  event.currentTarget.elements.purchase_cost.value = "0";
-  event.currentTarget.elements.margin_percent.value = "0";
-  event.currentTarget.elements.presentation_total.value = "1";
-  event.currentTarget.elements.stock_quantity.value = "0";
-  event.currentTarget.elements.min_stock.value = "0";
+  if (event.currentTarget.elements.track_inventory) {
+    event.currentTarget.elements.track_inventory.checked = true;
+  }
+  if (event.currentTarget.elements.purchase_cost) {
+    event.currentTarget.elements.purchase_cost.value = "0";
+  }
+  if (event.currentTarget.elements.margin_percent) {
+    event.currentTarget.elements.margin_percent.value = "0";
+  }
+  if (event.currentTarget.elements.presentation_total) {
+    event.currentTarget.elements.presentation_total.value = "1";
+  }
+  if (event.currentTarget.elements.stock_quantity) {
+    event.currentTarget.elements.stock_quantity.value = "0";
+  }
+  if (event.currentTarget.elements.min_stock) {
+    event.currentTarget.elements.min_stock.value = "0";
+  }
   salesReportState.loaded = false;
   await refreshData("Item de catalogo guardado.");
   setActiveSection("sales");
@@ -17965,6 +18179,10 @@ function bindForms() {
   elements.providerForm.addEventListener("submit", wrapAsync(handleProviderSubmit));
   elements.patientForm.addEventListener("submit", wrapAsync(handlePatientSubmit));
   elements.catalogForm.addEventListener("submit", wrapAsync(handleCatalogSubmit));
+  if (elements.catalogItemsList) {
+    elements.catalogItemsList.addEventListener("input", handleCatalogItemsInput);
+    elements.catalogItemsList.addEventListener("click", wrapAsync(handleCatalogItemsClick));
+  }
   elements.appointmentForm.addEventListener("submit", wrapAsync(handleAppointmentSubmit));
   if (elements.availabilityForm) {
     elements.availabilityForm.addEventListener("submit", wrapAsync(handleAvailabilitySubmit));

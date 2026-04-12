@@ -489,16 +489,13 @@
             </article>
 
             <article id="salesCatalogFormPanel" class="panel-card">
-              <div class="panel-heading"><div><p class="eyebrow">Inventario</p><h3>Nuevo item de catalogo</h3></div></div>
+              <div class="panel-heading"><div><p class="eyebrow">Inventario</p><h3>Nuevo producto</h3></div></div>
               <form id="catalogForm" class="form-grid">
                 <label><span>Proveedor</span><select id="catalogProviderSelect" name="provider_id"></select></label>
                 <label><span>Categoria</span><input name="category" placeholder="Medicamento, servicio, alimento" required /></label>
                 <label class="full"><span>Nombre</span><input name="name" required /></label>
                 <div class="sales-form-row sales-form-row--compact full">
-                  <label class="sales-field--sm"><span>Costo de compra</span><input name="purchase_cost" type="number" step="0.01" min="0" value="0" /></label>
-                  <label class="sales-field--xs"><span>Margen (%)</span><input name="margin_percent" type="number" step="0.01" min="0" value="0" /></label>
-                  <label class="sales-field--xs"><span>Presentacion total</span><input name="presentation_total" type="number" step="0.01" min="0.01" value="1" /></label>
-                  <label class="sales-field--xs"><span>Stock inicial</span><input name="stock_quantity" type="number" step="0.01" value="0" /></label>
+                  <label class="sales-field--xs"><span>Stock actual</span><input name="stock_quantity" type="number" step="0.01" value="0" /></label>
                   <label class="sales-field--xs"><span>Stock minimo</span><input name="min_stock" type="number" step="0.01" value="0" /></label>
                 </div>
                 <label class="checkbox-row full"><input name="track_inventory" type="checkbox" checked /><span>Controlar inventario</span></label>
@@ -612,7 +609,7 @@
               <div id="billingDocumentsList" class="list-surface"></div>
             </article>
             <article id="salesCatalogPanel" class="panel-card panel-card--wide">
-              <div class="panel-heading"><div><p class="eyebrow">Inventario</p><h3>Productos registrados</h3></div></div>
+              <div class="panel-heading"><div><p id="salesCatalogPanelEyebrow" class="eyebrow">Inventario</p><h3 id="salesCatalogPanelTitle">Productos registrados</h3></div></div>
               <div id="catalogItemsList" class="sales-inventory-shell"></div>
             </article>
             <article id="salesCashPanel" class="panel-card">
