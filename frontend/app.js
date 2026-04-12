@@ -285,7 +285,6 @@ const SALES_PANEL_IDS = [
   "salesCashFormPanel",
   "salesCashSessionPanel",
   "salesStockFormPanel",
-  "salesSummaryPanel",
   "salesProvidersPanel",
   "salesClientsPanel",
   "salesDocumentsPanel",
@@ -1293,7 +1292,6 @@ const sectionSubsections = {
         value: "factura",
         label: "Factura",
         panels: [
-          "salesSummaryPanel",
           "salesDocumentFormPanel",
           "salesPaymentFormPanel",
           "salesDocumentsPanel",
@@ -1305,7 +1303,6 @@ const sectionSubsections = {
         value: "cotizacion",
         label: "Cotizacion",
         panels: [
-          "salesSummaryPanel",
           "salesDocumentFormPanel",
           "salesDocumentsPanel",
           "salesDocumentDetailPanel",
@@ -1334,7 +1331,6 @@ const sectionSubsections = {
         value: "caja",
         label: "Caja",
         panels: [
-          "salesSummaryPanel",
           "salesCashSessionPanel",
           "salesCashFormPanel",
           "salesCashPanel",
@@ -2968,7 +2964,6 @@ function cacheElements() {
     "hospitalizationList",
     "ambulatoryList",
     "procedureList",
-    "billingSummaryList",
     "providersList",
     "catalogItemsList",
     "salesCatalogPanelEyebrow",
@@ -4273,12 +4268,6 @@ function renderSales() {
     (document) => !activeDocumentType || document.document_type === activeDocumentType
   );
   const summary = state.billing_summary || {};
-
-  renderSummary(
-    elements.billingSummaryList,
-    getBillingSummaryEntries(summary),
-    "Aun no hay informacion de facturacion."
-  );
 
   renderList(
     elements.providersList,
