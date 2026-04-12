@@ -665,21 +665,6 @@
             <div id="salesReportsContent" class="sales-report-shell"></div>
           </article>
 
-          <article id="salesSettingsPanel" class="panel-card is-hidden">
-            <div class="panel-heading"><div><p class="eyebrow">Ventas</p><h3>Configuracion de facturacion</h3></div></div>
-            <form id="billingSettingsForm" class="form-grid">
-              <label><span>Habilitar correo</span><input name="smtp_enabled" type="checkbox" /></label>
-              <label><span>Correo remitente</span><input name="smtp_from" type="email" /></label>
-              <label><span>Servidor SMTP</span><input name="smtp_host" /></label>
-              <label><span>Puerto SMTP</span><input name="smtp_port" type="number" min="1" max="65535" /></label>
-              <label><span>App password</span><input name="smtp_app_password" type="password" /></label>
-              <label><span>Caja por defecto</span><select name="billing_default_cash_account"><option value="caja_menor">Caja menor</option><option value="caja_mayor">Caja mayor</option><option value="transferencia">Transferencia</option></select></label>
-              <label class="full"><span>Footer de facturacion</span><textarea name="billing_footer" rows="2"></textarea></label>
-              <label class="full"><span>Asunto de correo</span><input name="email_subject_template" /></label>
-              <label class="full"><span>Cuerpo de correo</span><textarea name="email_body_template" rows="3"></textarea></label>
-              <div class="full form-actions"><button class="primary-button" type="submit">Guardar facturacion</button></div>
-            </form>
-          </article>
         </section>
 
         <section id="consultorio" class="workspace-section">

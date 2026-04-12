@@ -294,7 +294,6 @@ const SALES_PANEL_IDS = [
   "salesDocumentDetailPanel",
   "salesReportsFiltersPanel",
   "salesReportsPanel",
-  "salesSettingsPanel",
 ];
 const SECTION_DATA_REQUIREMENTS = {
   dashboard: ["dashboard"],
@@ -18197,7 +18196,9 @@ function bindForms() {
   if (elements.settingsForm) {
     elements.settingsForm.addEventListener("submit", wrapAsync(handleSettingsSubmit));
   }
-  elements.billingSettingsForm.addEventListener("submit", wrapAsync(handleBillingSettingsSubmit));
+  if (elements.billingSettingsForm) {
+    elements.billingSettingsForm.addEventListener("submit", wrapAsync(handleBillingSettingsSubmit));
+  }
   elements.ownerForm.addEventListener("submit", wrapAsync(handleOwnerSubmit));
   elements.providerForm.addEventListener("submit", wrapAsync(handleProviderSubmit));
   elements.patientForm.addEventListener("submit", wrapAsync(handlePatientSubmit));
