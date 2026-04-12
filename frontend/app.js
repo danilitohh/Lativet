@@ -314,6 +314,13 @@ const SECTION_DATA_REQUIREMENTS = {
   reports: ["reports"],
 };
 const SUBSECTION_DATA_REQUIREMENTS = {
+  sales: {
+    factura: ["patients", "catalog_items", "billing_documents"],
+    cotizacion: ["patients", "catalog_items", "billing_documents"],
+    inventario: ["providers", "catalog_items", "stock_movements", "billing_summary"],
+    precios: ["providers", "catalog_items"],
+    caja: ["cash_movements", "cash_sessions"],
+  },
   consultorio: {
     patients: ["owners", "patients"],
     grooming: ["owners", "patients", "grooming_documents"],
@@ -18737,13 +18744,19 @@ async function startDataLoad() {
   showStatus("Version web lista. Cargando configuracion...", "info");
   const activeSectionId = getActiveSectionId();
   const finalizeBootstrapStatus = async () => {
-    await ensureSectionData(activeSectionId, { showError: false });
+    const activeLoaded = await ensureSectionData(activeSectionId, { showError: false });
     const activeReady = getSectionDataRequirements(activeSectionId).every((section) =>
       loadedBootstrapSections.has(section)
     );
+    if (activeReady) {
+      showStatus("Datos operativos cargados.", "success");
+      return;
+    }
     showStatus(
-      activeReady ? "Datos operativos cargados." : "Configuracion cargada. Cargando modulos...",
-      activeReady ? "success" : "info"
+      activeLoaded
+        ? "Configuracion cargada. Algunos modulos se cargaran al abrirlos."
+        : "No fue posible cargar por completo este modulo. Recarga la pagina o cambia de seccion.",
+      activeLoaded ? "info" : "error"
     );
   };
   const cached = loadBootstrapCache();
