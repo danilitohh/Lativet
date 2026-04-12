@@ -278,7 +278,6 @@ const CONSULTORIO_PANEL_IDS = [
   "consultorioGroomingPanel",
 ];
 const SALES_PANEL_IDS = [
-  "salesSummaryMetricsBlock",
   "salesProviderFormPanel",
   "salesCatalogFormPanel",
   "salesDocumentFormPanel",
@@ -1294,7 +1293,6 @@ const sectionSubsections = {
         value: "factura",
         label: "Factura",
         panels: [
-          "salesSummaryMetricsBlock",
           "salesSummaryPanel",
           "salesDocumentFormPanel",
           "salesPaymentFormPanel",
@@ -1307,7 +1305,6 @@ const sectionSubsections = {
         value: "cotizacion",
         label: "Cotizacion",
         panels: [
-          "salesSummaryMetricsBlock",
           "salesSummaryPanel",
           "salesDocumentFormPanel",
           "salesDocumentsPanel",
@@ -1319,7 +1316,6 @@ const sectionSubsections = {
         value: "inventario",
         label: "Inventario",
         panels: [
-          "salesSummaryMetricsBlock",
           "salesProviderFormPanel",
           "salesCatalogFormPanel",
           "salesStockFormPanel",
@@ -1331,7 +1327,6 @@ const sectionSubsections = {
         value: "precios",
         label: "Precios",
         panels: [
-          "salesSummaryMetricsBlock",
           "salesCatalogPanel",
         ],
       },
@@ -1339,7 +1334,6 @@ const sectionSubsections = {
         value: "caja",
         label: "Caja",
         panels: [
-          "salesSummaryMetricsBlock",
           "salesSummaryPanel",
           "salesCashSessionPanel",
           "salesCashFormPanel",
@@ -2974,12 +2968,6 @@ function cacheElements() {
     "hospitalizationList",
     "ambulatoryList",
     "procedureList",
-    "salesDocumentsTotal",
-    "salesInvoicesTotal",
-    "salesQuotesTotal",
-    "salesIncomeTotal",
-    "salesPendingTotal",
-    "salesLowStockTotal",
     "billingSummaryList",
     "providersList",
     "catalogItemsList",
@@ -4285,12 +4273,6 @@ function renderSales() {
     (document) => !activeDocumentType || document.document_type === activeDocumentType
   );
   const summary = state.billing_summary || {};
-  elements.salesDocumentsTotal.textContent = summary.documents_total ?? 0;
-  elements.salesInvoicesTotal.textContent = summary.facturas_total ?? 0;
-  elements.salesQuotesTotal.textContent = summary.cotizaciones_total ?? 0;
-  elements.salesIncomeTotal.textContent = formatMoney(summary.ingresos || 0);
-  elements.salesPendingTotal.textContent = formatMoney(summary.saldo_pendiente || 0);
-  elements.salesLowStockTotal.textContent = summary.low_stock_count ?? 0;
 
   renderSummary(
     elements.billingSummaryList,
