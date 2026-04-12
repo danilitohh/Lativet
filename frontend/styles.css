@@ -7071,6 +7071,63 @@ body.auth-locked .page-shell > :not(#loginModal) {
   flex: 0 0 auto;
 }
 
+.sales-inventory-shell {
+  display: grid;
+  gap: 10px;
+}
+
+.sales-table-scroll {
+  max-height: 420px;
+  overflow: auto;
+  border-radius: 14px;
+  border: 1px solid rgba(42, 126, 138, 0.12);
+  background: rgba(255, 255, 255, 0.86);
+}
+
+.sales-table-scroll .sales-table {
+  border: 0;
+  border-radius: 0;
+}
+
+.sales-table-scroll .sales-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: rgba(234, 244, 246, 0.96);
+}
+
+.sales-stock-alert {
+  color: #b42318;
+  font-weight: 700;
+}
+
+.sales-stock-ok {
+  color: #0f766e;
+  font-weight: 600;
+}
+
+.sales-stock-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 92px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.sales-stock-badge--alert {
+  color: #b42318;
+  background: rgba(254, 228, 226, 0.95);
+}
+
+.sales-stock-badge--ok {
+  color: #0f766e;
+  background: rgba(204, 251, 241, 0.9);
+}
+
 .sales-email-form {
   display: grid;
   gap: 10px;

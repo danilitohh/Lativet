@@ -1294,6 +1294,7 @@ const sectionSubsections = {
         panels: [
           "salesSummaryMetricsBlock",
           "salesSummaryPanel",
+          "salesCatalogFormPanel",
           "salesStockFormPanel",
           "salesCatalogPanel",
           "salesStockHistoryPanel",
@@ -3500,6 +3501,51 @@ function buildSalesHtmlTable(headers, rows, emptyMessage) {
   `;
 }
 
+function buildInventoryTable(items) {
+  if (!items.length) {
+    return '<div class="sales-report-empty">Aun no hay productos registrados en inventario.</div>';
+  }
+  const table = buildSalesHtmlTable(
+    [
+      { label: "Nombre", align: "left" },
+      { label: "Categoria", align: "left" },
+      { label: "Proveedor", align: "left" },
+      { label: "Stock actual" },
+      { label: "Stock minimo" },
+      { label: "Estado" },
+    ],
+    items.map((item) => {
+      const stockQuantity = Number(item.stock_quantity || 0);
+      const minStock = Number(item.min_stock || 0);
+      const isLowStock = Boolean(item.track_inventory) && stockQuantity < minStock;
+      return [
+        { value: item.name || "-", align: "left" },
+        { value: item.category || "-", align: "left" },
+        { value: item.provider_name || "Sin proveedor", align: "left" },
+        {
+          value: `<span class="${isLowStock ? "sales-stock-alert" : "sales-stock-ok"}">${escapeHtml(
+            stockQuantity.toString()
+          )}</span>`,
+          html: true,
+        },
+        { value: minStock.toString() },
+        {
+          value: `<span class="sales-stock-badge ${isLowStock ? "sales-stock-badge--alert" : "sales-stock-badge--ok"}">${
+            isLowStock ? "Pedir mas" : "OK"
+          }</span>`,
+          html: true,
+        },
+      ];
+    }),
+    "Aun no hay productos registrados en inventario."
+  );
+  return `
+    <div class="sales-inventory-shell">
+      <div class="sales-table-scroll">${table}</div>
+    </div>
+  `;
+}
+
 function renderSalesDocumentDetail() {
   if (!elements.salesDocumentDetail) {
     return;
@@ -3916,27 +3962,9 @@ function renderSales() {
     "Aun no hay proveedores registrados."
   );
 
-  renderList(
-    elements.catalogItemsList,
-    state.catalog_items,
-    (item) => `
-      <article class="list-card">
-        <header>
-          <div>
-            <h4>${escapeHtml(item.name)}</h4>
-            <p>${escapeHtml(item.category)}${item.provider_name ? ` / ${escapeHtml(item.provider_name)}` : ""}</p>
-          </div>
-          <span class="${statusClass(item.low_stock ? "Pendiente" : "Pagado")}">${
-            item.low_stock ? "Stock bajo" : item.track_inventory ? "Controlado" : "Servicio"
-          }</span>
-        </header>
-        <p>Costo unitario: ${formatMoney(item.unit_cost || 0)} / Venta: ${formatMoney(item.unit_price || 0)}</p>
-        <p>Utilidad: ${formatMoney(item.profit_amount || 0)}</p>
-        <p>Stock: ${Number(item.stock_quantity || 0)} / Minimo: ${Number(item.min_stock || 0)}</p>
-      </article>
-    `,
-    "Aun no hay items en el catalogo."
-  );
+  if (elements.catalogItemsList) {
+    elements.catalogItemsList.innerHTML = buildInventoryTable(state.catalog_items);
+  }
 
   renderList(
     elements.billingClientsList,

@@ -2611,7 +2611,7 @@ class Database:
             raise ValidationError("El item de catalogo no existe.")
         item = self._row_to_dict(row)
         item["low_stock"] = bool(
-            item["track_inventory"] and float(item["stock_quantity"]) <= float(item["min_stock"])
+            item["track_inventory"] and float(item["stock_quantity"]) < float(item["min_stock"])
         )
         return item
 
@@ -3154,7 +3154,7 @@ class Database:
             item
             for item in items
             if item.get("track_inventory")
-            and float(item.get("stock_quantity") or 0) <= float(item.get("min_stock") or 0)
+            and float(item.get("stock_quantity") or 0) < float(item.get("min_stock") or 0)
         ]
         return items, low_stock_items
 
@@ -3383,7 +3383,7 @@ class Database:
             """
             SELECT COUNT(*) AS total
             FROM billing_catalog_items
-            WHERE track_inventory = 1 AND stock_quantity <= min_stock
+            WHERE track_inventory = 1 AND stock_quantity < min_stock
             """
         ).fetchone()["total"]
         return {
