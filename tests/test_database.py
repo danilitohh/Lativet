@@ -307,6 +307,98 @@ class DatabaseSmokeTests(unittest.TestCase):
 
         self.assertEqual(self.db._get_available_slots_next_days_count(days=1), 3)
 
+    def test_sales_report_summarizes_billing_inventory_and_payments(self) -> None:
+        owner = self.db.save_owner(
+            {
+                "full_name": "Laura Ventas",
+                "identification_type": "CC",
+                "identification_number": "554433",
+                "phone": "3001110099",
+                "email": "laura.ventas@example.com",
+                "address": "Calle Ventas 12",
+            }
+        )
+        patient = self.db.save_patient(
+            {
+                "owner_id": owner["id"],
+                "name": "Tina",
+                "species": "Canino",
+                "breed": "Mestizo",
+                "sex": "Hembra",
+                "age_years": "4",
+                "weight_kg": "12.4",
+                "reproductive_status": "Esterilizado",
+                "notes": "Paciente de ventas.",
+            }
+        )
+        provider = self.db.save_provider(
+            {
+                "name": "Proveedor Uno",
+                "contact_name": "Carlos",
+                "phone": "3004455667",
+                "email": "proveedor@example.com",
+                "notes": "Proveedor principal",
+            }
+        )
+        item = self.db.save_catalog_item(
+            {
+                "provider_id": provider["id"],
+                "name": "Antibiotico oral",
+                "category": "Medicamentos",
+                "purchase_cost": "20000",
+                "margin_percent": "50",
+                "presentation_total": "10",
+                "stock_quantity": "5",
+                "min_stock": "4",
+                "track_inventory": True,
+                "notes": "Controlado",
+            }
+        )
+        document = self.db.save_billing_document(
+            {
+                "patient_id": patient["id"],
+                "document_type": "factura",
+                "issue_date": "2026-04-10",
+                "due_date": "2026-04-15",
+                "payment_method": "Pendiente",
+                "cash_account": "caja_menor",
+                "discount": "0",
+                "recipient_email": "laura.ventas@example.com",
+                "lines": [{"catalog_item_id": item["id"], "quantity": "2"}],
+            }
+        )
+        payment = self.db.register_billing_payment(
+            {
+                "document_id": document["id"],
+                "payment_date": "2026-04-11",
+                "amount": "3000",
+                "payment_method": "Transferencia",
+                "cash_account": "transferencia",
+                "note": "Abono parcial",
+            }
+        )
+        self.assertEqual(payment["document_status"], "Pendiente")
+
+        self.db.save_cash_movement(
+            {
+                "movement_type": "gasto",
+                "concept": "Compra de insumos",
+                "amount": "5000",
+                "movement_date": "2026-04-11",
+                "cash_account": "caja_mayor",
+                "category": "Proveedor",
+                "notes": "Compra manual",
+            }
+        )
+
+        report = self.db.get_sales_report("2026-04-01", "2026-04-30")
+        self.assertEqual(report["summary"]["facturas_periodo"], 1)
+        self.assertEqual(len(report["documents"]), 1)
+        self.assertEqual(len(report["payments"]), 1)
+        self.assertGreater(report["summary"]["cartera_pendiente"], 0)
+        self.assertEqual(report["summary"]["low_stock_count"], 1)
+        self.assertTrue(any(item["name"] == "Antibiotico oral" for item in report["low_stock_items"]))
+
     def test_runtime_schema_management_defaults_off_on_vercel(self) -> None:
         with patch.dict(os.environ, {"VERCEL": "1"}, clear=False):
             os.environ.pop("LATIVET_POSTGRES_MANAGE_RUNTIME_SCHEMA", None)

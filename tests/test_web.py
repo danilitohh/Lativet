@@ -328,6 +328,165 @@ class WebSmokeTests(unittest.TestCase):
         self.assertIn("reports", snapshot)
         self.assertIn("requests", snapshot)
 
+    @patch("lativet.api.send_email_with_attachment")
+    def test_sales_endpoints_export_document_report_inventory_and_email(self, mocked_send_email) -> None:
+        service = self.app.extensions.get("lativet_service")
+        self.assertIsNotNone(service)
+        service._db.save_settings(
+            {
+                **service._db.get_settings(),
+                "clinic_name": "Lativet",
+                "clinic_address": "Calle 1",
+                "clinic_phone": "3000000000",
+                "clinic_email": "ventas@example.com",
+                "smtp_enabled": True,
+                "smtp_from": "ventas@example.com",
+                "smtp_host": "smtp.gmail.com",
+                "smtp_port": 587,
+                "smtp_app_password": "app-secret",
+            }
+        )
+
+        owner = self.assert_ok(
+            self.client.post(
+                "/api/owners",
+                json={
+                    "full_name": "Cliente Ventas",
+                    "identification_type": "CC",
+                    "identification_number": "112233",
+                    "phone": "3001230000",
+                    "email": "cliente.ventas@example.com",
+                    "address": "Avenida 14",
+                },
+            )
+        )
+        patient = self.assert_ok(
+            self.client.post(
+                "/api/patients",
+                json={
+                    "owner_id": owner["id"],
+                    "name": "Mia",
+                    "species": "Canino",
+                    "breed": "Mestizo",
+                    "sex": "Hembra",
+                    "age_years": "5",
+                    "weight_kg": "11.2",
+                    "reproductive_status": "Esterilizado",
+                    "notes": "Paciente para ventas.",
+                },
+            )
+        )
+        provider = self.assert_ok(
+            self.client.post(
+                "/api/providers",
+                json={
+                    "name": "Proveedor Test",
+                    "contact_name": "Pablo",
+                    "phone": "3015551212",
+                    "email": "proveedor.test@example.com",
+                    "notes": "Prueba",
+                },
+            )
+        )
+        item = self.assert_ok(
+            self.client.post(
+                "/api/catalog-items",
+                json={
+                    "provider_id": provider["id"],
+                    "name": "Analgésico",
+                    "category": "Medicamentos",
+                    "purchase_cost": "12000",
+                    "margin_percent": "50",
+                    "presentation_total": "6",
+                    "stock_quantity": "6",
+                    "min_stock": "5",
+                    "track_inventory": True,
+                    "notes": "Inventario de prueba",
+                },
+            )
+        )
+        document = self.assert_ok(
+            self.client.post(
+                "/api/billing-documents",
+                json={
+                    "patient_id": patient["id"],
+                    "document_type": "factura",
+                    "issue_date": "2026-04-10",
+                    "due_date": "2026-04-15",
+                    "payment_method": "Pendiente",
+                    "cash_account": "caja_menor",
+                    "discount": "0",
+                    "recipient_email": "cliente.ventas@example.com",
+                    "lines": [{"catalog_item_id": item["id"], "quantity": "2"}],
+                },
+            )
+        )
+        payment = self.assert_ok(
+            self.client.post(
+                "/api/billing-payments",
+                json={
+                    "document_id": document["id"],
+                    "payment_date": "2026-04-11",
+                    "amount": "2000",
+                    "payment_method": "Efectivo",
+                    "cash_account": "caja_menor",
+                    "note": "Abono inicial",
+                },
+            )
+        )
+        self.assertGreater(payment["document_balance_due"], 0)
+
+        detail = self.assert_ok(self.client.get(f"/api/billing-documents/{document['id']}"))
+        self.assertEqual(detail["document_number"], document["document_number"])
+        self.assertIn("email_draft", detail)
+
+        document_pdf = self.assert_ok(
+            self.client.post(f"/api/billing-documents/{document['id']}/pdf", json={})
+        )
+        self.assertTrue(document_pdf["url"].startswith("/exports/"))
+        self.assertEqual(self.client.get(document_pdf["url"]).status_code, 200)
+
+        payment_pdf = self.assert_ok(
+            self.client.post(
+                f"/api/billing-documents/{document['id']}/payments/{detail['payments'][0]['id']}/pdf",
+                json={},
+            )
+        )
+        self.assertTrue(payment_pdf["url"].startswith("/exports/"))
+        self.assertEqual(self.client.get(payment_pdf["url"]).status_code, 200)
+
+        report = self.assert_ok(
+            self.client.get("/api/sales-report?start_date=2026-04-01&end_date=2026-04-30")
+        )
+        self.assertEqual(report["summary"]["facturas_periodo"], 1)
+        self.assertEqual(len(report["documents"]), 1)
+
+        report_pdf = self.assert_ok(
+            self.client.post(
+                "/api/sales-report/pdf",
+                json={"start_date": "2026-04-01", "end_date": "2026-04-30"},
+            )
+        )
+        self.assertTrue(report_pdf["url"].startswith("/exports/"))
+
+        inventory_pdf = self.assert_ok(
+            self.client.post("/api/inventory-report/pdf", json={"as_of_date": "2026-04-30"})
+        )
+        self.assertTrue(inventory_pdf["url"].startswith("/exports/"))
+
+        email_result = self.assert_ok(
+            self.client.post(
+                f"/api/billing-documents/{document['id']}/email",
+                json={
+                    "recipient_email": "cliente.ventas@example.com",
+                    "subject": "Factura de prueba",
+                    "body": "Adjuntamos el documento.",
+                },
+            )
+        )
+        self.assertTrue(email_result["sent"])
+        mocked_send_email.assert_called_once()
+
     @patch("lativet.api.send_email")
     def test_control_reminder_job_sends_due_emails(self, mocked_send_email) -> None:
         bootstrap = self.client.get("/api/bootstrap")

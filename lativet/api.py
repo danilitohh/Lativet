@@ -6,6 +6,15 @@ from functools import wraps
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
+from .billing_exports import (
+    EMAIL_TEMPLATE_VARIABLES,
+    build_billing_document_pdf,
+    build_billing_email_context,
+    build_billing_payment_pdf,
+    build_inventory_pdf,
+    build_sales_report_pdf,
+    render_billing_template,
+)
 from .compliance import get_compliance_context
 from .consent_pdf import ConsentBundle, build_consent_pdf
 from .database import Database, PostgresDatabase, normalize_postgres_dsn
@@ -58,6 +67,11 @@ class LativetService:
             self._db = Database(self._data_dir)
         self._exports_dir = self._data_dir / "exports"
         self._consents_dir = self._exports_dir / "consents"
+        self._billing_exports_dir = self._exports_dir / "billing"
+        self._billing_documents_dir = self._billing_exports_dir / "documents"
+        self._billing_payments_dir = self._billing_exports_dir / "payments"
+        self._billing_reports_dir = self._billing_exports_dir / "reports"
+        self._billing_inventory_dir = self._billing_exports_dir / "inventory"
         self._logo_path = self._project_dir / "images" / "logo.png"
         self._google_calendar = GoogleCalendarBridge(
             self._data_dir,
@@ -264,6 +278,204 @@ class LativetService:
     @safe_api_call
     def register_billing_payment(self, payload: dict) -> dict:
         return self._db.register_billing_payment(payload)
+
+    @safe_api_call
+    def get_billing_document(self, document_id: str) -> dict:
+        document = self._db.get_billing_document(document_id)
+        settings = self._db.get_settings()
+        owner = self._db.get_owner(document["owner_id"])
+        context = build_billing_email_context(settings, document)
+        context["recipient_email"] = (
+            str(document.get("recipient_email") or "").strip()
+            or str(owner.get("email") or "").strip()
+        )
+        default_subject = "{document_label} {document_number} - {clinic_name}"
+        default_body = (
+            "Hola {owner_name},\n\n"
+            "Adjuntamos la {document_name} {document_number} correspondiente a la atencion de {pet_name}.\n"
+            "Fecha del documento: {issue_date}\n"
+            "Fecha de vencimiento: {due_date}\n"
+            "Total: {total}\n\n"
+            "Cualquier inquietud sera atendida por {clinic_name}."
+        )
+        document["email_draft"] = {
+            "recipient_email": context.get("recipient_email", ""),
+            "subject": render_billing_template(
+                str(settings.get("email_subject_template") or ""),
+                context,
+                default_subject,
+            ),
+            "body": render_billing_template(
+                str(settings.get("email_body_template") or ""),
+                context,
+                default_body,
+            ),
+            "template_variables": EMAIL_TEMPLATE_VARIABLES,
+        }
+        return document
+
+    @safe_api_call
+    def get_sales_report(self, start_date_value: str | None = None, end_date_value: str | None = None) -> dict:
+        report = self._db.get_sales_report(start_date_value, end_date_value)
+        report["template_variables"] = EMAIL_TEMPLATE_VARIABLES
+        return report
+
+    @safe_api_call
+    def generate_billing_document_pdf(self, document_id: str) -> dict:
+        document = self._db.get_billing_document(document_id)
+        pdf_path = build_billing_document_pdf(
+            output_dir=self._billing_documents_dir,
+            settings=self._db.get_settings(),
+            document=document,
+            lines=document.get("lines") or [],
+            logo_path=self._logo_path if self._logo_path.exists() else None,
+        )
+        return {
+            "document": document,
+            "path": str(pdf_path),
+            "url": self._build_export_url(pdf_path),
+        }
+
+    @safe_api_call
+    def generate_billing_payment_pdf(self, document_id: str, payment_id: str) -> dict:
+        document = self._db.get_billing_document(document_id)
+        payment = next(
+            (item for item in (document.get("payments") or []) if str(item.get("id")) == payment_id),
+            None,
+        )
+        if not payment:
+            raise ValidationError("El abono solicitado no existe para este documento.")
+        payment_payload = {
+            **payment,
+            "document_balance_due": document.get("balance_due") or 0,
+        }
+        pdf_path = build_billing_payment_pdf(
+            output_dir=self._billing_payments_dir,
+            settings=self._db.get_settings(),
+            document=document,
+            payment=payment_payload,
+            logo_path=self._logo_path if self._logo_path.exists() else None,
+        )
+        return {
+            "payment": payment_payload,
+            "path": str(pdf_path),
+            "url": self._build_export_url(pdf_path),
+        }
+
+    @safe_api_call
+    def generate_sales_report_pdf(
+        self, start_date_value: str | None = None, end_date_value: str | None = None
+    ) -> dict:
+        report = self._db.get_sales_report(start_date_value, end_date_value)
+        pdf_path = build_sales_report_pdf(
+            output_dir=self._billing_reports_dir,
+            settings=self._db.get_settings(),
+            report=report,
+            logo_path=self._logo_path if self._logo_path.exists() else None,
+        )
+        return {
+            "summary": report.get("summary") or {},
+            "path": str(pdf_path),
+            "url": self._build_export_url(pdf_path),
+        }
+
+    @safe_api_call
+    def generate_inventory_pdf(self, as_of_date: str | None = None) -> dict:
+        report = self._db.get_sales_report(end_date_value=as_of_date)
+        summary = report.get("summary") or {}
+        pdf_path = build_inventory_pdf(
+            output_dir=self._billing_inventory_dir,
+            settings=self._db.get_settings(),
+            as_of_date=str(summary.get("end_date") or ""),
+            inventory_items=report.get("inventory_items") or [],
+            low_stock_items=report.get("low_stock_items") or [],
+            logo_path=self._logo_path if self._logo_path.exists() else None,
+        )
+        return {
+            "as_of_date": summary.get("end_date"),
+            "path": str(pdf_path),
+            "url": self._build_export_url(pdf_path),
+        }
+
+    @safe_api_call
+    def send_billing_document_email(self, document_id: str, payload: dict | None = None) -> dict:
+        settings = self._db.get_settings()
+        if not settings.get("smtp_enabled"):
+            raise ValidationError("El correo SMTP esta deshabilitado en configuracion.")
+        sender = (settings.get("smtp_from") or "").strip()
+        if not sender:
+            raise ValidationError("Debes configurar el correo remitente para enviar documentos.")
+        password = self._db.get_secret_setting("smtp_app_password").strip()
+        if not password:
+            raise ValidationError("Falta la app password del correo SMTP.")
+
+        document = self._db.get_billing_document(document_id)
+        owner = self._db.get_owner(document["owner_id"])
+        pdf_path = build_billing_document_pdf(
+            output_dir=self._billing_documents_dir,
+            settings=settings,
+            document=document,
+            lines=document.get("lines") or [],
+            logo_path=self._logo_path if self._logo_path.exists() else None,
+        )
+
+        email_payload = payload or {}
+        context = build_billing_email_context(settings, document)
+        context["recipient_email"] = (
+            str(document.get("recipient_email") or "").strip()
+            or str(owner.get("email") or "").strip()
+        )
+        default_subject = "{document_label} {document_number} - {clinic_name}"
+        default_body = (
+            "Hola {owner_name},\n\n"
+            "Adjuntamos la {document_name} {document_number} correspondiente a la atencion de {pet_name}.\n"
+            "Fecha del documento: {issue_date}\n"
+            "Fecha de vencimiento: {due_date}\n"
+            "Total: {total}\n\n"
+            "Cualquier inquietud sera atendida por {clinic_name}."
+        )
+        to_address = (
+            str(email_payload.get("recipient_email") or "").strip()
+            or context.get("recipient_email", "")
+        )
+        if not to_address:
+            raise ValidationError("El documento no tiene un correo destinatario configurado.")
+        subject = render_billing_template(
+            str(email_payload.get("subject") or settings.get("email_subject_template") or ""),
+            context,
+            default_subject,
+        )
+        body = render_billing_template(
+            str(email_payload.get("body") or settings.get("email_body_template") or ""),
+            context,
+            default_body,
+        )
+        if not subject.strip():
+            raise ValidationError("El asunto del correo no puede quedar vacio.")
+        if not body.strip():
+            raise ValidationError("El cuerpo del correo no puede quedar vacio.")
+
+        config = SmtpConfig(
+            host=(settings.get("smtp_host") or "smtp.gmail.com").strip(),
+            port=int(settings.get("smtp_port") or 587),
+            username=sender,
+            password=password,
+            sender=sender,
+        )
+        send_email_with_attachment(
+            config,
+            to_address=to_address,
+            subject=subject,
+            body=body,
+            attachment_path=str(pdf_path),
+            attachment_name=pdf_path.name,
+        )
+        return {
+            "sent": True,
+            "to": to_address,
+            "subject": subject,
+            "pdf_url": self._build_export_url(pdf_path),
+        }
 
     @safe_api_call
     def save_consent(self, payload: dict) -> dict:
