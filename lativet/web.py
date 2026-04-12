@@ -301,6 +301,46 @@ def create_app(base_dir: Path | None = None, data_dir: Path | None = None) -> Fl
     def register_billing_payment():
         return respond(service.register_billing_payment(payload()))
 
+    @app.get("/api/billing-documents/<document_id>")
+    def get_billing_document(document_id: str):
+        return respond(service.get_billing_document(document_id))
+
+    @app.post("/api/billing-documents/<document_id>/pdf")
+    def generate_billing_document_pdf(document_id: str):
+        return respond(service.generate_billing_document_pdf(document_id))
+
+    @app.post("/api/billing-documents/<document_id>/email")
+    def send_billing_document_email(document_id: str):
+        return respond(service.send_billing_document_email(document_id, payload()))
+
+    @app.post("/api/billing-documents/<document_id>/payments/<payment_id>/pdf")
+    def generate_billing_payment_pdf(document_id: str, payment_id: str):
+        return respond(service.generate_billing_payment_pdf(document_id, payment_id))
+
+    @app.get("/api/sales-report")
+    def get_sales_report():
+        return respond(
+            service.get_sales_report(
+                request.args.get("start_date"),
+                request.args.get("end_date"),
+            )
+        )
+
+    @app.post("/api/sales-report/pdf")
+    def generate_sales_report_pdf():
+        body = payload()
+        return respond(
+            service.generate_sales_report_pdf(
+                body.get("start_date"),
+                body.get("end_date"),
+            )
+        )
+
+    @app.post("/api/inventory-report/pdf")
+    def generate_inventory_report_pdf():
+        body = payload()
+        return respond(service.generate_inventory_pdf(body.get("as_of_date")))
+
     @app.patch("/api/appointments/<appointment_id>/status")
     def update_appointment_status(appointment_id: str):
         status = payload().get("status")

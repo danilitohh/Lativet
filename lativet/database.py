@@ -3113,6 +3113,266 @@ class Database:
         ).fetchall()
         return [self._row_to_dict(row) for row in rows]
 
+    def _normalize_sales_report_range(
+        self, start_date_value: str | None = None, end_date_value: str | None = None
+    ) -> tuple[str, str, date]:
+        try:
+            end_date_parsed = (
+                date.fromisoformat(str(end_date_value).strip())
+                if str(end_date_value or "").strip()
+                else date.today()
+            )
+        except ValueError as exc:
+            raise ValidationError("La fecha final del reporte no es valida.") from exc
+        try:
+            start_date_parsed = (
+                date.fromisoformat(str(start_date_value).strip())
+                if str(start_date_value or "").strip()
+                else end_date_parsed.replace(day=1)
+            )
+        except ValueError as exc:
+            raise ValidationError("La fecha inicial del reporte no es valida.") from exc
+        if start_date_parsed > end_date_parsed:
+            raise ValidationError("La fecha inicial no puede ser mayor a la fecha final.")
+        return start_date_parsed.isoformat(), end_date_parsed.isoformat(), end_date_parsed
+
+    def _build_inventory_snapshot(self) -> tuple[list[dict], list[dict]]:
+        items: list[dict] = []
+        for item in self.list_catalog_items():
+            stock_quantity = float(item.get("stock_quantity") or 0)
+            unit_cost = float(item.get("unit_cost") or 0)
+            unit_price = float(item.get("unit_price") or 0)
+            track_inventory = bool(item.get("track_inventory"))
+            enriched = {
+                **item,
+                "track_inventory": track_inventory,
+                "inventory_cost_total": round_money(stock_quantity * unit_cost),
+                "inventory_public_total": round_money(stock_quantity * unit_price),
+            }
+            items.append(enriched)
+        low_stock_items = [
+            item
+            for item in items
+            if item.get("track_inventory")
+            and float(item.get("stock_quantity") or 0) <= float(item.get("min_stock") or 0)
+        ]
+        return items, low_stock_items
+
+    def get_sales_report(
+        self, start_date_value: str | None = None, end_date_value: str | None = None
+    ) -> dict:
+        start_date_iso, end_date_iso, cutoff_date = self._normalize_sales_report_range(
+            start_date_value, end_date_value
+        )
+
+        documents_rows = self.connection.execute(
+            """
+            SELECT d.*, p.name AS patient_name, o.full_name AS owner_name
+            FROM billing_documents d
+            JOIN patients p ON p.id = d.patient_id
+            JOIN owners o ON o.id = d.owner_id
+            WHERE d.issue_date >= ? AND d.issue_date <= ?
+            ORDER BY d.issue_date DESC, d.sequence_number DESC
+            """,
+            (start_date_iso, end_date_iso),
+        ).fetchall()
+        documents = [self._row_to_dict(row) for row in documents_rows]
+        invoices = [
+            document for document in documents if str(document.get("document_type") or "") == "factura"
+        ]
+
+        all_documents = {item["id"]: item for item in self.list_billing_documents()}
+
+        all_payment_rows = self.connection.execute(
+            """
+            SELECT pay.id, pay.document_id, pay.amount, pay.payment_date, pay.created_at, d.total AS document_total
+            FROM billing_document_payments pay
+            JOIN billing_documents d ON d.id = pay.document_id
+            ORDER BY pay.document_id ASC, pay.payment_date ASC, pay.created_at ASC
+            """
+        ).fetchall()
+        running_paid_by_document: dict[str, float] = {}
+        balance_after_payment_map: dict[str, float] = {}
+        for row in all_payment_rows:
+            document_id = row["document_id"]
+            paid_amount = round_money(
+                running_paid_by_document.get(document_id, 0) + float(row["amount"] or 0)
+            )
+            running_paid_by_document[document_id] = paid_amount
+            balance_after_payment_map[row["id"]] = round_money(
+                float(row["document_total"] or 0) - paid_amount
+            )
+
+        payment_rows = self.connection.execute(
+            """
+            SELECT pay.*, d.document_number, d.total AS document_total, d.issue_date, d.due_date,
+                   p.name AS patient_name, o.full_name AS owner_name
+            FROM billing_document_payments pay
+            JOIN billing_documents d ON d.id = pay.document_id
+            JOIN patients p ON p.id = d.patient_id
+            JOIN owners o ON o.id = d.owner_id
+            WHERE pay.payment_date >= ? AND pay.payment_date <= ?
+            ORDER BY pay.payment_date DESC, pay.created_at DESC
+            """,
+            (start_date_iso, end_date_iso),
+        ).fetchall()
+        payments = []
+        for row in payment_rows:
+            payment = self._row_to_dict(row)
+            payment["balance_after_payment"] = balance_after_payment_map.get(
+                payment["id"], round_money(float(row["document_total"] or 0))
+            )
+            payments.append(payment)
+
+        outstanding_rows = self.connection.execute(
+            """
+            SELECT d.*, p.name AS patient_name, o.full_name AS owner_name
+            FROM billing_documents d
+            JOIN patients p ON p.id = d.patient_id
+            JOIN owners o ON o.id = d.owner_id
+            WHERE d.document_type = 'factura'
+              AND d.issue_date <= ?
+              AND d.balance_due > 0
+            ORDER BY d.due_date ASC, d.sequence_number DESC
+            """,
+            (end_date_iso,),
+        ).fetchall()
+        outstanding_invoices = []
+        for row in outstanding_rows:
+            invoice = self._row_to_dict(row)
+            due_date_raw = str(invoice.get("due_date") or end_date_iso)
+            try:
+                due_date = date.fromisoformat(due_date_raw)
+            except ValueError:
+                due_date = cutoff_date
+            invoice["days_overdue"] = max((cutoff_date - due_date).days, 0)
+            outstanding_invoices.append(invoice)
+
+        all_payment_details = {
+            row["id"]: self._row_to_dict(row)
+            for row in self.connection.execute(
+                """
+                SELECT *
+                FROM billing_document_payments
+                """
+            ).fetchall()
+        }
+        movement_rows = self.connection.execute(
+            """
+            SELECT *
+            FROM billing_cash_movements
+            WHERE movement_date >= ? AND movement_date <= ?
+            ORDER BY movement_date DESC, created_at DESC
+            """,
+            (start_date_iso, end_date_iso),
+        ).fetchall()
+        cash_account_labels = {
+            "caja_menor": "Caja menor",
+            "caja_mayor": "Caja mayor",
+            "transferencia": "Transferencia",
+        }
+        movement_records: list[dict] = []
+        manual_cash_movements: list[dict] = []
+        for row in movement_rows:
+            movement = self._row_to_dict(row)
+            related_document = all_documents.get(movement.get("related_document_id") or "")
+            related_payment = all_payment_details.get(movement.get("related_payment_id") or "")
+            is_auto_generated = bool(movement.get("auto_generated"))
+            if related_payment:
+                payment_method = related_payment.get("payment_method") or ""
+                origin = "Abono"
+            elif related_document:
+                payment_method = related_document.get("payment_method") or ""
+                origin = "Factura"
+            else:
+                payment_method = ""
+                origin = "Manual"
+            movement["cash_account_label"] = cash_account_labels.get(
+                movement.get("cash_account") or "", movement.get("cash_account") or ""
+            )
+            movement["record_date"] = movement.get("movement_date") or ""
+            movement["record_type_label"] = (
+                "Ingreso" if movement.get("movement_type") == "ingreso" else "Gasto"
+            )
+            movement["payment_method"] = payment_method or "No aplica"
+            movement["origin"] = origin
+            movement["status"] = "Automatico" if is_auto_generated else "Manual"
+            movement_records.append(movement)
+            if not is_auto_generated:
+                manual_cash_movements.append(movement)
+
+        inventory_items, low_stock_items = self._build_inventory_snapshot()
+
+        total_facturado = round_money(sum(float(item.get("total") or 0) for item in invoices))
+        total_cobrado = round_money(
+            sum(
+                float(item.get("amount") or 0)
+                for item in movement_records
+                if item.get("movement_type") == "ingreso" and item.get("origin") in {"Factura", "Abono"}
+            )
+        )
+        otros_ingresos = round_money(
+            sum(
+                float(item.get("amount") or 0)
+                for item in manual_cash_movements
+                if item.get("movement_type") == "ingreso"
+            )
+        )
+        gastos = round_money(
+            sum(float(item.get("amount") or 0) for item in movement_records if item.get("movement_type") == "gasto")
+        )
+        cartera_pendiente = round_money(
+            sum(float(item.get("balance_due") or 0) for item in outstanding_invoices)
+        )
+        cartera_vencida = round_money(
+            sum(
+                float(item.get("balance_due") or 0)
+                for item in outstanding_invoices
+                if int(item.get("days_overdue") or 0) > 0
+            )
+        )
+        facturas_vencidas = sum(
+            1 for item in outstanding_invoices if int(item.get("days_overdue") or 0) > 0
+        )
+        facturas_pendientes = sum(
+            1 for item in invoices if float(item.get("balance_due") or 0) > 0.0001
+        )
+
+        return {
+            "summary": {
+                "start_date": start_date_iso,
+                "end_date": end_date_iso,
+                "total_facturado": total_facturado,
+                "total_cobrado": total_cobrado,
+                "abonos_registrados": len(payments),
+                "cartera_pendiente": cartera_pendiente,
+                "facturas_con_saldo": len(outstanding_invoices),
+                "cartera_vencida": cartera_vencida,
+                "facturas_vencidas": facturas_vencidas,
+                "otros_ingresos": otros_ingresos,
+                "gastos": gastos,
+                "utilidad": round_money(total_cobrado + otros_ingresos - gastos),
+                "apertura_caja_menor": 0.0,
+                "apertura_caja_mayor": 0.0,
+                "apertura_transferencia": 0.0,
+                "apertura_total": 0.0,
+                "total_con_apertura": round_money(total_cobrado + otros_ingresos - gastos),
+                "facturas_periodo": len(invoices),
+                "facturas_pendientes": facturas_pendientes,
+                "low_stock_count": len(low_stock_items),
+            },
+            "documents": documents,
+            "invoices": invoices,
+            "payments": payments,
+            "outstanding_invoices": outstanding_invoices,
+            "cash_movements": manual_cash_movements,
+            "cash_openings": [],
+            "cash_closings": [],
+            "movement_records": movement_records,
+            "inventory_items": inventory_items,
+            "low_stock_items": low_stock_items,
+        }
+
     def get_billing_summary(self) -> dict:
         def scalar(query: str, params: tuple = ()) -> float:
             row = self.connection.execute(query, params).fetchone()

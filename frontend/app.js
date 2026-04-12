@@ -20,6 +20,7 @@ const state = {
   billing_summary: {},
   requests: {},
   reports: {},
+  sales_report: null,
   compliance: {},
   google_calendar: {},
   generated_at: "",
@@ -29,6 +30,18 @@ const state = {
 
 const elements = {};
 const billingDraft = { lines: [] };
+let salesSelectedDocumentId = "";
+let salesSelectedDocument = null;
+let salesReportPromise = null;
+const SALES_DOCUMENT_SUBSECTIONS = new Set(["factura", "cotizacion"]);
+const salesReportState = {
+  start_date: "",
+  end_date: "",
+  as_of_date: "",
+  loading: false,
+  loaded: false,
+  requestedKey: "",
+};
 const activeAppointmentStatuses = new Set(["scheduled", "confirmed"]);
 const hiddenCalendarStatuses = new Set(["cancelled", "no_show"]);
 const activeSubsections = {};
@@ -1251,23 +1264,67 @@ const sectionSubsections = {
     label: "Que quieres hacer",
     options: [
       {
-        value: "documents",
-        label: "Documentos",
-        panels: ["salesSummaryMetricsBlock", "salesSummaryPanel", "salesDocumentFormPanel", "salesPaymentFormPanel", "salesDocumentsPanel"],
+        value: "factura",
+        label: "Factura",
+        panels: [
+          "salesSummaryMetricsBlock",
+          "salesSummaryPanel",
+          "salesDocumentFormPanel",
+          "salesPaymentFormPanel",
+          "salesDocumentsPanel",
+          "salesDocumentDetailPanel",
+          "salesClientsPanel",
+        ],
       },
       {
-        value: "cash",
-        label: "Ingresos y egresos",
-        panels: ["salesSummaryMetricsBlock", "salesSummaryPanel", "salesCashFormPanel", "salesCashPanel"],
+        value: "cotizacion",
+        label: "Cotizacion",
+        panels: [
+          "salesSummaryMetricsBlock",
+          "salesSummaryPanel",
+          "salesDocumentFormPanel",
+          "salesDocumentsPanel",
+          "salesDocumentDetailPanel",
+          "salesClientsPanel",
+        ],
       },
       {
-        value: "inventory",
+        value: "inventario",
         label: "Inventario",
-        panels: ["salesSummaryMetricsBlock", "salesSummaryPanel", "salesCatalogFormPanel", "salesStockFormPanel", "salesCatalogPanel", "salesStockHistoryPanel"],
+        panels: [
+          "salesSummaryMetricsBlock",
+          "salesSummaryPanel",
+          "salesStockFormPanel",
+          "salesCatalogPanel",
+          "salesStockHistoryPanel",
+        ],
       },
-      { value: "providers", label: "Proveedores", panels: ["salesProviderFormPanel", "salesProvidersPanel"] },
-      { value: "clients", label: "Clientes", panels: ["salesClientsPanel"] },
-      { value: "settings", label: "Configuracion de facturacion", panels: ["salesSettingsPanel"] },
+      {
+        value: "precios",
+        label: "Precios",
+        panels: [
+          "salesSummaryMetricsBlock",
+          "salesSummaryPanel",
+          "salesProviderFormPanel",
+          "salesCatalogFormPanel",
+          "salesProvidersPanel",
+          "salesCatalogPanel",
+          "salesClientsPanel",
+          "salesSettingsPanel",
+        ],
+      },
+      {
+        value: "caja",
+        label: "Caja",
+        panels: [
+          "salesSummaryMetricsBlock",
+          "salesSummaryPanel",
+          "salesCashFormPanel",
+          "salesCashPanel",
+          "salesReportsFiltersPanel",
+          "salesReportsPanel",
+        ],
+      },
     ],
   },
   consultorio: {
@@ -1740,6 +1797,34 @@ const api = {
     apiRequest("/api/billing-documents", { method: "POST", body: JSON.stringify(payload) }),
   registerBillingPayment: (payload) =>
     apiRequest("/api/billing-payments", { method: "POST", body: JSON.stringify(payload) }),
+  getBillingDocument: (documentId) => apiRequest(`/api/billing-documents/${documentId}`),
+  generateBillingDocumentPdf: (documentId) =>
+    apiRequest(`/api/billing-documents/${documentId}/pdf`, { method: "POST", body: "{}" }),
+  generateBillingPaymentPdf: (documentId, paymentId) =>
+    apiRequest(`/api/billing-documents/${documentId}/payments/${paymentId}/pdf`, {
+      method: "POST",
+      body: "{}",
+    }),
+  sendBillingDocumentEmail: (documentId, payload) =>
+    apiRequest(`/api/billing-documents/${documentId}/email`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+  getSalesReport: (params = {}) => {
+    const query = new URLSearchParams();
+    if (params.start_date) {
+      query.set("start_date", params.start_date);
+    }
+    if (params.end_date) {
+      query.set("end_date", params.end_date);
+    }
+    const suffix = query.toString();
+    return apiRequest(`/api/sales-report${suffix ? `?${suffix}` : ""}`);
+  },
+  generateSalesReportPdf: (payload) =>
+    apiRequest("/api/sales-report/pdf", { method: "POST", body: JSON.stringify(payload) }),
+  generateInventoryReportPdf: (payload) =>
+    apiRequest("/api/inventory-report/pdf", { method: "POST", body: JSON.stringify(payload) }),
   saveRecord: (payload, finalize) =>
     apiRequest("/api/records", {
       method: "POST",
@@ -2850,6 +2935,16 @@ function cacheElements() {
     "catalogItemsList",
     "billingClientsList",
     "billingDocumentsList",
+    "salesDocumentDetail",
+    "salesReportsContent",
+    "salesReportForm",
+    "salesReportPdfButton",
+    "salesInventoryPdfButton",
+    "salesReportSummaryMini",
+    "salesDocumentFormTitle",
+    "salesDocumentsPanelTitle",
+    "billingDocumentTypeField",
+    "billingDocumentSubmitButton",
     "usersClinicName",
     "usersTableBody",
     "usersSummary",
@@ -3263,6 +3358,469 @@ function getBillingSummaryEntries(summary = state.billing_summary || {}) {
   ];
 }
 
+function ensureSalesReportDefaults(force = false) {
+  const today = toIsoDate(new Date());
+  const monthStart = new Date();
+  monthStart.setDate(1);
+  const startDate = toIsoDate(monthStart);
+
+  if (force || !salesReportState.start_date) {
+    salesReportState.start_date = startDate;
+  }
+  if (force || !salesReportState.end_date) {
+    salesReportState.end_date = today;
+  }
+  if (force || !salesReportState.as_of_date) {
+    salesReportState.as_of_date = today;
+  }
+
+  if (elements.salesReportForm) {
+    if (force || !elements.salesReportForm.elements.start_date.value) {
+      elements.salesReportForm.elements.start_date.value = salesReportState.start_date;
+    }
+    if (force || !elements.salesReportForm.elements.end_date.value) {
+      elements.salesReportForm.elements.end_date.value = salesReportState.end_date;
+    }
+    if (force || !elements.salesReportForm.elements.as_of_date.value) {
+      elements.salesReportForm.elements.as_of_date.value = salesReportState.as_of_date;
+    }
+  }
+}
+
+function syncSalesReportStateFromForm() {
+  ensureSalesReportDefaults();
+  if (!elements.salesReportForm) {
+    return;
+  }
+  salesReportState.start_date =
+    elements.salesReportForm.elements.start_date.value || salesReportState.start_date;
+  salesReportState.end_date =
+    elements.salesReportForm.elements.end_date.value || salesReportState.end_date;
+  salesReportState.as_of_date =
+    elements.salesReportForm.elements.as_of_date.value || salesReportState.as_of_date;
+}
+
+function getSalesReportRequestKey() {
+  return `${salesReportState.start_date}|${salesReportState.end_date}`;
+}
+
+function getActiveSalesSubsectionValue() {
+  return getSubsectionOption("sales")?.value || "factura";
+}
+
+function getSalesDocumentFilterType() {
+  const subsectionValue = getActiveSalesSubsectionValue();
+  return SALES_DOCUMENT_SUBSECTIONS.has(subsectionValue) ? subsectionValue : "";
+}
+
+function getSalesDocumentModeMeta() {
+  const documentType = getSalesDocumentFilterType();
+  if (documentType === "cotizacion") {
+    return {
+      document_type: "cotizacion",
+      formTitle: "Nueva cotizacion",
+      submitLabel: "Guardar cotizacion",
+      listTitle: "Cotizaciones emitidas",
+      emptyMessage: "Aun no hay cotizaciones registradas.",
+    };
+  }
+  if (documentType === "factura") {
+    return {
+      document_type: "factura",
+      formTitle: "Nueva factura",
+      submitLabel: "Guardar factura",
+      listTitle: "Facturas emitidas",
+      emptyMessage: "Aun no hay facturas registradas.",
+    };
+  }
+  return {
+    document_type: "",
+    formTitle: "Nuevo documento",
+    submitLabel: "Guardar documento",
+    listTitle: "Documentos emitidos",
+    emptyMessage: "Aun no hay documentos de facturacion.",
+  };
+}
+
+function resolveSalesSubsectionForDocument(document) {
+  return document?.document_type === "cotizacion" ? "cotizacion" : "factura";
+}
+
+function syncSalesDocumentModeUI() {
+  const mode = getSalesDocumentModeMeta();
+  const hasFilteredDocumentMode = Boolean(mode.document_type);
+  if (elements.billingDocumentTypeSelect && hasFilteredDocumentMode) {
+    elements.billingDocumentTypeSelect.value = mode.document_type;
+  }
+  elements.billingDocumentTypeField?.classList.toggle("is-hidden", hasFilteredDocumentMode);
+  if (elements.salesDocumentFormTitle) {
+    elements.salesDocumentFormTitle.textContent = mode.formTitle;
+  }
+  if (elements.billingDocumentSubmitButton) {
+    elements.billingDocumentSubmitButton.textContent = mode.submitLabel;
+  }
+  if (elements.salesDocumentsPanelTitle) {
+    elements.salesDocumentsPanelTitle.textContent = mode.listTitle;
+  }
+  syncBillingDocumentFormState();
+}
+
+function openExportUrl(url) {
+  if (!url) {
+    throw new Error("El servidor no devolvio una URL de descarga.");
+  }
+  window.open(url, "_blank", "noopener,noreferrer");
+}
+
+function buildSalesHtmlTable(headers, rows, emptyMessage) {
+  if (!rows.length) {
+    return `<div class="sales-report-empty">${escapeHtml(emptyMessage)}</div>`;
+  }
+  return `
+    <table class="sales-table">
+      <thead>
+        <tr>${headers.map((header) => `<th class="${header.align === "left" ? "sales-table__left" : ""}">${escapeHtml(header.label)}</th>`).join("")}</tr>
+      </thead>
+      <tbody>
+        ${rows
+          .map(
+            (row) => `
+              <tr>${row
+                .map(
+                  (cell) => `<td class="${cell?.align === "left" ? "sales-table__left" : ""}">${
+                    cell?.html ? cell.value : escapeHtml(cell?.value ?? "")
+                  }</td>`
+                )
+                .join("")}</tr>
+            `
+          )
+          .join("")}
+      </tbody>
+    </table>
+  `;
+}
+
+function renderSalesDocumentDetail() {
+  if (!elements.salesDocumentDetail) {
+    return;
+  }
+  if (!salesSelectedDocument) {
+    elements.salesDocumentDetail.innerHTML =
+      '<div class="sales-detail-empty">Selecciona un documento para ver lineas, abonos, PDF y correo.</div>';
+    return;
+  }
+
+  const document = salesSelectedDocument;
+  const lines = Array.isArray(document.lines) ? document.lines : [];
+  const payments = Array.isArray(document.payments) ? document.payments : [];
+  const emailDraft = document.email_draft || {};
+  const documentTypeLabel =
+    document.document_type === "cotizacion" ? "Cotizacion" : "Factura";
+  const linesTable = buildSalesHtmlTable(
+    [
+      { label: "Item", align: "left" },
+      { label: "Categoria" },
+      { label: "Cantidad" },
+      { label: "Valor U" },
+      { label: "Total" },
+    ],
+    lines.map((line) => [
+      { value: line.item_name || "-" , align: "left" },
+      { value: line.category || "-" , align: "left" },
+      { value: Number(line.quantity || 0).toString() },
+      { value: formatMoney(line.unit_price || 0) },
+      { value: formatMoney(line.line_total || 0) },
+    ]),
+    "Este documento no tiene lineas registradas."
+  );
+  const paymentsTable = buildSalesHtmlTable(
+    [
+      { label: "Fecha", align: "left" },
+      { label: "Metodo", align: "left" },
+      { label: "Caja", align: "left" },
+      { label: "Monto" },
+      { label: "Accion" },
+    ],
+    payments.map((payment) => [
+      { value: payment.payment_date || "-", align: "left" },
+      { value: payment.payment_method || "-", align: "left" },
+      { value: payment.cash_account || "-", align: "left" },
+      { value: formatMoney(payment.amount || 0) },
+      {
+        value: `<button class="ghost-button" type="button" data-download-billing-payment="${escapeHtml(
+          String(payment.id || "")
+        )}">PDF</button>`,
+        html: true,
+      },
+    ]),
+    "Todavia no hay abonos registrados."
+  );
+
+  elements.salesDocumentDetail.innerHTML = `
+    <div class="sales-detail-grid">
+      <article class="sales-detail-card">
+        <h4>${escapeHtml(documentTypeLabel)} ${escapeHtml(document.document_number || "")}</h4>
+        <div class="sales-detail-kv">
+          <div><span>Paciente</span><strong>${escapeHtml(document.patient_name || document.patient_name_snapshot || "-")}</strong></div>
+          <div><span>Propietario</span><strong>${escapeHtml(document.owner_name || document.owner_name_snapshot || "-")}</strong></div>
+          <div><span>Emision</span><strong>${escapeHtml(document.issue_date || "-")}</strong></div>
+          <div><span>Vencimiento</span><strong>${escapeHtml(document.due_date || "-")}</strong></div>
+          <div><span>Estado</span><strong>${escapeHtml(document.status || "-")}</strong></div>
+          <div><span>Pago</span><strong>${escapeHtml(document.payment_method || "-")}</strong></div>
+          <div><span>Total</span><strong>${escapeHtml(formatMoney(document.total || 0))}</strong></div>
+          <div><span>Saldo</span><strong>${escapeHtml(formatMoney(document.balance_due || 0))}</strong></div>
+        </div>
+        <div class="sales-inline-actions">
+          <button class="secondary-button" type="button" data-download-billing-document="${escapeHtml(
+            String(document.id || "")
+          )}">Generar PDF</button>
+          ${
+            document.document_type === "factura" && document.status === "Pendiente"
+              ? `<button class="ghost-button" type="button" data-select-billing-document="${escapeHtml(
+                  String(document.id || "")
+                )}">Registrar abono</button>`
+              : ""
+          }
+        </div>
+        ${
+          document.notes
+            ? `<p class="sales-section-note">${escapeHtml(document.notes)}</p>`
+            : ""
+        }
+      </article>
+      <article class="sales-detail-card">
+        <h4>Enviar por correo</h4>
+        <form class="sales-email-form" data-sales-email-form>
+          <label>
+            <span>Destinatario</span>
+            <input name="recipient_email" type="email" value="${escapeHtml(
+              emailDraft.recipient_email || ""
+            )}" />
+          </label>
+          <label>
+            <span>Asunto</span>
+            <input name="subject" value="${escapeHtml(emailDraft.subject || "")}" />
+          </label>
+          <label>
+            <span>Mensaje</span>
+            <textarea name="body" rows="8">${escapeHtml(emailDraft.body || "")}</textarea>
+          </label>
+          <div class="sales-inline-actions">
+            <button class="primary-button" type="submit">Enviar correo</button>
+          </div>
+          <p class="sales-section-note">Variables disponibles: ${escapeHtml(
+            Array.isArray(emailDraft.template_variables)
+              ? emailDraft.template_variables.map((item) => `{${item}}`).join(", ")
+              : ""
+          )}</p>
+        </form>
+      </article>
+    </div>
+    <article class="sales-detail-card">
+      <h4>Lineas del documento</h4>
+      ${linesTable}
+    </article>
+    <article class="sales-detail-card">
+      <h4>Historial de pagos</h4>
+      ${paymentsTable}
+    </article>
+  `;
+}
+
+function renderSalesReportMiniSummary() {
+  if (!elements.salesReportSummaryMini) {
+    return;
+  }
+  const summary = state.sales_report?.summary || null;
+  if (!summary) {
+    elements.salesReportSummaryMini.innerHTML = "";
+    return;
+  }
+  renderSummary(
+    elements.salesReportSummaryMini,
+    [
+      ["Facturado", formatMoney(summary.total_facturado || 0)],
+      ["Cobrado", formatMoney(summary.total_cobrado || 0)],
+      ["Cartera", formatMoney(summary.cartera_pendiente || 0)],
+      ["Gastos", formatMoney(summary.gastos || 0)],
+      ["Utilidad", formatMoney(summary.utilidad || 0)],
+      ["Stock bajo", summary.low_stock_count || 0],
+    ],
+    "Sin resumen disponible."
+  );
+}
+
+function renderSalesReports() {
+  if (!elements.salesReportsContent) {
+    return;
+  }
+  if (salesReportState.loading) {
+    elements.salesReportsContent.innerHTML =
+      '<div class="sales-report-empty">Cargando reporte de ventas...</div>';
+    return;
+  }
+  if (!state.sales_report?.summary) {
+    elements.salesReportsContent.innerHTML =
+      '<div class="sales-report-empty">Actualiza el reporte para ver cartera, caja e inventario en este modulo.</div>';
+    return;
+  }
+
+  const report = state.sales_report;
+  const summary = report.summary || {};
+  const summaryCards = [
+    ["Total facturado", formatMoney(summary.total_facturado || 0)],
+    ["Total cobrado", formatMoney(summary.total_cobrado || 0)],
+    ["Abonos", summary.abonos_registrados || 0],
+    ["Cartera pendiente", formatMoney(summary.cartera_pendiente || 0)],
+    ["Gastos", formatMoney(summary.gastos || 0)],
+    ["Utilidad neta", formatMoney(summary.utilidad || 0)],
+  ]
+    .map(
+      ([label, value]) => `
+        <article class="sales-report-card">
+          <h4>${escapeHtml(String(label))}</h4>
+          <div class="sales-report-kv">
+            <div><span>Valor</span><strong>${escapeHtml(String(value))}</strong></div>
+          </div>
+        </article>
+      `
+    )
+    .join("");
+
+  const documentsTable = buildSalesHtmlTable(
+    [
+      { label: "Numero", align: "left" },
+      { label: "Tipo", align: "left" },
+      { label: "Paciente", align: "left" },
+      { label: "Estado", align: "left" },
+      { label: "Total" },
+    ],
+    (report.documents || []).slice(0, 12).map((document) => [
+      {
+        value: `<button class="ghost-button" type="button" data-view-billing-document="${escapeHtml(
+          String(document.id || "")
+        )}">${escapeHtml(document.document_number || "-")}</button>`,
+        html: true,
+        align: "left",
+      },
+      { value: document.document_type === "cotizacion" ? "Cotizacion" : "Factura", align: "left" },
+      { value: document.patient_name || document.patient_name_snapshot || "-", align: "left" },
+      { value: document.status || "-", align: "left" },
+      { value: formatMoney(document.total || 0) },
+    ]),
+    "No hay documentos para el rango seleccionado."
+  );
+
+  const outstandingTable = buildSalesHtmlTable(
+    [
+      { label: "Documento", align: "left" },
+      { label: "Paciente", align: "left" },
+      { label: "Vence", align: "left" },
+      { label: "Saldo" },
+      { label: "Mora" },
+    ],
+    (report.outstanding_invoices || []).slice(0, 12).map((document) => [
+      { value: document.document_number || "-", align: "left" },
+      { value: document.patient_name || document.patient_name_snapshot || "-", align: "left" },
+      { value: document.due_date || "-", align: "left" },
+      { value: formatMoney(document.balance_due || 0) },
+      { value: Number(document.days_overdue || 0).toString() },
+    ]),
+    "No hay cartera pendiente al corte."
+  );
+
+  const lowStockTable = buildSalesHtmlTable(
+    [
+      { label: "Item", align: "left" },
+      { label: "Categoria", align: "left" },
+      { label: "Stock" },
+      { label: "Minimo" },
+    ],
+    (report.low_stock_items || []).slice(0, 12).map((item) => [
+      { value: item.name || "-", align: "left" },
+      { value: item.category || "-", align: "left" },
+      { value: Number(item.stock_quantity || 0).toString() },
+      { value: Number(item.min_stock || 0).toString() },
+    ]),
+    "No hay alertas de inventario."
+  );
+
+  elements.salesReportsContent.innerHTML = `
+    <div class="sales-report-grid">${summaryCards}</div>
+    <article class="sales-report-card">
+      <h4>Documentos emitidos</h4>
+      ${documentsTable}
+    </article>
+    <article class="sales-report-card">
+      <h4>Cartera pendiente</h4>
+      ${outstandingTable}
+    </article>
+    <article class="sales-report-card">
+      <h4>Inventario en alerta</h4>
+      ${lowStockTable}
+    </article>
+  `;
+}
+
+async function loadSalesDocumentDetail(documentId, { silent = false } = {}) {
+  if (!documentId) {
+    salesSelectedDocumentId = "";
+    salesSelectedDocument = null;
+    renderSalesDocumentDetail();
+    return null;
+  }
+  const detail = await api.getBillingDocument(documentId);
+  salesSelectedDocumentId = documentId;
+  salesSelectedDocument = detail;
+  renderSalesDocumentDetail();
+  if (!silent) {
+    showStatus(`Documento ${detail.document_number || ""} cargado.`, "info");
+  }
+  return detail;
+}
+
+async function loadSalesReport({ silent = false, force = false } = {}) {
+  syncSalesReportStateFromForm();
+  const requestKey = getSalesReportRequestKey();
+  if (!force && salesReportState.loaded && salesReportState.requestedKey === requestKey) {
+    renderSalesReportMiniSummary();
+    renderSalesReports();
+    return state.sales_report;
+  }
+  if (
+    !force &&
+    salesReportState.loading &&
+    salesReportState.requestedKey === requestKey &&
+    salesReportPromise
+  ) {
+    return salesReportPromise;
+  }
+  salesReportState.loading = true;
+  salesReportState.requestedKey = requestKey;
+  renderSalesReports();
+  salesReportPromise = (async () => {
+    try {
+      const report = await api.getSalesReport({
+        start_date: salesReportState.start_date,
+        end_date: salesReportState.end_date,
+      });
+      state.sales_report = report;
+      salesReportState.loaded = true;
+      renderSalesReportMiniSummary();
+      renderSalesReports();
+      if (!silent) {
+        showStatus("Reporte de ventas actualizado.", "success");
+      }
+      return report;
+    } finally {
+      salesReportState.loading = false;
+      salesReportPromise = null;
+      renderSalesReports();
+    }
+  })();
+  return salesReportPromise;
+}
+
 function renderBillingDraftLines() {
   renderList(
     elements.billingDraftLines,
@@ -3316,6 +3874,20 @@ function syncBillingDocumentFormState() {
 }
 
 function renderSales() {
+  ensureSalesReportDefaults();
+  syncSalesDocumentModeUI();
+  const selectedDocument = state.billing_documents.find(
+    (item) => String(item.id) === String(salesSelectedDocumentId)
+  );
+  const activeDocumentType = getSalesDocumentFilterType();
+  if (!selectedDocument || (activeDocumentType && selectedDocument.document_type !== activeDocumentType)) {
+    salesSelectedDocumentId = "";
+    salesSelectedDocument = null;
+  }
+  const documentMode = getSalesDocumentModeMeta();
+  const filteredBillingDocuments = state.billing_documents.filter(
+    (document) => !activeDocumentType || document.document_type === activeDocumentType
+  );
   const summary = state.billing_summary || {};
   elements.salesDocumentsTotal.textContent = summary.documents_total ?? 0;
   elements.salesInvoicesTotal.textContent = summary.facturas_total ?? 0;
@@ -3382,13 +3954,13 @@ function renderSales() {
 
   renderList(
     elements.billingDocumentsList,
-    state.billing_documents,
+    filteredBillingDocuments,
     (document) => `
       <article class="list-card">
         <header>
           <div>
             <h4>${escapeHtml(document.document_number)} / ${escapeHtml(document.patient_name)}</h4>
-            <p>${escapeHtml(document.document_type)} / ${formatDateTime(document.issue_date)}</p>
+            <p>${escapeHtml(document.document_type === "cotizacion" ? "Cotizacion" : "Factura")} / ${formatDateTime(document.issue_date)}</p>
           </div>
           <span class="${statusClass(document.status)}">${escapeHtml(humanStatus(document.status))}</span>
         </header>
@@ -3396,6 +3968,8 @@ function renderSales() {
         <p>Total: ${formatMoney(document.total || 0)} / Pagado: ${formatMoney(document.amount_paid || 0)}</p>
         <p>Saldo: ${formatMoney(document.balance_due || 0)} / Lineas: ${document.lines_count || 0}</p>
         <div class="item-actions">
+          <button data-view-billing-document="${escapeHtml(document.id)}" type="button">Ver detalle</button>
+          <button data-download-billing-document="${escapeHtml(document.id)}" type="button">PDF</button>
           ${
             document.document_type === "factura" && document.status === "Pendiente"
               ? `<button data-select-billing-document="${escapeHtml(document.id)}" type="button">Registrar abono</button>`
@@ -3404,7 +3978,7 @@ function renderSales() {
         </div>
       </article>
     `,
-    "Aun no hay documentos de facturacion."
+    documentMode.emptyMessage
   );
 
   renderList(
@@ -3449,6 +4023,13 @@ function renderSales() {
     `,
     "Aun no hay movimientos de inventario."
   );
+
+  renderSalesDocumentDetail();
+  renderSalesReportMiniSummary();
+  renderSalesReports();
+  if (getActiveSalesSubsectionValue() === "caja" && !salesReportState.loaded && !salesReportState.loading) {
+    void loadSalesReport({ silent: true });
+  }
 }
 
 function renderDashboard() {
@@ -14984,6 +15565,9 @@ async function handleBillingSettingsSubmit(event) {
   const payload = { ...state.settings, ...serializeForm(event.currentTarget) };
   await api.saveSettings(payload);
   await refreshData("Configuracion de facturacion actualizada.");
+  if (salesSelectedDocumentId) {
+    await loadSalesDocumentDetail(salesSelectedDocumentId, { silent: true });
+  }
   setActiveSection("sales");
 }
 
@@ -15011,6 +15595,7 @@ function buildBillingDocumentPayload(form) {
     throw new Error("Agrega al menos un item al documento.");
   }
   const payload = serializeForm(form);
+  payload.document_type = getSalesDocumentFilterType() || payload.document_type || "factura";
   payload.lines = billingDraft.lines.map((line) => ({
     catalog_item_id: line.catalog_item_id,
     quantity: line.quantity,
@@ -15111,6 +15696,7 @@ async function handleCatalogSubmit(event) {
   event.currentTarget.elements.presentation_total.value = "1";
   event.currentTarget.elements.stock_quantity.value = "0";
   event.currentTarget.elements.min_stock.value = "0";
+  salesReportState.loaded = false;
   await refreshData("Item de catalogo guardado.");
   setActiveSection("sales");
 }
@@ -15354,22 +15940,35 @@ async function handleGoogleCalendarDisconnect() {
 
 async function handleBillingDocumentSubmit(event) {
   event.preventDefault();
-  await api.saveBillingDocument(buildBillingDocumentPayload(event.currentTarget));
+  const savedDocument = await api.saveBillingDocument(buildBillingDocumentPayload(event.currentTarget));
   billingDraft.lines = [];
   resetForm(event.currentTarget);
   setDateTimeDefaults();
   syncBillingDocumentFormState();
+  salesReportState.loaded = false;
   await refreshData("Documento de facturacion guardado.");
+  if (savedDocument?.id) {
+    salesSelectedDocumentId = savedDocument.id;
+    await loadSalesDocumentDetail(savedDocument.id, { silent: true });
+  }
   setActiveSection("sales");
+  setSectionSubsection("sales", resolveSalesSubsectionForDocument(savedDocument));
 }
 
 async function handleBillingPaymentSubmit(event) {
   event.preventDefault();
-  await api.registerBillingPayment(serializeForm(event.currentTarget));
+  const payload = serializeForm(event.currentTarget);
+  await api.registerBillingPayment(payload);
   resetForm(event.currentTarget);
   setDateTimeDefaults();
+  salesReportState.loaded = false;
   await refreshData("Abono registrado.");
+  if (payload.document_id) {
+    salesSelectedDocumentId = payload.document_id;
+    await loadSalesDocumentDetail(payload.document_id, { silent: true });
+  }
   setActiveSection("sales");
+  setSectionSubsection("sales", "factura");
 }
 
 async function handleCashMovementSubmit(event) {
@@ -15377,6 +15976,7 @@ async function handleCashMovementSubmit(event) {
   await api.saveCashMovement(serializeForm(event.currentTarget));
   resetForm(event.currentTarget);
   setDateTimeDefaults();
+  salesReportState.loaded = false;
   await refreshData("Movimiento de caja guardado.");
   setActiveSection("sales");
 }
@@ -15386,6 +15986,7 @@ async function handleStockAdjustmentSubmit(event) {
   await api.saveStockAdjustment(serializeForm(event.currentTarget));
   resetForm(event.currentTarget);
   setDateTimeDefaults();
+  salesReportState.loaded = false;
   await refreshData("Ajuste de inventario aplicado.");
   setActiveSection("sales");
 }
@@ -16177,7 +16778,21 @@ function handleRecordsClick(event) {
   setActiveSection("consultorio");
 }
 
-function handleBillingDocumentsClick(event) {
+async function handleBillingDocumentsClick(event) {
+  const viewButton = event.target.closest("button[data-view-billing-document]");
+  if (viewButton) {
+    const detail = await loadSalesDocumentDetail(viewButton.dataset.viewBillingDocument);
+    setActiveSection("sales");
+    setSectionSubsection("sales", resolveSalesSubsectionForDocument(detail));
+    return;
+  }
+  const pdfButton = event.target.closest("button[data-download-billing-document]");
+  if (pdfButton) {
+    const result = await api.generateBillingDocumentPdf(pdfButton.dataset.downloadBillingDocument);
+    openExportUrl(result?.url);
+    showStatus("PDF del documento generado.", "success");
+    return;
+  }
   const button = event.target.closest("button[data-select-billing-document]");
   if (!button) {
     return;
@@ -16187,8 +16802,70 @@ function handleBillingDocumentsClick(event) {
   if (document) {
     elements.billingPaymentForm.elements.amount.value = Number(document.balance_due || 0);
   }
+  await loadSalesDocumentDetail(button.dataset.selectBillingDocument, { silent: true });
   showStatus("Factura pendiente seleccionada para registrar abono.", "info");
   setActiveSection("sales");
+  setSectionSubsection("sales", "factura");
+}
+
+async function handleSalesDocumentDetailClick(event) {
+  const pdfButton = event.target.closest("button[data-download-billing-document]");
+  if (pdfButton) {
+    const result = await api.generateBillingDocumentPdf(pdfButton.dataset.downloadBillingDocument);
+    openExportUrl(result?.url);
+    showStatus("PDF del documento generado.", "success");
+    return;
+  }
+  const paymentPdfButton = event.target.closest("button[data-download-billing-payment]");
+  if (paymentPdfButton && salesSelectedDocumentId) {
+    const result = await api.generateBillingPaymentPdf(
+      salesSelectedDocumentId,
+      paymentPdfButton.dataset.downloadBillingPayment
+    );
+    openExportUrl(result?.url);
+    showStatus("PDF del abono generado.", "success");
+    return;
+  }
+  const selectPaymentButton = event.target.closest("button[data-select-billing-document]");
+  if (selectPaymentButton) {
+    await handleBillingDocumentsClick(event);
+  }
+}
+
+async function handleSalesDocumentEmailSubmit(event) {
+  const form = event.target.closest("form[data-sales-email-form]");
+  if (!form || !salesSelectedDocumentId) {
+    return;
+  }
+  event.preventDefault();
+  const payload = serializeForm(form);
+  const result = await api.sendBillingDocumentEmail(salesSelectedDocumentId, payload);
+  showStatus(`Correo enviado a ${result.to}.`, "success");
+}
+
+async function handleSalesReportSubmit(event) {
+  event.preventDefault();
+  setSectionSubsection("sales", "caja");
+  await loadSalesReport();
+}
+
+async function handleSalesReportPdfClick() {
+  syncSalesReportStateFromForm();
+  const result = await api.generateSalesReportPdf({
+    start_date: salesReportState.start_date,
+    end_date: salesReportState.end_date,
+  });
+  openExportUrl(result?.url);
+  showStatus("PDF del reporte generado.", "success");
+}
+
+async function handleSalesInventoryPdfClick() {
+  syncSalesReportStateFromForm();
+  const result = await api.generateInventoryReportPdf({
+    as_of_date: salesReportState.as_of_date,
+  });
+  openExportUrl(result?.url);
+  showStatus("PDF de inventario generado.", "success");
 }
 
 function bindNavigation() {
@@ -17278,7 +17955,23 @@ function bindForms() {
   elements.backupButton.addEventListener("click", wrapAsync(handleBackupClick));
   elements.addBillingLineButton.addEventListener("click", wrapAsync(async () => addDraftBillingLine()));
   elements.billingDraftLines.addEventListener("click", handleBillingDraftClick);
-  elements.billingDocumentsList.addEventListener("click", handleBillingDocumentsClick);
+  elements.billingDocumentsList.addEventListener("click", wrapAsync(handleBillingDocumentsClick));
+  if (elements.salesDocumentDetail) {
+    elements.salesDocumentDetail.addEventListener("click", wrapAsync(handleSalesDocumentDetailClick));
+    elements.salesDocumentDetail.addEventListener("submit", wrapAsync(handleSalesDocumentEmailSubmit));
+  }
+  if (elements.salesReportsContent) {
+    elements.salesReportsContent.addEventListener("click", wrapAsync(handleBillingDocumentsClick));
+  }
+  if (elements.salesReportForm) {
+    elements.salesReportForm.addEventListener("submit", wrapAsync(handleSalesReportSubmit));
+  }
+  if (elements.salesReportPdfButton) {
+    elements.salesReportPdfButton.addEventListener("click", wrapAsync(handleSalesReportPdfClick));
+  }
+  if (elements.salesInventoryPdfButton) {
+    elements.salesInventoryPdfButton.addEventListener("click", wrapAsync(handleSalesInventoryPdfClick));
+  }
   if (elements.appointmentsList) {
     elements.appointmentsList.addEventListener("click", wrapAsync(handleAppointmentsClick));
   }

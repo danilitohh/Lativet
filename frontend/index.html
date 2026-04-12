@@ -436,37 +436,33 @@
           <div class="section-hero">
             <div>
               <p class="eyebrow">Ventas</p>
-              <h2>Documentos, caja, inventario, proveedores y clientes</h2>
+              <h2>Facturacion, cotizaciones, inventario, precios y caja</h2>
               <p class="section-copy">
-                Facturas, cotizaciones, ingresos, egresos, inventario y configuracion de facturacion integrados a la misma operacion veterinaria.
+                El modulo de Ventas concentra factura, cotizacion, inventario, precios y caja, manteniendo el resto del sistema intacto.
               </p>
             </div>
           </div>
 
-          <div class="menu-strip menu-strip--six">
+          <div class="menu-strip menu-strip--five">
             <article class="menu-card">
-              <h3>Documentos</h3>
-              <p>Facturas y cotizaciones con abonos y saldo.</p>
+              <h3>Factura</h3>
+              <p>Emision, abonos, detalle y envio de facturas.</p>
             </article>
             <article class="menu-card">
-              <h3>Ingresos y egresos</h3>
-              <p>Caja manual y movimientos automaticos.</p>
+              <h3>Cotizacion</h3>
+              <p>Documentos comerciales previos sin afectar caja.</p>
             </article>
             <article class="menu-card">
               <h3>Inventario</h3>
-              <p>Catalogo, stock y ajustes manuales.</p>
+              <p>Stock, catalogo activo y ajustes manuales.</p>
             </article>
             <article class="menu-card">
-              <h3>Proveedores</h3>
-              <p>Directorio de abastecimiento y relacion comercial.</p>
+              <h3>Precios</h3>
+              <p>Catalogo, proveedores, clientes y configuracion comercial.</p>
             </article>
             <article class="menu-card">
-              <h3>Clientes</h3>
-              <p>Los propietarios quedan disponibles tambien como clientes.</p>
-            </article>
-            <article class="menu-card">
-              <h3>Configuracion de facturacion</h3>
-              <p>Pie de documento, cuenta por defecto y plantillas de correo.</p>
+              <h3>Caja</h3>
+              <p>Movimientos, ingresos, egresos y reportes de ventas.</p>
             </article>
           </div>
 
@@ -512,10 +508,10 @@
 
           <div class="two-column-grid">
             <article id="salesDocumentFormPanel" class="panel-card">
-              <div class="panel-heading"><div><p class="eyebrow">Documentos</p><h3>Nueva factura o cotizacion</h3></div></div>
+              <div class="panel-heading"><div><p class="eyebrow">Documentos</p><h3 id="salesDocumentFormTitle">Nuevo documento</h3></div></div>
               <form id="billingDocumentForm" class="form-grid">
                 <label class="full"><span>Paciente</span><select id="billingPatientSelect" name="patient_id" required></select></label>
-                <label><span>Tipo</span><select id="billingDocumentTypeSelect" name="document_type"><option value="factura">Factura</option><option value="cotizacion">Cotizacion</option></select></label>
+                <label id="billingDocumentTypeField"><span>Tipo</span><select id="billingDocumentTypeSelect" name="document_type"><option value="factura">Factura</option><option value="cotizacion">Cotizacion</option></select></label>
                 <label><span>Fecha de emision</span><input name="issue_date" type="date" required /></label>
                 <label><span>Vencimiento</span><input name="due_date" type="date" /></label>
                 <label><span>Metodo de pago</span><select id="billingPaymentMethodSelect" name="payment_method"><option value="Pendiente">Pendiente</option><option value="Efectivo">Efectivo</option><option value="Transferencia">Transferencia</option><option value="Tarjeta">Tarjeta</option><option value="Otro">Otro</option></select></label>
@@ -535,7 +531,7 @@
                   <label><span>Caja del abono</span><select name="initial_payment_cash_account"><option value="caja_menor">Caja menor</option><option value="caja_mayor">Caja mayor</option><option value="transferencia">Transferencia</option></select></label>
                 </div>
                 <label class="full"><span>Notas</span><textarea name="notes" rows="3"></textarea></label>
-                <div class="full form-actions"><button class="primary-button" type="submit">Guardar documento</button></div>
+                <div class="full form-actions"><button id="billingDocumentSubmitButton" class="primary-button" type="submit">Guardar documento</button></div>
               </form>
             </article>
 
@@ -598,7 +594,7 @@
 
           <div class="three-column-grid">
             <article id="salesDocumentsPanel" class="panel-card">
-              <div class="panel-heading"><div><p class="eyebrow">Documentos</p><h3>Facturas y cotizaciones</h3></div></div>
+              <div class="panel-heading"><div><p class="eyebrow">Documentos</p><h3 id="salesDocumentsPanelTitle">Documentos emitidos</h3></div></div>
               <div id="billingDocumentsList" class="list-surface"></div>
             </article>
             <article id="salesCatalogPanel" class="panel-card">
@@ -614,6 +610,48 @@
           <article id="salesStockHistoryPanel" class="panel-card">
             <div class="panel-heading"><div><p class="eyebrow">Inventario</p><h3>Historial de movimientos</h3></div></div>
             <div id="stockMovementsList" class="list-surface"></div>
+          </article>
+
+          <div class="two-column-grid">
+            <article id="salesDocumentDetailPanel" class="panel-card">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">Documentos</p>
+                  <h3>Detalle del documento</h3>
+                </div>
+              </div>
+              <div id="salesDocumentDetail" class="sales-detail-shell"></div>
+            </article>
+
+            <article id="salesReportsFiltersPanel" class="panel-card">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">Reportes</p>
+                  <h3>Filtros y exportacion</h3>
+                </div>
+              </div>
+              <form id="salesReportForm" class="form-grid">
+                <label><span>Desde</span><input name="start_date" type="date" /></label>
+                <label><span>Hasta</span><input name="end_date" type="date" /></label>
+                <label><span>Corte de inventario</span><input name="as_of_date" type="date" /></label>
+                <div class="full form-actions">
+                  <button class="primary-button" type="submit">Actualizar reporte</button>
+                  <button id="salesReportPdfButton" class="secondary-button" type="button">Exportar PDF</button>
+                  <button id="salesInventoryPdfButton" class="ghost-button" type="button">Inventario PDF</button>
+                </div>
+              </form>
+              <div id="salesReportSummaryMini" class="summary-list"></div>
+            </article>
+          </div>
+
+          <article id="salesReportsPanel" class="panel-card panel-card--wide">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Reportes</p>
+                <h3>Ventas, cartera, caja e inventario</h3>
+              </div>
+            </div>
+            <div id="salesReportsContent" class="sales-report-shell"></div>
           </article>
 
           <article id="salesSettingsPanel" class="panel-card">
