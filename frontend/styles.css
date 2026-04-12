@@ -5290,6 +5290,33 @@ button:active {
   text-transform: uppercase;
 }
 
+#sales .sales-form-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  align-items: end;
+}
+
+#sales .sales-form-row--compact {
+  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+}
+
+#sales .sales-form-row label {
+  min-width: 0;
+}
+
+#sales .sales-form-actions-inline {
+  align-items: end;
+  justify-content: flex-start;
+  min-height: 100%;
+}
+
+#sales .sales-form-actions-inline .secondary-button,
+#sales .sales-form-actions-inline .ghost-button,
+#sales .sales-form-actions-inline .primary-button {
+  min-height: 40px;
+}
+
 .form-actions.align-end {
   align-items: end;
 }

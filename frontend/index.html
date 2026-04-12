@@ -494,11 +494,13 @@
                 <label><span>Proveedor</span><select id="catalogProviderSelect" name="provider_id"></select></label>
                 <label><span>Categoria</span><input name="category" placeholder="Medicamento, servicio, alimento" required /></label>
                 <label class="full"><span>Nombre</span><input name="name" required /></label>
-                <label><span>Costo de compra</span><input name="purchase_cost" type="number" step="0.01" min="0" value="0" /></label>
-                <label><span>Margen (%)</span><input name="margin_percent" type="number" step="0.01" min="0" value="0" /></label>
-                <label><span>Presentacion total</span><input name="presentation_total" type="number" step="0.01" min="0.01" value="1" /></label>
-                <label><span>Stock inicial</span><input name="stock_quantity" type="number" step="0.01" value="0" /></label>
-                <label><span>Stock minimo</span><input name="min_stock" type="number" step="0.01" value="0" /></label>
+                <div class="sales-form-row sales-form-row--compact full">
+                  <label><span>Costo de compra</span><input name="purchase_cost" type="number" step="0.01" min="0" value="0" /></label>
+                  <label><span>Margen (%)</span><input name="margin_percent" type="number" step="0.01" min="0" value="0" /></label>
+                  <label><span>Presentacion total</span><input name="presentation_total" type="number" step="0.01" min="0.01" value="1" /></label>
+                  <label><span>Stock inicial</span><input name="stock_quantity" type="number" step="0.01" value="0" /></label>
+                  <label><span>Stock minimo</span><input name="min_stock" type="number" step="0.01" value="0" /></label>
+                </div>
                 <label class="checkbox-row full"><input name="track_inventory" type="checkbox" checked /><span>Controlar inventario</span></label>
                 <label class="full"><span>Notas</span><textarea name="notes" rows="2"></textarea></label>
                 <div class="full form-actions"><button class="primary-button" type="submit">Guardar item</button></div>
@@ -511,20 +513,26 @@
               <div class="panel-heading"><div><p class="eyebrow">Documentos</p><h3 id="salesDocumentFormTitle">Nuevo documento</h3></div></div>
               <form id="billingDocumentForm" class="form-grid">
                 <label class="full"><span>Paciente</span><select id="billingPatientSelect" name="patient_id" required></select></label>
-                <label id="billingDocumentTypeField"><span>Tipo</span><select id="billingDocumentTypeSelect" name="document_type"><option value="factura">Factura</option><option value="cotizacion">Cotizacion</option></select></label>
-                <label><span>Fecha de emision</span><input name="issue_date" type="date" required /></label>
-                <label><span>Vencimiento</span><input name="due_date" type="date" /></label>
-                <label><span>Metodo de pago</span><select id="billingPaymentMethodSelect" name="payment_method"><option value="Pendiente">Pendiente</option><option value="Efectivo">Efectivo</option><option value="Transferencia">Transferencia</option><option value="Tarjeta">Tarjeta</option><option value="Otro">Otro</option></select></label>
-                <label><span>Cuenta de caja</span><select id="billingCashAccountSelect" name="cash_account"><option value="caja_menor">Caja menor</option><option value="caja_mayor">Caja mayor</option><option value="transferencia">Transferencia</option></select></label>
-                <label><span>Descuento</span><input name="discount" type="number" step="0.01" min="0" value="0" /></label>
-                <label><span>Correo del receptor</span><input name="recipient_email" type="email" /></label>
+                <div class="sales-form-row sales-form-row--compact full">
+                  <label id="billingDocumentTypeField"><span>Tipo</span><select id="billingDocumentTypeSelect" name="document_type"><option value="factura">Factura</option><option value="cotizacion">Cotizacion</option></select></label>
+                  <label><span>Fecha de emision</span><input name="issue_date" type="date" required /></label>
+                  <label><span>Vencimiento</span><input name="due_date" type="date" /></label>
+                  <label><span>Descuento</span><input name="discount" type="number" step="0.01" min="0" value="0" /></label>
+                </div>
+                <div class="sales-form-row full">
+                  <label><span>Metodo de pago</span><select id="billingPaymentMethodSelect" name="payment_method"><option value="Pendiente">Pendiente</option><option value="Efectivo">Efectivo</option><option value="Transferencia">Transferencia</option><option value="Tarjeta">Tarjeta</option><option value="Otro">Otro</option></select></label>
+                  <label><span>Cuenta de caja</span><select id="billingCashAccountSelect" name="cash_account"><option value="caja_menor">Caja menor</option><option value="caja_mayor">Caja mayor</option><option value="transferencia">Transferencia</option></select></label>
+                  <label><span>Correo del receptor</span><input name="recipient_email" type="email" /></label>
+                </div>
                 <label class="full"><span>Item del documento</span><select id="billingLineItemSelect"></select></label>
-                <label><span>Cantidad</span><input id="billingLineQuantity" type="number" step="0.01" min="0.01" value="1" /></label>
-                <div class="form-actions align-end"><button id="addBillingLineButton" class="secondary-button" type="button">Agregar item</button></div>
+                <div class="sales-form-row sales-form-row--compact full">
+                  <label><span>Cantidad</span><input id="billingLineQuantity" type="number" step="0.01" min="0.01" value="1" /></label>
+                  <div class="form-actions align-end sales-form-actions-inline"><button id="addBillingLineButton" class="secondary-button" type="button">Agregar item</button></div>
+                </div>
                 <div class="full">
                   <div id="billingDraftLines" class="list-surface"></div>
                 </div>
-                <div id="billingInitialPaymentGroup" class="form-grid full">
+                <div id="billingInitialPaymentGroup" class="sales-form-row full">
                   <label><span>Abono inicial</span><input name="initial_payment_amount" type="number" step="0.01" min="0" value="0" /></label>
                   <label><span>Fecha del abono</span><input name="initial_payment_date" type="date" /></label>
                   <label><span>Metodo del abono</span><select name="initial_payment_method"><option value="Efectivo">Efectivo</option><option value="Transferencia">Transferencia</option><option value="Tarjeta">Tarjeta</option><option value="Otro">Otro</option></select></label>
@@ -539,10 +547,12 @@
               <div class="panel-heading"><div><p class="eyebrow">Abonos</p><h3>Registrar pago</h3></div></div>
               <form id="billingPaymentForm" class="form-grid">
                 <label class="full"><span>Factura pendiente</span><select id="billingPaymentDocumentSelect" name="document_id" required></select></label>
-                <label><span>Fecha</span><input name="payment_date" type="date" required /></label>
-                <label><span>Monto</span><input name="amount" type="number" step="0.01" min="0.01" required /></label>
-                <label><span>Metodo</span><select name="payment_method"><option value="Efectivo">Efectivo</option><option value="Transferencia">Transferencia</option><option value="Tarjeta">Tarjeta</option><option value="Otro">Otro</option></select></label>
-                <label><span>Caja</span><select name="cash_account"><option value="caja_menor">Caja menor</option><option value="caja_mayor">Caja mayor</option><option value="transferencia">Transferencia</option></select></label>
+                <div class="sales-form-row sales-form-row--compact full">
+                  <label><span>Fecha</span><input name="payment_date" type="date" required /></label>
+                  <label><span>Monto</span><input name="amount" type="number" step="0.01" min="0.01" required /></label>
+                  <label><span>Metodo</span><select name="payment_method"><option value="Efectivo">Efectivo</option><option value="Transferencia">Transferencia</option><option value="Tarjeta">Tarjeta</option><option value="Otro">Otro</option></select></label>
+                  <label><span>Caja</span><select name="cash_account"><option value="caja_menor">Caja menor</option><option value="caja_mayor">Caja mayor</option><option value="transferencia">Transferencia</option></select></label>
+                </div>
                 <label class="full"><span>Nota</span><textarea name="note" rows="2"></textarea></label>
                 <div class="full form-actions"><button class="primary-button" type="submit">Registrar abono</button></div>
               </form>
@@ -553,11 +563,13 @@
             <article id="salesCashFormPanel" class="panel-card">
               <div class="panel-heading"><div><p class="eyebrow">Caja</p><h3>Ingreso o egreso manual</h3></div></div>
               <form id="cashMovementForm" class="form-grid">
-                <label><span>Tipo</span><select name="movement_type"><option value="ingreso">Ingreso</option><option value="gasto">Gasto</option></select></label>
-                <label><span>Fecha</span><input name="movement_date" type="date" required /></label>
+                <div class="sales-form-row sales-form-row--compact full">
+                  <label><span>Tipo</span><select name="movement_type"><option value="ingreso">Ingreso</option><option value="gasto">Gasto</option></select></label>
+                  <label><span>Fecha</span><input name="movement_date" type="date" required /></label>
+                  <label><span>Monto</span><input name="amount" type="number" step="0.01" min="0.01" required /></label>
+                  <label><span>Cuenta</span><select name="cash_account"><option value="caja_menor">Caja menor</option><option value="caja_mayor">Caja mayor</option><option value="transferencia">Transferencia</option></select></label>
+                </div>
                 <label class="full"><span>Concepto</span><input name="concept" required /></label>
-                <label><span>Monto</span><input name="amount" type="number" step="0.01" min="0.01" required /></label>
-                <label><span>Cuenta</span><select name="cash_account"><option value="caja_menor">Caja menor</option><option value="caja_mayor">Caja mayor</option><option value="transferencia">Transferencia</option></select></label>
                 <label><span>Categoria</span><input name="category" placeholder="Factura, compra, servicio" /></label>
                 <label class="full"><span>Notas</span><textarea name="notes" rows="2"></textarea></label>
                 <div class="full form-actions"><button class="primary-button" type="submit">Guardar movimiento</button></div>
@@ -568,9 +580,11 @@
               <div class="panel-heading"><div><p class="eyebrow">Inventario</p><h3>Ajuste manual</h3></div></div>
               <form id="stockAdjustmentForm" class="form-grid">
                 <label class="full"><span>Item</span><select id="stockAdjustmentItemSelect" name="item_id" required></select></label>
-                <label><span>Tipo</span><select name="movement_type"><option value="entrada">Entrada</option><option value="salida">Salida</option></select></label>
-                <label><span>Fecha</span><input name="movement_date" type="date" required /></label>
-                <label><span>Cantidad</span><input name="quantity" type="number" step="0.01" min="0.01" required /></label>
+                <div class="sales-form-row sales-form-row--compact full">
+                  <label><span>Tipo</span><select name="movement_type"><option value="entrada">Entrada</option><option value="salida">Salida</option></select></label>
+                  <label><span>Fecha</span><input name="movement_date" type="date" required /></label>
+                  <label><span>Cantidad</span><input name="quantity" type="number" step="0.01" min="0.01" required /></label>
+                </div>
                 <label class="full"><span>Nota</span><textarea name="note" rows="2"></textarea></label>
                 <div class="full form-actions"><button class="primary-button" type="submit">Aplicar ajuste</button></div>
               </form>
