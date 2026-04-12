@@ -3104,10 +3104,20 @@ function syncSectionContainers(sectionId) {
     return;
   }
   section.querySelectorAll(".two-column-grid, .three-column-grid, .panel-stack").forEach((container) => {
-    const hasVisibleChild = Array.from(container.children).some(
+    const visibleChildren = Array.from(container.children).filter(
       (child) => !child.classList.contains("is-hidden")
     );
-    container.classList.toggle("is-hidden", !hasVisibleChild);
+    const visibleCount = visibleChildren.length;
+    container.classList.toggle("is-hidden", visibleCount === 0);
+    container.classList.toggle("grid-visible-1", visibleCount === 1);
+    container.classList.toggle("grid-visible-2", visibleCount === 2);
+    container.classList.toggle("grid-visible-3", visibleCount >= 3);
+    Array.from(container.children).forEach((child) => {
+      child.classList.toggle(
+        "panel-card--solo",
+        visibleCount === 1 && !child.classList.contains("is-hidden")
+      );
+    });
   });
 }
 

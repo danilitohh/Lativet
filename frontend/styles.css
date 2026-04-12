@@ -577,8 +577,21 @@ button:active {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.two-column-grid.grid-visible-1,
+.three-column-grid.grid-visible-1 {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.three-column-grid.grid-visible-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .panel-card {
   padding: 12px;
+}
+
+.panel-card--solo {
+  grid-column: 1 / -1;
 }
 
 .panel-card--action {
@@ -6965,6 +6978,19 @@ body.auth-locked .page-shell > :not(#loginModal) {
 .sales-report-shell {
   display: grid;
   gap: 12px;
+}
+
+#sales.workspace-section {
+  gap: 14px;
+}
+
+#sales .two-column-grid,
+#sales .three-column-grid {
+  align-items: start;
+}
+
+#sales .panel-card {
+  height: 100%;
 }
 
 .sales-detail-empty,
