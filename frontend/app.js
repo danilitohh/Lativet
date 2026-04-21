@@ -127,6 +127,198 @@ const permissionLabelMap = permissionOptions.reduce((acc, option) => {
   acc[option.key] = option.label;
   return acc;
 }, {});
+const DASHBOARD_RAIL_ITEMS = [
+  {
+    shortcut: "dashboard-home",
+    label: "Inicio",
+    hint: "Portada",
+    icon: "dashboard",
+    requires: "dashboard",
+    activeSection: "dashboard",
+  },
+  {
+    shortcut: "agenda",
+    label: "Agenda",
+    hint: "Citas",
+    icon: "calendar",
+    requires: "agenda",
+    activeSection: "agenda",
+  },
+  {
+    shortcut: "sales",
+    label: "Ventas",
+    hint: "Caja",
+    icon: "sales",
+    requires: "sales",
+    activeSection: "sales",
+  },
+  {
+    shortcut: "consultorio",
+    label: "Clinica",
+    hint: "Pacientes",
+    icon: "patient",
+    requires: "consultorio",
+    activeSection: "consultorio",
+  },
+  {
+    shortcut: "consents",
+    label: "Consent.",
+    hint: "Legal",
+    icon: "consent",
+    requires: "consents",
+    activeSection: "consents",
+  },
+  {
+    shortcut: "reports",
+    label: "Informes",
+    hint: "Resumen",
+    icon: "report",
+    requires: "reports",
+    activeSection: "reports",
+  },
+  {
+    shortcut: "administration",
+    label: "Usuarios",
+    hint: "Equipo",
+    icon: "users",
+    requires: "administration",
+    activeSection: "administration",
+  },
+];
+const DASHBOARD_QUICK_ACTIONS = [
+  {
+    shortcut: "factura",
+    title: "Crear factura",
+    description: "Inicia la facturacion del dia y deja listo el seguimiento de pagos.",
+    badge: "Ventas",
+    icon: "invoice",
+    requires: "sales",
+    meta: () => {
+      const pending = getDashboardPendingBillingDocumentsCount();
+      return pending ? `${pending} pendientes` : "Facturacion inmediata";
+    },
+  },
+  {
+    shortcut: "cotizacion",
+    title: "Crear cotizacion",
+    description: "Prepara presupuestos y comparte una propuesta rapida al cliente.",
+    badge: "Ventas",
+    icon: "quote",
+    requires: "sales",
+    meta: () => getDashboardQuoteCountText(),
+  },
+  {
+    shortcut: "abono",
+    title: "Registrar abono",
+    description: "Ve directo a facturas para cargar pagos parciales o totales.",
+    badge: "Cobros",
+    icon: "payment",
+    requires: "sales",
+    meta: () => {
+      const pending = getDashboardPendingBillingDocumentsCount();
+      return pending ? `${pending} por revisar` : "Saldo al dia";
+    },
+  },
+  {
+    shortcut: "caja",
+    title: "Registrar ingreso o gasto",
+    description: "Abre caja para movimientos operativos, aperturas y cierres.",
+    badge: "Caja",
+    icon: "cash",
+    requires: "sales",
+    meta: () => getDashboardCashSummaryText(),
+  },
+  {
+    shortcut: "inventory",
+    title: "Revisar inventario",
+    description: "Consulta stock, ajustes, precios y alertas desde ventas.",
+    badge: "Inventario",
+    icon: "inventory",
+    requires: "sales",
+    meta: () => getDashboardLowStockText(),
+  },
+  {
+    shortcut: "agenda",
+    title: "Agenda del dia",
+    description: "Salta a la programacion para confirmar, crear o editar citas.",
+    badge: "Agenda",
+    icon: "calendar",
+    requires: "agenda",
+    meta: () => `${state.dashboard?.appointments_today ?? 0} hoy`,
+  },
+  {
+    shortcut: "patients",
+    title: "Pacientes e historias",
+    description: "Abre propietarios, mascotas y la historia clinica sin rodeos.",
+    badge: "Clinica",
+    icon: "patient",
+    requires: "consultorio",
+    meta: () => `${state.dashboard?.patients ?? 0} mascotas`,
+  },
+  {
+    shortcut: "consents",
+    title: "Consentimientos",
+    description: "Registra soportes legales y revisa el archivo disponible.",
+    badge: "Legal",
+    icon: "consent",
+    requires: "consents",
+    meta: () => `${state.dashboard?.consents ?? 0} registrados`,
+  },
+  {
+    shortcut: "grooming",
+    title: "Peluqueria",
+    description: "Entra directo al modulo de grooming para servicios y control.",
+    badge: "Spa",
+    icon: "grooming",
+    requires: "consultorio",
+    meta: () => `${state.dashboard?.grooming_total ?? 0} servicios`,
+  },
+  {
+    shortcut: "reports",
+    title: "Ver reportes",
+    description: "Abre el resumen operativo y financiero para tomar decisiones.",
+    badge: "Informes",
+    icon: "report",
+    requires: "reports",
+    meta: () => `${state.dashboard?.consultations_total ?? 0} consultas`,
+  },
+  {
+    shortcut: "users",
+    title: "Usuarios y permisos",
+    description: "Gestiona el equipo, accesos y roles desde administracion.",
+    badge: "Equipo",
+    icon: "users",
+    requires: "administration",
+    meta: () => getDashboardUsersText(),
+  },
+  {
+    shortcut: "backup",
+    title: "Crear respaldo",
+    description: "Genera una copia de seguridad para proteger la operacion.",
+    badge: "Seguridad",
+    icon: "backup",
+    meta: () =>
+      state.dashboard?.last_backup_at ? "Ultimo respaldo disponible" : "Pendiente de respaldo",
+  },
+];
+const DASHBOARD_SHORTCUT_REQUIREMENTS = {
+  "dashboard-home": "dashboard",
+  agenda: "agenda",
+  sales: "sales",
+  consultorio: "consultorio",
+  consents: "consents",
+  reports: "reports",
+  administration: "administration",
+  factura: "sales",
+  cotizacion: "sales",
+  abono: "sales",
+  caja: "sales",
+  inventory: "sales",
+  patients: "consultorio",
+  grooming: "consultorio",
+  users: "administration",
+  backup: null,
+};
 const usersFilters = { query: "", pageSize: 10, showInactive: false };
 const ownersFilters = { query: "", petQuery: "" };
 const consultorioPatientsFilters = { query: "" };
@@ -2669,6 +2861,9 @@ function cacheElements() {
     "loginForm",
     "loginError",
     "dashboardUpdated",
+    "dashboardHeroStats",
+    "dashboardQuickActions",
+    "dashboardQuickRail",
     "metricOwners",
     "metricPatients",
     "metricRecords",
@@ -4401,8 +4596,347 @@ function renderSales() {
   renderSalesDocumentDetail();
 }
 
+function getDashboardPendingRequestsCount() {
+  const requests = state.requests || {};
+  return ["clinical_records", "appointments", "orders", "billing_documents"].reduce(
+    (total, key) => total + (Array.isArray(requests[key]) ? requests[key].length : 0),
+    0
+  );
+}
+
+function getDashboardPendingBillingDocumentsCount() {
+  const pendingDocuments = state.requests?.billing_documents;
+  return Array.isArray(pendingDocuments) ? pendingDocuments.length : 0;
+}
+
+function getDashboardLowStockCount() {
+  return (state.catalog_items || []).filter((item) => {
+    if (!item || !item.track_inventory) {
+      return false;
+    }
+    const stock = Number(item.stock_quantity || 0);
+    const minStock = Number(item.min_stock || 0);
+    return stock <= minStock;
+  }).length;
+}
+
+function getDashboardQuoteCountText() {
+  const count = (state.billing_documents || []).filter(
+    (document) => document?.document_type === "cotizacion"
+  ).length;
+  return count ? `${count} cotizaciones` : "Presupuestos";
+}
+
+function getDashboardCashSummaryText() {
+  const count = Array.isArray(state.cash_movements) ? state.cash_movements.length : 0;
+  return count ? `${count} movimientos` : "Caja operativa";
+}
+
+function getDashboardLowStockText() {
+  const count = getDashboardLowStockCount();
+  return count ? `${count} alertas` : "Stock al dia";
+}
+
+function getDashboardUsersText() {
+  const count = Array.isArray(state.users) ? state.users.length : 0;
+  return count ? `${count} usuarios` : "Gestionar accesos";
+}
+
+function isDashboardShortcutAllowed(shortcut, allowed = getAllowedSections()) {
+  const requirement = DASHBOARD_SHORTCUT_REQUIREMENTS[shortcut];
+  return !requirement || allowed.has(requirement);
+}
+
+function getDashboardRailHint(shortcut) {
+  switch (shortcut) {
+    case "dashboard-home":
+      return getDashboardPendingRequestsCount()
+        ? `${getDashboardPendingRequestsCount()} pendientes`
+        : "Sin alertas";
+    case "agenda":
+      return `${state.dashboard?.appointments_today ?? 0} hoy`;
+    case "sales":
+      return getDashboardPendingBillingDocumentsCount()
+        ? `${getDashboardPendingBillingDocumentsCount()} cobros`
+        : "Operacion";
+    case "consultorio":
+      return `${state.dashboard?.records_total ?? 0} historias`;
+    case "consents":
+      return `${state.dashboard?.consents ?? 0} registros`;
+    case "reports":
+      return `${state.dashboard?.consultations_total ?? 0} consultas`;
+    case "administration":
+      return getDashboardUsersText();
+    default:
+      return "";
+  }
+}
+
+function getDashboardIconSvg(icon) {
+  return (
+    {
+      dashboard: `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 13.2 12 4l9 9.2"></path>
+          <path d="M5 11.8V21h14v-9.2"></path>
+          <path d="M9 14h6v7H9z"></path>
+        </svg>
+      `,
+      calendar: `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="5" width="18" height="16" rx="3"></rect>
+          <path d="M8 3v4"></path>
+          <path d="M16 3v4"></path>
+          <path d="M3 10h18"></path>
+          <path d="M8 14h3"></path>
+          <path d="M13 14h3"></path>
+          <path d="M8 18h3"></path>
+        </svg>
+      `,
+      sales: `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="6" width="18" height="12" rx="3"></rect>
+          <path d="M3 10h18"></path>
+          <path d="M7 15h4"></path>
+          <path d="M15.5 14a1.5 1.5 0 1 0 0 3c.83 0 1.5-.5 1.5-1.25S16.33 14.5 15.5 14.5"></path>
+        </svg>
+      `,
+      patient: `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 21s-6-3.8-6-9.1A3.9 3.9 0 0 1 10 8a4.34 4.34 0 0 1 2 1.02A4.34 4.34 0 0 1 14 8a3.9 3.9 0 0 1 4 3.9C18 17.2 12 21 12 21Z"></path>
+          <path d="M12 10v4"></path>
+          <path d="M10 12h4"></path>
+        </svg>
+      `,
+      consent: `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path>
+          <path d="M14 3v5h5"></path>
+          <path d="m9 14 2 2 4-4"></path>
+        </svg>
+      `,
+      report: `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M4 19h16"></path>
+          <path d="M7 16V9"></path>
+          <path d="M12 16V5"></path>
+          <path d="M17 16v-4"></path>
+          <path d="M5 5h14"></path>
+        </svg>
+      `,
+      users: `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+          <circle cx="10" cy="7" r="3"></circle>
+          <path d="M20 21v-2a4 4 0 0 0-3-3.87"></path>
+          <path d="M16 4.13a3 3 0 0 1 0 5.75"></path>
+        </svg>
+      `,
+      invoice: `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M7 3h10l3 3v15H4V3h3"></path>
+          <path d="M14 3v4h4"></path>
+          <path d="M8 12h8"></path>
+          <path d="M8 16h5"></path>
+          <path d="M16.5 16.5c.83 0 1.5-.45 1.5-1s-.67-1-1.5-1-1.5-.45-1.5-1 .67-1 1.5-1"></path>
+        </svg>
+      `,
+      quote: `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M7 3h10l3 3v15H4V3h3"></path>
+          <path d="M14 3v4h4"></path>
+          <path d="M8 11h8"></path>
+          <path d="M8 15h8"></path>
+          <path d="M8 19h5"></path>
+        </svg>
+      `,
+      payment: `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="6" width="18" height="12" rx="3"></rect>
+          <path d="M3 10h18"></path>
+          <path d="m9 15 2 2 4-4"></path>
+        </svg>
+      `,
+      cash: `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 3v18"></path>
+          <path d="M17 7.5c0-1.9-2.24-3.5-5-3.5s-5 1.6-5 3.5 2.24 3.5 5 3.5 5 1.6 5 3.5-2.24 3.5-5 3.5-5-1.6-5-3.5"></path>
+        </svg>
+      `,
+      inventory: `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <path d="m3 7 9-4 9 4-9 4-9-4Z"></path>
+          <path d="m3 7 9 4 9-4"></path>
+          <path d="M3 7v10l9 4 9-4V7"></path>
+        </svg>
+      `,
+      grooming: `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <path d="m4 4 6 6"></path>
+          <path d="m14 14 6 6"></path>
+          <path d="M10 10 4 16"></path>
+          <path d="m20 4-6 6"></path>
+          <path d="M9 17a2 2 0 1 1-4 0 2 2 0 0 1 4 0Z"></path>
+          <path d="M19 7a2 2 0 1 1-4 0 2 2 0 0 1 4 0Z"></path>
+        </svg>
+      `,
+      backup: `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 3v12"></path>
+          <path d="m8 7 4-4 4 4"></path>
+          <path d="M5 14v4a3 3 0 0 0 3 3h8a3 3 0 0 0 3-3v-4"></path>
+        </svg>
+      `,
+    }[icon] ||
+    `
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="9"></circle>
+        <path d="M12 8v4"></path>
+        <path d="M12 16h.01"></path>
+      </svg>
+    `
+  );
+}
+
+function renderDashboardHeroStats() {
+  if (!elements.dashboardHeroStats) {
+    return;
+  }
+  const dashboard = state.dashboard || {};
+  const heroItems = [
+    {
+      shortcut: "agenda",
+      label: "Citas de hoy",
+      value: String(dashboard.appointments_today ?? 0),
+      note: `${dashboard.upcoming_week ?? 0} en la proxima semana`,
+    },
+    {
+      shortcut: "factura",
+      label: "Ventas pendientes",
+      value: String(getDashboardPendingBillingDocumentsCount()),
+      note: `${getDashboardPendingRequestsCount()} solicitudes por revisar`,
+    },
+    {
+      shortcut: "patients",
+      label: "Mascotas activas",
+      value: String(dashboard.patients ?? 0),
+      note: `${dashboard.records_total ?? 0} historias registradas`,
+    },
+    {
+      shortcut: "consents",
+      label: "Consentimientos",
+      value: String(dashboard.consents ?? 0),
+      note: "Archivo legal al dia",
+    },
+    {
+      shortcut: "backup",
+      label: "Ultimo respaldo",
+      value: dashboard.last_backup_at ? formatDateTime(dashboard.last_backup_at) : "Pendiente",
+      note: state.backups_path || "Sin ruta de respaldo",
+    },
+  ]
+    .filter((item) => isDashboardShortcutAllowed(item.shortcut))
+    .slice(0, 4);
+
+  elements.dashboardHeroStats.innerHTML = heroItems
+    .map(
+      (item) => `
+        <button class="dashboard-hero-stat" type="button" data-dashboard-shortcut="${escapeHtml(
+          item.shortcut
+        )}">
+          <span class="dashboard-hero-stat__label">${escapeHtml(item.label)}</span>
+          <strong class="dashboard-hero-stat__value">${escapeHtml(item.value)}</strong>
+          <span class="dashboard-hero-stat__note">${escapeHtml(item.note)}</span>
+        </button>
+      `
+    )
+    .join("");
+}
+
+function renderDashboardQuickRail() {
+  if (!elements.dashboardQuickRail) {
+    return;
+  }
+  const allowed = getAllowedSections();
+  const activeNavSection = getNavSectionId(getActiveSectionId());
+  const items = DASHBOARD_RAIL_ITEMS.filter((item) =>
+    isDashboardShortcutAllowed(item.shortcut, allowed)
+  );
+  if (!items.length) {
+    elements.dashboardQuickRail.innerHTML = emptyState("Sin rutas disponibles.");
+    return;
+  }
+  elements.dashboardQuickRail.innerHTML = items
+    .map(
+      (item) => `
+        <button
+          class="dashboard-rail__button${activeNavSection === item.activeSection ? " is-active" : ""}"
+          type="button"
+          data-dashboard-shortcut="${escapeHtml(item.shortcut)}"
+        >
+          <span class="dashboard-rail__icon">${getDashboardIconSvg(item.icon)}</span>
+          <span class="dashboard-rail__label">${escapeHtml(item.label)}</span>
+          <span class="dashboard-rail__hint">${escapeHtml(getDashboardRailHint(item.shortcut))}</span>
+        </button>
+      `
+    )
+    .join("");
+}
+
+function renderDashboardQuickActions() {
+  if (!elements.dashboardQuickActions) {
+    return;
+  }
+  const allowed = getAllowedSections();
+  const items = DASHBOARD_QUICK_ACTIONS.filter((item) =>
+    isDashboardShortcutAllowed(item.shortcut, allowed)
+  );
+  if (!items.length) {
+    elements.dashboardQuickActions.innerHTML = emptyState(
+      "No hay acciones rapidas disponibles para este perfil."
+    );
+    return;
+  }
+  elements.dashboardQuickActions.innerHTML = items
+    .map(
+      (item) => `
+        <button
+          class="dashboard-quick-action"
+          type="button"
+          data-dashboard-shortcut="${escapeHtml(item.shortcut)}"
+        >
+          <span class="dashboard-quick-action__icon">${getDashboardIconSvg(item.icon)}</span>
+          <div class="dashboard-quick-action__content">
+            <h4 class="dashboard-quick-action__title">${escapeHtml(item.title)}</h4>
+            <p class="dashboard-quick-action__description">${escapeHtml(item.description)}</p>
+          </div>
+          <div></div>
+          <div class="dashboard-quick-action__footer">
+            <span class="dashboard-pill">${escapeHtml(item.badge)}</span>
+            <span class="dashboard-quick-action__meta">${escapeHtml(item.meta())}</span>
+          </div>
+        </button>
+      `
+    )
+    .join("");
+}
+
+function renderDashboardHome() {
+  renderDashboardHeroStats();
+  renderDashboardQuickRail();
+  renderDashboardQuickActions();
+  const allowed = getAllowedSections();
+  queryAll("#dashboard .dashboard-hero-actions [data-dashboard-shortcut]").forEach((button) => {
+    button.classList.toggle(
+      "is-hidden",
+      !isDashboardShortcutAllowed(button.dataset.dashboardShortcut || "", allowed)
+    );
+  });
+}
+
 function renderDashboard() {
   const dashboard = state.dashboard || {};
+  renderDashboardHome();
   elements.metricOwners.textContent = dashboard.owners ?? 0;
   elements.metricPatients.textContent = dashboard.patients ?? 0;
   elements.metricRecords.textContent = dashboard.records_total ?? 0;
@@ -17375,7 +17909,111 @@ function wrapAsync(handler) {
   };
 }
 
+function scrollToDashboardTarget(targetId = "") {
+  const target = targetId ? getElement(targetId) : null;
+  if (!target || typeof target.scrollIntoView !== "function") {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    return;
+  }
+  if (typeof window.requestAnimationFrame === "function") {
+    window.requestAnimationFrame(() => {
+      target.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+    return;
+  }
+  target.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+async function runDashboardShortcut(shortcut) {
+  if (!isDashboardShortcutAllowed(shortcut)) {
+    showStatus("Tu perfil no tiene acceso a esta accion.", "info");
+    return;
+  }
+  let targetId = "";
+  switch (shortcut) {
+    case "dashboard-home":
+      setSectionSubsection("dashboard", "overview");
+      setActiveSection("dashboard");
+      targetId = "dashboardQuickActions";
+      break;
+    case "agenda":
+      setSectionSubsection("agenda", "general");
+      setActiveSection("agenda");
+      targetId = "agendaGeneralPanel";
+      break;
+    case "sales":
+    case "factura":
+      setSectionSubsection("sales", "factura");
+      setActiveSection("sales");
+      targetId = "salesDocumentFormPanel";
+      break;
+    case "cotizacion":
+      setSectionSubsection("sales", "cotizacion");
+      setActiveSection("sales");
+      targetId = "salesDocumentFormPanel";
+      break;
+    case "abono":
+      setSectionSubsection("sales", "factura");
+      setActiveSection("sales");
+      targetId = "salesPaymentFormPanel";
+      break;
+    case "caja":
+      setSectionSubsection("sales", "caja");
+      setActiveSection("sales");
+      targetId = "salesCashFormPanel";
+      break;
+    case "inventory":
+      setSectionSubsection("sales", "inventario");
+      setActiveSection("sales");
+      targetId = "salesCatalogPanel";
+      break;
+    case "consultorio":
+    case "patients":
+      setSectionSubsection("consultorio", "patients");
+      setActiveSection("consultorio");
+      targetId = "consultorioOwnersPanel";
+      break;
+    case "consents":
+      setSectionSubsection("consents", "general");
+      setActiveSection("consents");
+      targetId = "consentsFormPanel";
+      break;
+    case "grooming":
+      openConsultorioGroomingSection();
+      return;
+    case "reports":
+      setSectionSubsection("reports", "classic");
+      setActiveSection("reports");
+      targetId = "reportsStatsBlock";
+      break;
+    case "administration":
+    case "users":
+      setSectionSubsection("administration", "users");
+      setActiveSection("administration");
+      targetId = "administrationUsersPanel";
+      break;
+    case "backup":
+      await handleBackupClick();
+      return;
+    default:
+      return;
+  }
+  scrollToDashboardTarget(targetId);
+}
+
+async function handleDashboardShortcutClick(event) {
+  const trigger = event.target.closest("[data-dashboard-shortcut]");
+  if (!trigger) {
+    return;
+  }
+  await runDashboardShortcut(trigger.dataset.dashboardShortcut || "");
+}
+
 function bindForms() {
+  const dashboardSection = getElement("dashboard");
+  if (dashboardSection) {
+    dashboardSection.addEventListener("click", wrapAsync(handleDashboardShortcutClick));
+  }
   if (elements.notificationsButton) {
     elements.notificationsButton.addEventListener("click", toggleNotificationsPanel);
   }

@@ -58,26 +58,61 @@
 
       <main class="workspace">
         <section id="dashboard" class="workspace-section is-visible">
-          <div class="section-hero">
-            <div>
-              <p class="eyebrow">Dashboard</p>
-              <h2>Operacion diaria de la clinica</h2>
+          <article class="dashboard-hero-card">
+            <div class="dashboard-hero-card__copy">
+              <p class="eyebrow">Centro de operaciones</p>
+              <h2>Te damos la bienvenida. Que deseas hacer hoy?</h2>
               <p class="section-copy">
-                Acceso directo al panorama operativo, solicitudes pendientes y actividad reciente.
+                Usa este tablero como portada de trabajo: accesos directos para ventas, agenda,
+                pacientes, consentimientos, reportes y tareas clave de la jornada.
               </p>
+              <div class="dashboard-hero-actions">
+                <button class="primary-button dashboard-hero-cta" type="button" data-dashboard-shortcut="factura">
+                  Crear factura
+                </button>
+                <button class="secondary-button" type="button" data-dashboard-shortcut="agenda">
+                  Agendar cita
+                </button>
+                <button class="ghost-button" type="button" data-dashboard-shortcut="backup">
+                  Crear respaldo
+                </button>
+              </div>
             </div>
-            <p id="dashboardUpdated" class="meta-copy"></p>
-          </div>
+            <div id="dashboardHeroStats" class="dashboard-hero-stats"></div>
+          </article>
 
-          <div id="dashboardOverviewBlock" class="stats-grid stats-grid--eight">
-            <article class="metric-card"><span>Propietarios</span><strong id="metricOwners">0</strong></article>
-            <article class="metric-card"><span>Mascotas</span><strong id="metricPatients">0</strong></article>
-            <article class="metric-card"><span>Historias</span><strong id="metricRecords">0</strong></article>
-            <article class="metric-card"><span>Consultas</span><strong id="metricConsultations">0</strong></article>
-            <article class="metric-card"><span>Citas activas</span><strong id="metricAppointments">0</strong></article>
-            <article class="metric-card"><span>Consentimientos</span><strong id="metricConsents">0</strong></article>
-            <article class="metric-card"><span>Peluquería</span><strong id="metricGrooming">0</strong></article>
-            <article class="metric-card"><span>Disponibilidad</span><strong id="metricAvailability">0</strong></article>
+          <div class="dashboard-access-layout">
+            <aside class="dashboard-rail panel-card">
+              <div class="dashboard-rail__header">
+                <p class="eyebrow">Rutas rapidas</p>
+                <h3>Ir a modulos</h3>
+              </div>
+              <div id="dashboardQuickRail" class="dashboard-rail__list"></div>
+            </aside>
+
+            <div class="dashboard-access-main">
+              <article class="dashboard-quick-panel panel-card">
+                <div class="panel-heading">
+                  <div>
+                    <p class="eyebrow">Acciones rapidas</p>
+                    <h3>Acceso directo a todo el flujo operativo</h3>
+                  </div>
+                  <p id="dashboardUpdated" class="meta-copy"></p>
+                </div>
+                <div id="dashboardQuickActions" class="dashboard-quick-grid"></div>
+              </article>
+
+              <div id="dashboardOverviewBlock" class="dashboard-kpi-grid">
+                <article class="metric-card"><span>Propietarios</span><strong id="metricOwners">0</strong></article>
+                <article class="metric-card"><span>Mascotas</span><strong id="metricPatients">0</strong></article>
+                <article class="metric-card"><span>Historias</span><strong id="metricRecords">0</strong></article>
+                <article class="metric-card"><span>Consultas</span><strong id="metricConsultations">0</strong></article>
+                <article class="metric-card"><span>Citas activas</span><strong id="metricAppointments">0</strong></article>
+                <article class="metric-card"><span>Consentimientos</span><strong id="metricConsents">0</strong></article>
+                <article class="metric-card"><span>Peluquería</span><strong id="metricGrooming">0</strong></article>
+                <article class="metric-card"><span>Disponibilidad</span><strong id="metricAvailability">0</strong></article>
+              </div>
+            </div>
           </div>
 
           <div id="dashboardSummaryBlock" class="three-column-grid">
