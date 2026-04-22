@@ -233,15 +233,6 @@ const DASHBOARD_QUICK_ACTIONS = [
     requires: "administration",
     meta: () => getDashboardUsersText(),
   },
-  {
-    shortcut: "backup",
-    title: "Crear respaldo",
-    description: "Genera una copia de seguridad para proteger la operacion.",
-    badge: "Seguridad",
-    icon: "backup",
-    meta: () =>
-      state.dashboard?.last_backup_at ? "Ultimo respaldo disponible" : "Pendiente de respaldo",
-  },
 ];
 const DASHBOARD_SHORTCUT_REQUIREMENTS = {
   "dashboard-home": "dashboard",
@@ -259,7 +250,6 @@ const DASHBOARD_SHORTCUT_REQUIREMENTS = {
   patients: "consultorio",
   grooming: "consultorio",
   users: "administration",
-  backup: null,
 };
 const usersFilters = { query: "", pageSize: 10, showInactive: false };
 const ownersFilters = { query: "", petQuery: "" };
@@ -2021,7 +2011,6 @@ const api = {
     apiRequest("/api/consents", { method: "POST", body: JSON.stringify(payload) }),
   saveGrooming: (payload) =>
     apiRequest("/api/grooming", { method: "POST", body: JSON.stringify(payload) }),
-  backupDatabase: () => apiRequest("/api/backups", { method: "POST", body: "{}" }),
   saveUser: (payload) =>
     apiRequest("/api/users", { method: "POST", body: JSON.stringify(payload) }),
   deleteUser: (userId) => apiRequest(`/api/users/${userId}`, { method: "DELETE" }),
@@ -2791,7 +2780,6 @@ function restoreOrDefaultAppView() {
 function cacheElements() {
   [
     "statusBanner",
-    "backupButton",
     "notificationsButton",
     "notificationsBadge",
     "notificationsPanel",
@@ -17347,11 +17335,6 @@ async function handleGroomingSubmit(event) {
   });
 }
 
-async function handleBackupClick() {
-  const result = await api.backupDatabase();
-  await refreshData(`Respaldo creado en ${result.path}`);
-}
-
 function handleBillingDraftClick(event) {
   const button = event.target.closest("button[data-remove-billing-line]");
   if (!button) {
@@ -17801,9 +17784,6 @@ async function runDashboardShortcut(shortcut) {
       setActiveSection("administration");
       targetId = "administrationUsersPanel";
       break;
-    case "backup":
-      await handleBackupClick();
-      return;
     default:
       return;
   }
@@ -18858,7 +18838,6 @@ function bindForms() {
   elements.groomingForm.addEventListener("submit", wrapAsync(handleGroomingSubmit));
   elements.saveDraftButton.addEventListener("click", wrapAsync(() => submitRecord(false)));
   elements.finalizeRecordButton.addEventListener("click", wrapAsync(() => submitRecord(true)));
-  elements.backupButton.addEventListener("click", wrapAsync(handleBackupClick));
   elements.addBillingLineButton.addEventListener("click", wrapAsync(async () => addDraftBillingLine()));
   elements.billingDraftLines.addEventListener("click", handleBillingDraftClick);
   elements.billingDocumentsList.addEventListener("click", wrapAsync(handleBillingDocumentsClick));
