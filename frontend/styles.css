@@ -675,8 +675,8 @@ button:active {
   height: 74px;
   display: grid;
   place-items: center;
+  overflow: hidden;
   border-radius: 20px;
-  color: #2b77aa;
   background:
     radial-gradient(circle at 32% 24%, rgba(255, 255, 255, 0.94), transparent 34%),
     linear-gradient(145deg, rgba(154, 211, 255, 0.38) 0%, rgba(45, 124, 191, 0.14) 100%);
@@ -685,9 +685,11 @@ button:active {
     0 12px 26px rgba(34, 104, 156, 0.18);
 }
 
-.dashboard-quick-action__icon svg {
-  width: 40px;
-  height: 40px;
+.dashboard-quick-action__icon-image {
+  width: 88%;
+  height: 88%;
+  display: block;
+  object-fit: contain;
 }
 
 .dashboard-quick-action__content {

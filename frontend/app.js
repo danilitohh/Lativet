@@ -133,6 +133,7 @@ const DASHBOARD_QUICK_ACTIONS = [
     title: "Crear factura",
     description: "Inicia la facturacion del dia y deja listo el seguimiento de pagos.",
     badge: "Ventas",
+    image: "crear factura.png",
     icon: "invoice",
     requires: "sales",
     meta: () => {
@@ -145,6 +146,7 @@ const DASHBOARD_QUICK_ACTIONS = [
     title: "Crear cotizacion",
     description: "Prepara presupuestos y comparte una propuesta rapida al cliente.",
     badge: "Ventas",
+    image: "crear cotizacion.png",
     icon: "quote",
     requires: "sales",
     meta: () => getDashboardQuoteCountText(),
@@ -154,6 +156,7 @@ const DASHBOARD_QUICK_ACTIONS = [
     title: "Registrar abono",
     description: "Ve directo a facturas para cargar pagos parciales o totales.",
     badge: "Cobros",
+    image: "registrar abono.png",
     icon: "payment",
     requires: "sales",
     meta: () => {
@@ -166,6 +169,7 @@ const DASHBOARD_QUICK_ACTIONS = [
     title: "Registrar ingreso o gasto",
     description: "Abre caja para movimientos operativos, aperturas y cierres.",
     badge: "Caja",
+    image: "registrar ingreso o gasto.png",
     icon: "cash",
     requires: "sales",
     meta: () => getDashboardCashSummaryText(),
@@ -175,6 +179,7 @@ const DASHBOARD_QUICK_ACTIONS = [
     title: "Revisar inventario",
     description: "Consulta stock, ajustes, precios y alertas desde ventas.",
     badge: "Inventario",
+    image: "revisar inventario.png",
     icon: "inventory",
     requires: "sales",
     meta: () => getDashboardLowStockText(),
@@ -184,6 +189,7 @@ const DASHBOARD_QUICK_ACTIONS = [
     title: "Agenda del dia",
     description: "Salta a la programacion para confirmar, crear o editar citas.",
     badge: "Agenda",
+    image: "agenda del dia.png",
     icon: "calendar",
     requires: "agenda",
     meta: () => `${state.dashboard?.appointments_today ?? 0} hoy`,
@@ -193,6 +199,7 @@ const DASHBOARD_QUICK_ACTIONS = [
     title: "Pacientes e historias",
     description: "Abre propietarios, mascotas y la historia clinica sin rodeos.",
     badge: "Clinica",
+    image: "pacientes e historias.png",
     icon: "patient",
     requires: "consultorio",
     meta: () => `${state.dashboard?.patients ?? 0} mascotas`,
@@ -202,6 +209,7 @@ const DASHBOARD_QUICK_ACTIONS = [
     title: "Consentimientos",
     description: "Registra soportes legales y revisa el archivo disponible.",
     badge: "Legal",
+    image: "consentimientos.png",
     icon: "consent",
     requires: "consents",
     meta: () => `${state.dashboard?.consents ?? 0} registrados`,
@@ -211,6 +219,7 @@ const DASHBOARD_QUICK_ACTIONS = [
     title: "Peluqueria",
     description: "Entra directo al modulo de grooming para servicios y control.",
     badge: "Spa",
+    image: "peluqueria.png",
     icon: "grooming",
     requires: "consultorio",
     meta: () => `${state.dashboard?.grooming_total ?? 0} servicios`,
@@ -220,6 +229,7 @@ const DASHBOARD_QUICK_ACTIONS = [
     title: "Ver reportes",
     description: "Abre el resumen operativo y financiero para tomar decisiones.",
     badge: "Informes",
+    image: "ver reportes.png",
     icon: "report",
     requires: "reports",
     meta: () => `${state.dashboard?.consultations_total ?? 0} consultas`,
@@ -229,6 +239,7 @@ const DASHBOARD_QUICK_ACTIONS = [
     title: "Usuarios y permisos",
     description: "Gestiona el equipo, accesos y roles desde administracion.",
     badge: "Equipo",
+    image: "usuarios y permisos.png",
     icon: "users",
     requires: "administration",
     meta: () => getDashboardUsersText(),
@@ -4561,130 +4572,9 @@ function isDashboardShortcutAllowed(shortcut, allowed = getAllowedSections()) {
   return !requirement || allowed.has(requirement);
 }
 
-function getDashboardIconSvg(icon) {
-  return (
-    {
-      dashboard: `
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M3 13.2 12 4l9 9.2"></path>
-          <path d="M5 11.8V21h14v-9.2"></path>
-          <path d="M9 14h6v7H9z"></path>
-        </svg>
-      `,
-      calendar: `
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="3" y="5" width="18" height="16" rx="3"></rect>
-          <path d="M8 3v4"></path>
-          <path d="M16 3v4"></path>
-          <path d="M3 10h18"></path>
-          <path d="M8 14h3"></path>
-          <path d="M13 14h3"></path>
-          <path d="M8 18h3"></path>
-        </svg>
-      `,
-      sales: `
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="3" y="6" width="18" height="12" rx="3"></rect>
-          <path d="M3 10h18"></path>
-          <path d="M7 15h4"></path>
-          <path d="M15.5 14a1.5 1.5 0 1 0 0 3c.83 0 1.5-.5 1.5-1.25S16.33 14.5 15.5 14.5"></path>
-        </svg>
-      `,
-      patient: `
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 21s-6-3.8-6-9.1A3.9 3.9 0 0 1 10 8a4.34 4.34 0 0 1 2 1.02A4.34 4.34 0 0 1 14 8a3.9 3.9 0 0 1 4 3.9C18 17.2 12 21 12 21Z"></path>
-          <path d="M12 10v4"></path>
-          <path d="M10 12h4"></path>
-        </svg>
-      `,
-      consent: `
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"></path>
-          <path d="M14 3v5h5"></path>
-          <path d="m9 14 2 2 4-4"></path>
-        </svg>
-      `,
-      report: `
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M4 19h16"></path>
-          <path d="M7 16V9"></path>
-          <path d="M12 16V5"></path>
-          <path d="M17 16v-4"></path>
-          <path d="M5 5h14"></path>
-        </svg>
-      `,
-      users: `
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M16 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-          <circle cx="10" cy="7" r="3"></circle>
-          <path d="M20 21v-2a4 4 0 0 0-3-3.87"></path>
-          <path d="M16 4.13a3 3 0 0 1 0 5.75"></path>
-        </svg>
-      `,
-      invoice: `
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M7 3h10l3 3v15H4V3h3"></path>
-          <path d="M14 3v4h4"></path>
-          <path d="M8 12h8"></path>
-          <path d="M8 16h5"></path>
-          <path d="M16.5 16.5c.83 0 1.5-.45 1.5-1s-.67-1-1.5-1-1.5-.45-1.5-1 .67-1 1.5-1"></path>
-        </svg>
-      `,
-      quote: `
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M7 3h10l3 3v15H4V3h3"></path>
-          <path d="M14 3v4h4"></path>
-          <path d="M8 11h8"></path>
-          <path d="M8 15h8"></path>
-          <path d="M8 19h5"></path>
-        </svg>
-      `,
-      payment: `
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-          <rect x="3" y="6" width="18" height="12" rx="3"></rect>
-          <path d="M3 10h18"></path>
-          <path d="m9 15 2 2 4-4"></path>
-        </svg>
-      `,
-      cash: `
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 3v18"></path>
-          <path d="M17 7.5c0-1.9-2.24-3.5-5-3.5s-5 1.6-5 3.5 2.24 3.5 5 3.5 5 1.6 5 3.5-2.24 3.5-5 3.5-5-1.6-5-3.5"></path>
-        </svg>
-      `,
-      inventory: `
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-          <path d="m3 7 9-4 9 4-9 4-9-4Z"></path>
-          <path d="m3 7 9 4 9-4"></path>
-          <path d="M3 7v10l9 4 9-4V7"></path>
-        </svg>
-      `,
-      grooming: `
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-          <path d="m4 4 6 6"></path>
-          <path d="m14 14 6 6"></path>
-          <path d="M10 10 4 16"></path>
-          <path d="m20 4-6 6"></path>
-          <path d="M9 17a2 2 0 1 1-4 0 2 2 0 0 1 4 0Z"></path>
-          <path d="M19 7a2 2 0 1 1-4 0 2 2 0 0 1 4 0Z"></path>
-        </svg>
-      `,
-      backup: `
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 3v12"></path>
-          <path d="m8 7 4-4 4 4"></path>
-          <path d="M5 14v4a3 3 0 0 0 3 3h8a3 3 0 0 0 3-3v-4"></path>
-        </svg>
-      `,
-    }[icon] ||
-    `
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="9"></circle>
-        <path d="M12 8v4"></path>
-        <path d="M12 16h.01"></path>
-      </svg>
-    `
-  );
+function getDashboardIconSrc(item) {
+  const fileName = item?.image || "";
+  return fileName ? `/images/${encodeURIComponent(fileName)}` : "";
 }
 
 function renderDashboardQuickActions() {
@@ -4709,7 +4599,15 @@ function renderDashboardQuickActions() {
           type="button"
           data-dashboard-shortcut="${escapeHtml(item.shortcut)}"
         >
-          <span class="dashboard-quick-action__icon">${getDashboardIconSvg(item.icon)}</span>
+          <span class="dashboard-quick-action__icon">
+            <img
+              class="dashboard-quick-action__icon-image"
+              src="${escapeHtml(getDashboardIconSrc(item))}"
+              alt=""
+              loading="lazy"
+              decoding="async"
+            />
+          </span>
           <div class="dashboard-quick-action__content">
             <h4 class="dashboard-quick-action__title">${escapeHtml(item.title)}</h4>
             <p class="dashboard-quick-action__description">${escapeHtml(item.description)}</p>
