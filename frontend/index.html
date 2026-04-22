@@ -520,6 +520,54 @@
               </button>
             </div>
           </div>
+
+          <div class="two-column-grid">
+            <article class="panel-card">
+              <div class="panel-heading">
+                <div>
+                  <p class="eyebrow">Google Calendar</p>
+                  <h3>Conexion y credenciales</h3>
+                </div>
+                <span id="googleCalendarInlineStatus" class="pill pill--draft">Pendiente</span>
+              </div>
+              <div id="googleCalendarStatus" class="list-surface"></div>
+              <form id="googleCalendarForm" class="form-grid">
+                <label class="checkbox-row full">
+                  <input name="google_calendar_enabled" type="checkbox" checked />
+                  <span>Habilitar sincronizacion con Google Calendar</span>
+                </label>
+                <label>
+                  <span>Calendar ID</span>
+                  <input name="google_calendar_id" placeholder="primary" />
+                </label>
+                <label>
+                  <span>Zona horaria</span>
+                  <input name="agenda_timezone" placeholder="America/Bogota" />
+                </label>
+                <label class="full">
+                  <span>JSON credenciales OAuth web</span>
+                  <textarea
+                    name="credentials_json"
+                    rows="7"
+                    placeholder="Pega aqui el JSON completo del cliente OAuth web descargado desde Google Cloud."
+                  ></textarea>
+                </label>
+                <p class="meta-copy full">
+                  Guarda primero el JSON del cliente OAuth web si cambiaste credenciales. Luego usa
+                  Conectar para autorizar la cuenta de Google.
+                </p>
+                <div class="full form-actions">
+                  <button class="primary-button" type="submit">Guardar configuracion</button>
+                  <button id="googleCalendarConnectButton" class="secondary-button" type="button">
+                    Conectar Google Calendar
+                  </button>
+                  <button id="googleCalendarDisconnectButton" class="ghost-button" type="button">
+                    Desconectar
+                  </button>
+                </div>
+              </form>
+            </article>
+          </div>
         </section>
 
         <section id="sales" class="workspace-section">
