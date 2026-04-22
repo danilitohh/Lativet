@@ -16100,6 +16100,9 @@ function setUserFormError(message) {
   }
   elements.userFormError.textContent = message || "";
   elements.userFormError.classList.toggle("is-hidden", !message);
+  if (message && typeof elements.userFormError.scrollIntoView === "function") {
+    elements.userFormError.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
 }
 
 function closeUserModal(options = {}) {
@@ -16529,12 +16532,24 @@ function buildUserPayload() {
     email: form.elements.email.value,
     role: form.elements.role.value,
   };
+  payload.full_name = String(payload.full_name || "").trim();
+  payload.email = String(payload.email || "").trim().toLowerCase();
   const password = form.elements.password?.value?.trim();
   if (!payload.id && !password) {
     throw new Error("La contrasena es obligatoria para nuevos usuarios.");
   }
   if (password) {
     payload.password = password;
+  }
+  const duplicateUser = (state.users || []).find(
+    (user) =>
+      String(user?.email || "").trim().toLowerCase() === payload.email &&
+      String(user?.id || "") !== String(payload.id || "")
+  );
+  if (duplicateUser) {
+    throw new Error(
+      `Ya existe un usuario con ese correo. Usa Editar para modificar a ${duplicateUser.full_name || duplicateUser.email}.`
+    );
   }
   const permissions = [];
   const allChecked = form.elements.permissions_all.checked;

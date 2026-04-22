@@ -381,6 +381,18 @@ button:active {
   font-size: 0.7rem;
 }
 
+.form-error-copy {
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(180, 35, 24, 0.18);
+  border-radius: 14px;
+  background: rgba(255, 242, 240, 0.92);
+  color: #b42318;
+  font-size: 0.76rem;
+  font-weight: 700;
+  line-height: 1.45;
+}
+
 .hero-aside-card strong,
 .metric-card strong {
   display: block;
