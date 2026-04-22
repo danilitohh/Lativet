@@ -2803,7 +2803,6 @@ function cacheElements() {
     "loginForm",
     "loginError",
     "dashboardUpdated",
-    "dashboardHeroStats",
     "dashboardQuickActions",
     "metricOwners",
     "metricPatients",
@@ -4537,14 +4536,6 @@ function renderSales() {
   renderSalesDocumentDetail();
 }
 
-function getDashboardPendingRequestsCount() {
-  const requests = state.requests || {};
-  return ["clinical_records", "appointments", "orders", "billing_documents"].reduce(
-    (total, key) => total + (Array.isArray(requests[key]) ? requests[key].length : 0),
-    0
-  );
-}
-
 function getDashboardPendingBillingDocumentsCount() {
   const pendingDocuments = state.requests?.billing_documents;
   return Array.isArray(pendingDocuments) ? pendingDocuments.length : 0;
@@ -4714,61 +4705,6 @@ function getDashboardIconSvg(icon) {
   );
 }
 
-function renderDashboardHeroStats() {
-  if (!elements.dashboardHeroStats) {
-    return;
-  }
-  const dashboard = state.dashboard || {};
-  const heroItems = [
-    {
-      shortcut: "agenda",
-      label: "Citas de hoy",
-      value: String(dashboard.appointments_today ?? 0),
-      note: `${dashboard.upcoming_week ?? 0} en la proxima semana`,
-    },
-    {
-      shortcut: "factura",
-      label: "Ventas pendientes",
-      value: String(getDashboardPendingBillingDocumentsCount()),
-      note: `${getDashboardPendingRequestsCount()} solicitudes por revisar`,
-    },
-    {
-      shortcut: "patients",
-      label: "Mascotas activas",
-      value: String(dashboard.patients ?? 0),
-      note: `${dashboard.records_total ?? 0} historias registradas`,
-    },
-    {
-      shortcut: "consents",
-      label: "Consentimientos",
-      value: String(dashboard.consents ?? 0),
-      note: "Archivo legal al dia",
-    },
-    {
-      shortcut: "backup",
-      label: "Ultimo respaldo",
-      value: dashboard.last_backup_at ? formatDateTime(dashboard.last_backup_at) : "Pendiente",
-      note: state.backups_path || "Sin ruta de respaldo",
-    },
-  ]
-    .filter((item) => isDashboardShortcutAllowed(item.shortcut))
-    .slice(0, 4);
-
-  elements.dashboardHeroStats.innerHTML = heroItems
-    .map(
-      (item) => `
-        <button class="dashboard-hero-stat" type="button" data-dashboard-shortcut="${escapeHtml(
-          item.shortcut
-        )}">
-          <span class="dashboard-hero-stat__label">${escapeHtml(item.label)}</span>
-          <strong class="dashboard-hero-stat__value">${escapeHtml(item.value)}</strong>
-          <span class="dashboard-hero-stat__note">${escapeHtml(item.note)}</span>
-        </button>
-      `
-    )
-    .join("");
-}
-
 function renderDashboardQuickActions() {
   if (!elements.dashboardQuickActions) {
     return;
@@ -4807,21 +4743,9 @@ function renderDashboardQuickActions() {
     .join("");
 }
 
-function renderDashboardHome() {
-  renderDashboardHeroStats();
-  renderDashboardQuickActions();
-  const allowed = getAllowedSections();
-  queryAll("#dashboard .dashboard-hero-actions [data-dashboard-shortcut]").forEach((button) => {
-    button.classList.toggle(
-      "is-hidden",
-      !isDashboardShortcutAllowed(button.dataset.dashboardShortcut || "", allowed)
-    );
-  });
-}
-
 function renderDashboard() {
   const dashboard = state.dashboard || {};
-  renderDashboardHome();
+  renderDashboardQuickActions();
   elements.metricOwners.textContent = dashboard.owners ?? 0;
   elements.metricPatients.textContent = dashboard.patients ?? 0;
   elements.metricRecords.textContent = dashboard.records_total ?? 0;
