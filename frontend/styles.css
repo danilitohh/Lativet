@@ -8075,10 +8075,11 @@ textarea:focus-visible {
 }
 
 .brand-lockup--logo-only {
-  width: auto;
+  width: 100%;
   justify-content: center;
   align-items: center;
-  padding: 18px 22px;
+  min-height: 124px;
+  padding: 12px 16px;
   border: 1px solid rgba(119, 142, 173, 0.14);
   border-radius: 24px;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(255, 248, 242, 0.94));
@@ -8095,10 +8096,12 @@ textarea:focus-visible {
 }
 
 .brand-logo--sidebar {
-  width: 134px;
-  height: 134px;
-  padding: 16px;
-  border-radius: 30px;
+  width: min(180px, 100%);
+  height: auto;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .site-header h1 {
@@ -9328,13 +9331,14 @@ textarea:focus {
 
   .brand-lockup--logo-only {
     flex-direction: row;
-    padding: 14px 18px;
+    min-height: 112px;
+    padding: 10px 14px;
   }
 
   .brand-logo--sidebar {
-    width: 108px;
-    height: 108px;
-    padding: 14px;
+    width: min(150px, 100%);
+    height: auto;
+    padding: 0;
   }
 
   .workspace-user-card,
