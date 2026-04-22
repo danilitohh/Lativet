@@ -5474,6 +5474,18 @@ button:active {
   display: none !important;
 }
 
+/* Defensive hide for any cached Google Calendar admin panel markup. */
+.panel-card:has(#googleCalendarForm),
+.panel-card:has(#googleCalendarStatus),
+.panel-card:has(#googleCalendarInlineStatus),
+#googleCalendarForm,
+#googleCalendarStatus,
+#googleCalendarInlineStatus,
+#googleCalendarConnectButton,
+#googleCalendarDisconnectButton {
+  display: none !important;
+}
+
 .form-grid label {
   display: grid;
   gap: 5px;

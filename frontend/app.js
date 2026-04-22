@@ -4889,11 +4889,6 @@ function applySettingsValues(form) {
 function applySettingsForm() {
   applySettingsValues(elements.settingsForm);
   applySettingsValues(elements.billingSettingsForm);
-  applySettingsValues(elements.googleCalendarForm);
-  const googleEnabled = elements.googleCalendarForm?.elements?.google_calendar_enabled;
-  if (googleEnabled) {
-    googleEnabled.value = "true";
-  }
 }
 
 function filterOwners() {
@@ -9851,40 +9846,11 @@ function renderAgendaLargeMonth() {
 function renderGoogleCalendarStatus() {
   const info = state.google_calendar || {};
   const hasBadge = Boolean(elements.agendaConnectionBadge);
-  const hasInline = Boolean(elements.googleCalendarInlineStatus);
-  const hasSummary = Boolean(elements.googleCalendarStatus);
-  if (!hasBadge && !hasInline && !hasSummary) {
+  if (!hasBadge) {
     return;
   }
-  if (hasBadge) {
-    elements.agendaConnectionBadge.textContent = info.connected ? "Google conectado" : "Google pendiente";
-    elements.agendaConnectionBadge.className = `pill ${info.connected ? "pill--confirmed" : "pill--draft"}`;
-  }
-  if (hasInline) {
-    elements.googleCalendarInlineStatus.textContent = info.connected ? "Conectado" : "Pendiente";
-    elements.googleCalendarInlineStatus.className = `pill ${info.connected ? "pill--confirmed" : "pill--draft"}`;
-  }
-  if (hasSummary) {
-    elements.googleCalendarStatus.innerHTML = `
-      <div class="summary-item"><span>Estado</span><strong>${escapeHtml(
-        info.connected ? "Conectado" : "Sin conectar"
-      )}</strong></div>
-      <div class="summary-item"><span>Calendar ID</span><strong>${escapeHtml(
-        info.calendar_id || "primary"
-      )}</strong></div>
-      <div class="summary-item"><span>Credenciales OAuth</span><strong>${escapeHtml(
-        info.credentials_present ? "Guardadas" : "Pendientes"
-      )}</strong></div>
-      <div class="summary-item"><span>Zona horaria</span><strong>${escapeHtml(
-        info.timezone || state.settings.agenda_timezone || "America/Bogota"
-      )}</strong></div>
-      ${
-        info.error
-          ? `<div class="summary-item"><span>Detalle</span><strong>${escapeHtml(info.error)}</strong></div>`
-          : ""
-      }
-    `;
-  }
+  elements.agendaConnectionBadge.textContent = info.connected ? "Google conectado" : "Google pendiente";
+  elements.agendaConnectionBadge.className = `pill ${info.connected ? "pill--confirmed" : "pill--draft"}`;
 }
 
 function buildUserPermissionsSummary(permissions) {
@@ -16686,38 +16652,6 @@ async function handleLogout() {
   openLoginModal(true);
 }
 
-async function handleGoogleCalendarSubmit(event) {
-  event.preventDefault();
-  await api.saveGoogleCalendarConfig(serializeForm(event.currentTarget));
-  event.currentTarget.elements.credentials_json.value = "";
-  await refreshData("Integracion de Google Calendar actualizada.");
-  setActiveSection("agenda");
-}
-
-async function handleGoogleCalendarConnect() {
-  const result = await api.connectGoogleCalendar();
-  if (result?.auth_url) {
-    const popup = window.open(result.auth_url, "_blank", "noopener,noreferrer");
-    if (!popup) {
-      window.location.href = result.auth_url;
-      return;
-    }
-    showStatus(
-      "Se abrio la ventana de autorizacion de Google Calendar. Completa el permiso y luego actualiza la pagina.",
-      "info"
-    );
-    return;
-  }
-  await refreshData("Google Calendar conectado.");
-  setActiveSection("agenda");
-}
-
-async function handleGoogleCalendarDisconnect() {
-  await api.disconnectGoogleCalendar();
-  await refreshData("Google Calendar desconectado.");
-  setActiveSection("agenda");
-}
-
 async function handleBillingDocumentSubmit(event) {
   event.preventDefault();
   const savedDocument = await api.saveBillingDocument(buildBillingDocumentPayload(event.currentTarget));
@@ -18851,9 +18785,6 @@ function bindForms() {
       wrapAsync(handleAvailabilityListClick)
     );
   }
-  if (elements.googleCalendarForm) {
-    elements.googleCalendarForm.addEventListener("submit", wrapAsync(handleGoogleCalendarSubmit));
-  }
   elements.billingDocumentForm.addEventListener("submit", wrapAsync(handleBillingDocumentSubmit));
   elements.billingPaymentForm.addEventListener("submit", wrapAsync(handleBillingPaymentSubmit));
   elements.cashMovementForm.addEventListener("submit", wrapAsync(handleCashMovementSubmit));
@@ -19169,18 +19100,6 @@ function bindForms() {
       }
       setAgendaViewMode(button.dataset.agendaView || "");
     });
-  }
-  if (elements.googleCalendarConnectButton) {
-    elements.googleCalendarConnectButton.addEventListener(
-      "click",
-      wrapAsync(handleGoogleCalendarConnect)
-    );
-  }
-  if (elements.googleCalendarDisconnectButton) {
-    elements.googleCalendarDisconnectButton.addEventListener(
-      "click",
-      wrapAsync(handleGoogleCalendarDisconnect)
-    );
   }
   elements.billingDocumentTypeSelect.addEventListener("change", syncBillingDocumentFormState);
   elements.billingPaymentMethodSelect.addEventListener("change", syncBillingDocumentFormState);
