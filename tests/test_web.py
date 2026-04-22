@@ -811,6 +811,48 @@ class WebSmokeTests(unittest.TestCase):
         self.assertEqual(snapshot["google_calendar"]["calendar_id"], "primary")
         self.assertEqual(len(snapshot["availability_rules"]), 0)
 
+    def test_google_calendar_connect_uses_forwarded_public_url(self) -> None:
+        with patch(
+            "lativet.web.LativetService.connect_google_calendar",
+            return_value={"ok": True, "data": {"auth_url": "https://accounts.example.com/o/oauth2/auth"}},
+        ) as mocked_connect:
+            payload = self.assert_ok(
+                self.client.post(
+                    "/api/google-calendar/connect",
+                    json={},
+                    headers={
+                        "X-Forwarded-Proto": "https",
+                        "X-Forwarded-Host": "clinic.example.com",
+                    },
+                )
+            )
+
+        self.assertIn("auth_url", payload)
+        mocked_connect.assert_called_once_with(
+            "https://clinic.example.com/api/google-calendar/callback"
+        )
+
+    def test_google_calendar_callback_initializes_service_on_cold_start(self) -> None:
+        with patch(
+            "lativet.web.LativetService.complete_google_calendar_oauth",
+            return_value={"ok": True, "data": {"connected": True}},
+        ) as mocked_complete:
+            response = self.client.get(
+                "/api/google-calendar/callback?state=test-state&code=test-code",
+                headers={
+                    "X-Forwarded-Proto": "https",
+                    "X-Forwarded-Host": "clinic.example.com",
+                },
+            )
+
+        self.assertEqual(response.status_code, 200, response.get_data(as_text=True))
+        self.assertIn("Google Calendar conectado", response.get_data(as_text=True))
+        mocked_complete.assert_called_once_with(
+            "https://clinic.example.com/api/google-calendar/callback",
+            "https://clinic.example.com/api/google-calendar/callback?state=test-state&code=test-code",
+        )
+        self.assertIsNotNone(self.app.extensions.get("lativet_service"))
+
     def test_http_supports_billing_inventory_and_cash(self) -> None:
         home = self.client.get("/")
         self.assertEqual(home.status_code, 200)

@@ -135,8 +135,9 @@ class LativetService:
     def bootstrap(self, lite: bool = False, sections: set[str] | None = None) -> dict:
         payload = self._db.bootstrap(lite=lite, sections=sections)
         payload["compliance"] = get_compliance_context()
+        refresh_google_connection = not lite and (sections is None or "settings" in sections)
         payload["google_calendar"] = self._google_calendar.status(
-            payload.get("settings"), refresh_connection=False
+            payload.get("settings"), refresh_connection=refresh_google_connection
         )
         return payload
 

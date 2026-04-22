@@ -30,8 +30,12 @@ class GoogleCalendarBridge:
                 connected = bool(self._load_credentials(allow_refresh=True))
             except ValidationError as exc:
                 error = str(exc)
+            except Exception as exc:
+                error = str(exc)
         else:
             connected = bool(token_present and credentials_present)
+        if refresh_connection and not connected and token_present and credentials_present and not error:
+            error = "La conexion con Google Calendar expiro o ya no es valida. Reconecta la cuenta."
         return {
             "enabled": bool(settings.get("google_calendar_enabled")),
             "calendar_id": settings.get("google_calendar_id") or "primary",
@@ -249,11 +253,31 @@ class GoogleCalendarBridge:
                 str(self._token_path), GOOGLE_CALENDAR_SCOPES
             )
         if allow_refresh and creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
+            try:
+                creds.refresh(Request())
+            except Exception as exc:
+                if self._is_invalid_grant_error(exc):
+                    self.disconnect()
+                    raise ValidationError(
+                        "La autorizacion de Google Calendar vencio o fue revocada. "
+                        "Desconecta y vuelve a conectar la cuenta."
+                    ) from exc
+                raise ValidationError(
+                    "No fue posible renovar la conexion con Google Calendar. "
+                    "Intenta nuevamente en unos minutos."
+                ) from exc
             self._save_token(creds.to_json())
         if not creds or not creds.valid:
             return None
         return creds
+
+    def _is_invalid_grant_error(self, exc: Exception) -> bool:
+        message = str(exc or "").strip().lower()
+        return (
+            "invalid_grant" in message
+            or "expired or revoked" in message
+            or "token has been expired or revoked" in message
+        )
 
     def _read_secret(self, key: str) -> str:
         if not self._get_secret:

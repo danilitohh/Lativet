@@ -111,6 +111,30 @@ def create_app(base_dir: Path | None = None, data_dir: Path | None = None) -> Fl
             503,
         )
 
+    def external_base_url() -> str:
+        forwarded_proto = (
+            (request.headers.get("X-Forwarded-Proto") or request.scheme or "http")
+            .split(",")[0]
+            .strip()
+        )
+        forwarded_host = (
+            (
+                request.headers.get("X-Forwarded-Host")
+                or request.headers.get("Host")
+                or request.host
+                or ""
+            )
+            .split(",")[0]
+            .strip()
+        )
+        if forwarded_host:
+            return f"{forwarded_proto}://{forwarded_host}".rstrip("/")
+        return request.host_url.rstrip("/")
+
+    def external_request_url() -> str:
+        query = request.query_string.decode("utf-8", errors="ignore").strip()
+        return f"{external_base_url()}{request.path}{f'?{query}' if query else ''}"
+
     @app.before_request
     def enforce_auth():
         if not request.path.startswith("/api/"):
@@ -406,9 +430,11 @@ def create_app(base_dir: Path | None = None, data_dir: Path | None = None) -> Fl
 
     @app.post("/api/google-calendar/connect")
     def connect_google_calendar():
-        base_url = request.host_url.rstrip("/")
-        redirect_uri = f"{base_url}/api/google-calendar/callback"
-        return respond(service.connect_google_calendar(redirect_uri))
+        active_service = init_service()
+        if active_service is None:
+            return service_unavailable()
+        redirect_uri = f"{external_base_url()}/api/google-calendar/callback"
+        return respond(active_service.connect_google_calendar(redirect_uri))
 
     @app.post("/api/google-calendar/disconnect")
     def disconnect_google_calendar():
@@ -416,8 +442,14 @@ def create_app(base_dir: Path | None = None, data_dir: Path | None = None) -> Fl
 
     @app.get("/api/google-calendar/callback")
     def google_calendar_callback():
-        redirect_uri = request.base_url
-        result = service.complete_google_calendar_oauth(redirect_uri, request.url)
+        active_service = init_service()
+        if active_service is None:
+            return service_unavailable()
+        redirect_uri = f"{external_base_url()}/api/google-calendar/callback"
+        result = active_service.complete_google_calendar_oauth(
+            redirect_uri,
+            external_request_url(),
+        )
         if not result.get("ok"):
             return (
                 f"<h2>Error al conectar Google Calendar</h2><p>{result.get('error','')}</p>",

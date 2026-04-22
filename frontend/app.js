@@ -16490,15 +16490,24 @@ async function handleAppointmentSubmit(event) {
     if (!payload.professional_name) {
       payload.professional_name = "Agenda general";
     }
-    await api.saveAppointment(payload);
+    const savedAppointment = await api.saveAppointment(payload);
     agendaSelectedDate = toIsoDate(payload.appointment_at) || agendaSelectedDate;
     resetForm(event.currentTarget);
     closeAppointmentModal();
     setDateTimeDefaults();
+    const refreshSections = savedAppointment?.google_calendar?.error
+      ? [...new Set([...AGENDA_REFRESH_SECTIONS, "settings"])]
+      : AGENDA_REFRESH_SECTIONS;
     await refreshData({
-      sections: AGENDA_REFRESH_SECTIONS,
-      message: "Cita guardada.",
+      sections: refreshSections,
+      message: savedAppointment?.google_calendar?.error ? "" : "Cita guardada.",
     });
+    if (savedAppointment?.google_calendar?.error) {
+      showStatus(
+        `Cita guardada, pero Google Calendar no sincronizo: ${savedAppointment.google_calendar.error}`,
+        "warning"
+      );
+    }
     setActiveSection("agenda");
   } catch (error) {
     const message = error?.message || "No fue posible guardar la cita.";
