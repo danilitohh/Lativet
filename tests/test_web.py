@@ -36,6 +36,12 @@ class WebSmokeTests(unittest.TestCase):
         self.assertIn(b"Lativet", home.data)
         home.close()
 
+        icon = self.client.get("/iconos/propietarios.png")
+        self.assertEqual(icon.status_code, 200)
+        self.assertTrue(icon.data)
+        self.assertEqual(icon.headers.get("Cache-Control"), "public, max-age=31536000, immutable")
+        icon.close()
+
         snapshot = self.assert_ok(self.client.get("/api/bootstrap"))
         self.assertIn("dashboard", snapshot)
         self.assertIn("compliance", snapshot)

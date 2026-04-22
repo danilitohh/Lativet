@@ -8840,6 +8840,13 @@ textarea:focus-visible {
   display: block;
 }
 
+.metric-card__icon-image {
+  width: 28px;
+  height: 28px;
+  display: block;
+  object-fit: contain;
+}
+
 .metric-card strong {
   position: relative;
   z-index: 1;

@@ -14,6 +14,7 @@ def create_app(base_dir: Path | None = None, data_dir: Path | None = None) -> Fl
     runtime_data_dir = Path(data_dir or project_dir / "data")
     frontend_dir = project_dir / "frontend"
     images_dir = project_dir / "images"
+    icons_dir = project_dir / "iconos"
     exports_dir = runtime_data_dir / "exports"
 
     service = None
@@ -148,6 +149,10 @@ def create_app(base_dir: Path | None = None, data_dir: Path | None = None) -> Fl
     @app.get("/images/<path:filename>")
     def images(filename: str):
         return send_cached(images_dir, filename, "public, max-age=31536000, immutable")
+
+    @app.get("/iconos/<path:filename>")
+    def icons(filename: str):
+        return send_cached(icons_dir, filename, "public, max-age=31536000, immutable")
 
     @app.get("/exports/<path:filename>")
     def exports(filename: str):
