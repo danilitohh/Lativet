@@ -1386,7 +1386,7 @@ const sectionSubsections = {
   dashboard: {
     label: "Vista del dashboard",
     options: [
-      { value: "overview", label: "Resumen general", panels: ["dashboardOverviewBlock", "dashboardOperationPanel"] },
+      { value: "overview", label: "Resumen general", panels: ["dashboardOverviewBlock"] },
       { value: "requests", label: "Solicitudes", panels: ["dashboardRequestsPanel"] },
       { value: "agenda", label: "Agenda", panels: ["dashboardAgendaPanel"] },
       { value: "histories", label: "Historias clinicas", panels: ["dashboardHistoryPanel", "dashboardConsultationTypesPanel"] },
@@ -2800,12 +2800,6 @@ function cacheElements() {
     "metricConsents",
     "metricGrooming",
     "metricAvailability",
-    "agendaTodayValue",
-    "agendaWeekValue",
-    "recordsRetentionValue",
-    "lastBackupValue",
-    "databasePathLabel",
-    "backupsPathLabel",
     "dashboardRequestsList",
     "dashboardConsultationTypeList",
     "dashboardAppointmentsList",
@@ -4742,14 +4736,6 @@ function renderDashboard() {
   elements.metricConsents.textContent = dashboard.consents ?? 0;
   elements.metricGrooming.textContent = dashboard.grooming_total ?? 0;
   elements.metricAvailability.textContent = dashboard.available_slots_next_14_days ?? 0;
-  elements.agendaTodayValue.textContent = dashboard.appointments_today ?? 0;
-  elements.agendaWeekValue.textContent = dashboard.upcoming_week ?? 0;
-  elements.recordsRetentionValue.textContent = dashboard.records_near_retention ?? 0;
-  elements.lastBackupValue.textContent = dashboard.last_backup_at
-    ? formatDateTime(dashboard.last_backup_at)
-    : "Sin respaldos";
-  elements.databasePathLabel.textContent = state.database_path || "N/D";
-  elements.backupsPathLabel.textContent = state.backups_path || "N/D";
   elements.dashboardUpdated.textContent = state.generated_at
     ? `Actualizado: ${formatDateTime(state.generated_at)}`
     : "";
