@@ -3,7 +3,8 @@
   "builds": [
     { "src": "app.py", "use": "@vercel/python" },
     { "src": "frontend/**", "use": "@vercel/static" },
-    { "src": "images/**", "use": "@vercel/static" }
+    { "src": "images/**", "use": "@vercel/static" },
+    { "src": "iconos/**", "use": "@vercel/static" }
   ],
   "crons": [
     { "path": "/api/jobs/control-reminders", "schedule": "0 12 * * *" }
@@ -12,6 +13,7 @@
     { "src": "/api/(.*)", "dest": "/app.py" },
     { "src": "/exports/(.*)", "dest": "/app.py" },
     { "src": "/images/(.*)", "dest": "/images/$1" },
+    { "src": "/iconos/(.*)", "dest": "/iconos/$1" },
     { "src": "/app.js", "dest": "/frontend/app.js" },
     { "src": "/styles.css", "dest": "/frontend/styles.css" },
     { "src": "/", "dest": "/frontend/index.html" }
