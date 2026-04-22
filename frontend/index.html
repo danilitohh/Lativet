@@ -20,13 +20,6 @@
               </p>
             </div>
           </div>
-          <div class="header-actions">
-            <button id="notificationsButton" class="secondary-button" type="button">
-              Notificaciones
-              <span id="notificationsBadge" class="notify-badge is-hidden">0</span>
-            </button>
-            <button id="logoutButton" class="ghost-button is-hidden" type="button">Salir</button>
-          </div>
         </header>
 
         <nav class="app-switcher">
@@ -37,7 +30,45 @@
           <button class="switcher-tab" type="button" data-section-target="consultorio">Consultorio</button>
           <button class="switcher-tab" type="button" data-section-target="reports">Informes</button>
         </nav>
+
+        <aside class="sidebar-support-card" aria-hidden="true">
+          <div class="sidebar-support-card__copy">
+            <p class="eyebrow">Lativet premium</p>
+            <h3>Cuidado clínico con una interfaz más humana</h3>
+            <p>
+              Todo el flujo operativo de la veterinaria, organizado con más claridad, aire visual y una presencia cálida.
+            </p>
+          </div>
+          <div class="sidebar-support-card__badge">Veterinaria moderna</div>
+        </aside>
+
+        <div class="sidebar-legal">
+          <strong>Lativet</strong>
+          <span>Gestión veterinaria inteligente</span>
+        </div>
       </div>
+
+      <header class="workspace-header">
+        <div class="workspace-header__copy">
+          <p id="workspaceHeadingEyebrow" class="eyebrow">Panel principal</p>
+          <h2 id="workspaceHeadingLabel">Dashboard</h2>
+          <p id="workspaceHeadingMeta" class="workspace-header__meta">Visión general del estado de la clínica.</p>
+        </div>
+        <div class="workspace-header__actions">
+          <button id="notificationsButton" class="secondary-button" type="button">
+            Notificaciones
+            <span id="notificationsBadge" class="notify-badge is-hidden">0</span>
+          </button>
+          <div class="workspace-user-card">
+            <span id="workspaceUserAvatar" class="workspace-user-card__avatar">LV</span>
+            <div class="workspace-user-card__copy">
+              <strong id="workspaceUserName">Lativet</strong>
+              <span id="workspaceUserRole">Operación veterinaria</span>
+            </div>
+          </div>
+          <button id="logoutButton" class="ghost-button is-hidden" type="button">Salir</button>
+        </div>
+      </header>
 
       <div id="notificationsPanel" class="notifications-panel is-hidden" aria-hidden="true">
         <div class="panel-heading">
@@ -57,6 +88,39 @@
 
       <main class="workspace">
         <section id="dashboard" class="workspace-section is-visible">
+          <article class="dashboard-hero panel-card">
+            <div class="dashboard-hero__copy">
+              <p class="eyebrow">Resumen diario</p>
+              <h2 id="dashboardHeroTitle">Buenas tardes</h2>
+              <p id="dashboardHeroDescription" class="dashboard-hero__description">
+                Este es el resumen operativo de tu clínica para hoy.
+              </p>
+              <div class="dashboard-hero__meta">
+                <span id="dashboardHeroDate" class="dashboard-hero__date">Hoy</span>
+              </div>
+              <div class="dashboard-hero__stats">
+                <article class="dashboard-hero__stat">
+                  <span>Citas hoy</span>
+                  <strong id="dashboardHeroAppointmentsValue">0</strong>
+                </article>
+                <article class="dashboard-hero__stat">
+                  <span>Mascotas activas</span>
+                  <strong id="dashboardHeroPatientsValue">0</strong>
+                </article>
+                <article class="dashboard-hero__stat">
+                  <span>Consultas</span>
+                  <strong id="dashboardHeroConsultationsValue">0</strong>
+                </article>
+              </div>
+            </div>
+            <div class="dashboard-hero__visual" aria-hidden="true">
+              <div class="dashboard-hero__petal dashboard-hero__petal--blue"></div>
+              <div class="dashboard-hero__petal dashboard-hero__petal--peach"></div>
+              <img class="dashboard-hero__logo" src="/images/logo.png" alt="" />
+              <div class="dashboard-hero__seal">Cuidado premium</div>
+            </div>
+          </article>
+
           <div class="dashboard-access-main">
             <article class="dashboard-quick-panel panel-card">
               <div class="panel-heading">

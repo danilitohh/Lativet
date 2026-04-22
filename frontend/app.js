@@ -262,6 +262,53 @@ const DASHBOARD_SHORTCUT_REQUIREMENTS = {
   grooming: "consultorio",
   users: "administration",
 };
+const WORKSPACE_HEADER_CONFIG = {
+  dashboard: {
+    eyebrow: "Panel principal",
+    title: "Dashboard",
+    description: "Vision general del estado de la clinica.",
+  },
+  administration: {
+    eyebrow: "Gestion interna",
+    title: "Administracion",
+    description: "Usuarios, permisos y control operativo.",
+  },
+  agenda: {
+    eyebrow: "Atencion diaria",
+    title: "Agenda",
+    description: "Programacion, disponibilidad y seguimiento de citas.",
+  },
+  sales: {
+    eyebrow: "Operacion comercial",
+    title: "Ventas",
+    description: "Facturacion, caja, inventario y movimientos comerciales.",
+  },
+  consultorio: {
+    eyebrow: "Historia clinica",
+    title: "Consultorio",
+    description: "Pacientes, propietarios, consultas y documentos clinicos.",
+  },
+  consents: {
+    eyebrow: "Soporte legal",
+    title: "Consentimientos",
+    description: "Archivo documental y consentimientos informados.",
+  },
+  hospamb: {
+    eyebrow: "Seguimiento",
+    title: "Hosp./Amb.",
+    description: "Casos hospitalarios y control ambulatorio.",
+  },
+  requests: {
+    eyebrow: "Bandeja operativa",
+    title: "Solicitudes",
+    description: "Revision centralizada de pendientes y solicitudes.",
+  },
+  reports: {
+    eyebrow: "Analitica",
+    title: "Informes",
+    description: "Indicadores, reportes financieros y actividad reciente.",
+  },
+};
 const usersFilters = { query: "", pageSize: 10, showInactive: false };
 const ownersFilters = { query: "", petQuery: "" };
 const consultorioPatientsFilters = { query: "" };
@@ -1622,6 +1669,105 @@ function formatDateTime(value) {
   return parsed.toLocaleString("es-CO", { dateStyle: "medium", timeStyle: "short" });
 }
 
+function capitalizeLabel(value) {
+  const text = String(value || "").trim();
+  return text ? `${text.charAt(0).toUpperCase()}${text.slice(1)}` : "";
+}
+
+function formatLongDateLabel(value = new Date()) {
+  const parsed = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return "";
+  }
+  return capitalizeLabel(
+    parsed.toLocaleDateString("es-CO", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    })
+  );
+}
+
+function getWorkspaceDisplayName() {
+  return authState.currentUser?.full_name || state.settings?.clinic_name || "Lativet";
+}
+
+function getWorkspaceDisplayRole() {
+  return authState.currentUser?.role || "Operacion veterinaria";
+}
+
+function getWorkspaceDisplayInitials() {
+  const words = getWorkspaceDisplayName()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2);
+  return (words.map((word) => word.charAt(0).toUpperCase()).join("") || "LV").slice(0, 2);
+}
+
+function getDashboardGreeting() {
+  const hour = new Date().getHours();
+  if (hour < 12) {
+    return "Buenos dias";
+  }
+  if (hour < 19) {
+    return "Buenas tardes";
+  }
+  return "Buenas noches";
+}
+
+function renderWorkspaceChrome() {
+  const sectionId = getNavSectionId(getActiveSectionId());
+  const config = WORKSPACE_HEADER_CONFIG[sectionId] || WORKSPACE_HEADER_CONFIG.dashboard;
+  if (elements.workspaceHeadingEyebrow) {
+    elements.workspaceHeadingEyebrow.textContent = config.eyebrow;
+  }
+  if (elements.workspaceHeadingLabel) {
+    elements.workspaceHeadingLabel.textContent = config.title;
+  }
+  if (elements.workspaceHeadingMeta) {
+    elements.workspaceHeadingMeta.textContent = `${config.description} ${formatLongDateLabel(new Date())}`;
+  }
+  if (elements.workspaceUserName) {
+    elements.workspaceUserName.textContent = getWorkspaceDisplayName();
+  }
+  if (elements.workspaceUserRole) {
+    elements.workspaceUserRole.textContent = getWorkspaceDisplayRole();
+  }
+  if (elements.workspaceUserAvatar) {
+    elements.workspaceUserAvatar.textContent = getWorkspaceDisplayInitials();
+  }
+}
+
+function renderDashboardHero() {
+  if (!elements.dashboardHeroTitle) {
+    return;
+  }
+  const firstName = getWorkspaceDisplayName().split(/\s+/).filter(Boolean)[0] || "Lativet";
+  if (elements.dashboardHeroTitle) {
+    elements.dashboardHeroTitle.textContent = `${getDashboardGreeting()}, ${firstName}`;
+  }
+  if (elements.dashboardHeroDescription) {
+    elements.dashboardHeroDescription.textContent = `Este es el resumen operativo de ${
+      state.settings?.clinic_name || "tu clinica"
+    } para hoy.`;
+  }
+  if (elements.dashboardHeroDate) {
+    elements.dashboardHeroDate.textContent = formatLongDateLabel(new Date());
+  }
+  if (elements.dashboardHeroAppointmentsValue) {
+    elements.dashboardHeroAppointmentsValue.textContent = String(state.dashboard?.appointments_today ?? 0);
+  }
+  if (elements.dashboardHeroPatientsValue) {
+    elements.dashboardHeroPatientsValue.textContent = String(state.dashboard?.patients ?? 0);
+  }
+  if (elements.dashboardHeroConsultationsValue) {
+    elements.dashboardHeroConsultationsValue.textContent = String(
+      state.dashboard?.consultations_total ?? 0
+    );
+  }
+}
+
 function toInputDateTime(value) {
   if (!value) {
     return "";
@@ -2798,9 +2944,21 @@ function cacheElements() {
     "notificationsCopyButton",
     "notificationsClearButton",
     "logoutButton",
+    "workspaceHeadingEyebrow",
+    "workspaceHeadingLabel",
+    "workspaceHeadingMeta",
+    "workspaceUserAvatar",
+    "workspaceUserName",
+    "workspaceUserRole",
     "loginModal",
     "loginForm",
     "loginError",
+    "dashboardHeroTitle",
+    "dashboardHeroDescription",
+    "dashboardHeroDate",
+    "dashboardHeroAppointmentsValue",
+    "dashboardHeroPatientsValue",
+    "dashboardHeroConsultationsValue",
     "dashboardUpdated",
     "dashboardQuickActions",
     "metricOwners",
@@ -4625,6 +4783,7 @@ function renderDashboardQuickActions() {
 
 function renderDashboard() {
   const dashboard = state.dashboard || {};
+  renderDashboardHero();
   renderDashboardQuickActions();
   elements.metricOwners.textContent = dashboard.owners ?? 0;
   elements.metricPatients.textContent = dashboard.patients ?? 0;
@@ -10718,6 +10877,7 @@ function renderSection(sectionId) {
 function renderAll() {
   applySettingsForm();
   renderCompliance();
+  renderWorkspaceChrome();
   renderSection(getActiveSectionId());
   saveAppViewState();
 }
@@ -15993,6 +16153,7 @@ function setAuthUI(authenticated) {
   if (elements.logoutButton) {
     elements.logoutButton.classList.toggle("is-hidden", !authenticated);
   }
+  renderWorkspaceChrome();
   syncAdminControls();
   applyPermissionsVisibility();
 }
