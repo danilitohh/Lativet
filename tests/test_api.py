@@ -44,6 +44,43 @@ class ServiceBootstrapTests(unittest.TestCase):
             payload.get("settings"), refresh_connection=False
         )
 
+    def test_google_calendar_config_is_blocked_when_connection_is_locked(self) -> None:
+        self.service._google_calendar.status = Mock(return_value={"connected": True})
+
+        result = self.service.save_google_calendar_config(
+            {
+                "google_calendar_enabled": True,
+                "google_calendar_id": "primary",
+                "agenda_timezone": "America/Bogota",
+            }
+        )
+
+        self.assertFalse(result["ok"])
+        self.assertIn("protegida", result["error"])
+        self.assertTrue(self.service._db.get_settings()["google_calendar_locked"])
+
+    def test_google_calendar_disconnect_is_blocked_when_connection_is_locked(self) -> None:
+        self.service._db.set_secret_setting("google_calendar_locked", "true")
+        self.service._google_calendar.disconnect = Mock()
+
+        result = self.service.disconnect_google_calendar()
+
+        self.assertFalse(result["ok"])
+        self.assertIn("protegida", result["error"])
+        self.service._google_calendar.disconnect.assert_not_called()
+
+    def test_google_calendar_oauth_completion_locks_configuration(self) -> None:
+        self.service._google_calendar.complete_web_oauth = Mock(return_value={"connected": True})
+        self.service._google_calendar.status = Mock(return_value={"connected": True})
+
+        result = self.service.complete_google_calendar_oauth(
+            "https://clinic.example.com/api/google-calendar/callback",
+            "https://clinic.example.com/api/google-calendar/callback?state=test&code=test",
+        )
+
+        self.assertTrue(result["ok"])
+        self.assertTrue(self.service._db.get_settings()["google_calendar_locked"])
+
 
 class GoogleCalendarBridgeTests(unittest.TestCase):
     def setUp(self) -> None:

@@ -219,6 +219,10 @@ class LativetService:
     def save_google_calendar_config(self, payload: dict) -> dict:
         data = validate_google_calendar_config(payload)
         current_settings = self._db.get_settings()
+        if self._google_calendar_is_locked(current_settings):
+            raise ValidationError(
+                "La configuracion de Google Calendar esta protegida y no puede modificarse."
+            )
         if data["credentials_json"]:
             self._google_calendar.save_credentials_json(data["credentials_json"])
         enabled = data["google_calendar_enabled"]
@@ -237,6 +241,10 @@ class LativetService:
 
     @safe_api_call
     def connect_google_calendar(self, redirect_uri: str | None = None) -> dict:
+        if self._google_calendar_is_locked(self._db.get_settings()):
+            raise ValidationError(
+                "La configuracion de Google Calendar esta protegida y no puede modificarse."
+            )
         if redirect_uri:
             return self._google_calendar.begin_web_oauth(redirect_uri)
         self._google_calendar.connect_local()
@@ -244,6 +252,10 @@ class LativetService:
 
     @safe_api_call
     def disconnect_google_calendar(self) -> dict:
+        if self._google_calendar_is_locked(self._db.get_settings()):
+            raise ValidationError(
+                "La configuracion de Google Calendar esta protegida y no puede modificarse."
+            )
         self._google_calendar.disconnect()
         return self._google_calendar.status(self._db.get_settings())
 
@@ -253,12 +265,30 @@ class LativetService:
             redirect_uri=redirect_uri,
             authorization_response=authorization_response,
         )
+        self._db.set_secret_setting("google_calendar_locked", "true")
         settings = self._db.get_settings()
-        if not settings.get("google_calendar_enabled"):
+        if not settings.get("google_calendar_enabled") or not settings.get("google_calendar_locked"):
             settings = self._db.save_settings(
-                {**settings, "google_calendar_enabled": True}
+                {
+                    **settings,
+                    "google_calendar_enabled": True,
+                    "google_calendar_locked": True,
+                }
             )
         return {**result, **self._google_calendar.status(settings)}
+
+    def _google_calendar_is_locked(self, settings: dict | None = None) -> bool:
+        settings = settings or self._db.get_settings()
+        if settings.get("google_calendar_locked"):
+            return True
+        try:
+            status = self._google_calendar.status(settings, refresh_connection=True)
+        except Exception:
+            return False
+        if status.get("connected"):
+            self._db.set_secret_setting("google_calendar_locked", "true")
+            return True
+        return False
 
     @safe_api_call
     def save_cash_movement(self, payload: dict) -> dict:

@@ -54,6 +54,7 @@ DEFAULT_SETTINGS = {
     "email_body_template": "Hola {owner_name}, adjuntamos el documento {document_number}.",
     "google_calendar_enabled": False,
     "google_calendar_id": "primary",
+    "google_calendar_locked": False,
 }
 
 APPOINTMENT_STATUSES = {"scheduled", "confirmed", "completed", "cancelled", "no_show"}
@@ -1085,6 +1086,9 @@ class Database:
             settings.get("google_calendar_enabled", "")
         ).lower() in {"1", "true", "on", "yes", "si", "s"}
         settings["google_calendar_id"] = str(settings.get("google_calendar_id") or "primary")
+        settings["google_calendar_locked"] = str(
+            settings.get("google_calendar_locked", "")
+        ).lower() in {"1", "true", "on", "yes", "si", "s"}
         settings["smtp_password_set"] = bool(secret_password)
         return settings
 

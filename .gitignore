@@ -2,5 +2,8 @@ __pycache__/
 *.pyc
 *.log
 data/
+.DS_Store
+client_secret*.json
+*.apps.googleusercontent.com.json
 
 .vercel
