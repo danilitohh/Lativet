@@ -1162,19 +1162,16 @@ class Database:
         return {"settings": settings, "owner": owner, "patient": patient, "consent": consent}
 
     def list_users(self, include_inactive: bool = True) -> list[dict]:
-        query = "SELECT * FROM staff_users"
-        params: tuple = ()
-        if not include_inactive:
-            query += " WHERE is_active = 1"
-        query += " ORDER BY created_at DESC"
-        rows = self.connection.execute(query, params).fetchall()
+        rows = self.connection.execute(
+            "SELECT * FROM staff_users ORDER BY created_at DESC"
+        ).fetchall()
         users = [self._row_to_dict(row) for row in rows]
         for user in users:
             try:
                 user["permissions"] = json.loads(user.get("permissions_json") or "[]")
             except json.JSONDecodeError:
                 user["permissions"] = []
-            user["is_active"] = bool(int(user.get("is_active") or 0))
+            user["is_active"] = True
             user.pop("password_hash", None)
         return users
 
@@ -1219,7 +1216,7 @@ class Database:
                         data["email"],
                         data["role"],
                         permissions_json,
-                        1 if data["is_active"] else 0,
+                        1,
                         password_hash,
                         timestamp,
                         user_id,
@@ -1243,7 +1240,7 @@ class Database:
                         data["email"],
                         data["role"],
                         permissions_json,
-                        1 if data["is_active"] else 0,
+                        1,
                         password_hash,
                         timestamp,
                         timestamp,
@@ -1251,18 +1248,6 @@ class Database:
                 )
                 action = "create"
             self._record_audit("staff_user", user_id, action, "admin", audit_payload)
-        return self.get_user(user_id)
-
-    def update_user_status(self, user_id: str, is_active: bool) -> dict:
-        timestamp = now_iso()
-        with self._tx():
-            self.connection.execute(
-                "UPDATE staff_users SET is_active = ?, updated_at = ? WHERE id = ?",
-                (1 if is_active else 0, timestamp, user_id),
-            )
-            self._record_audit(
-                "staff_user", user_id, "status", "admin", {"is_active": is_active}
-            )
         return self.get_user(user_id)
 
     def delete_user(self, user_id: str) -> dict:
@@ -1294,7 +1279,7 @@ class Database:
             user["permissions"] = json.loads(user.get("permissions_json") or "[]")
         except json.JSONDecodeError:
             user["permissions"] = []
-        user["is_active"] = bool(int(user.get("is_active") or 0))
+        user["is_active"] = True
         user.pop("password_hash", None)
         return user
 
@@ -1306,8 +1291,6 @@ class Database:
         if row is None:
             raise ValidationError("Credenciales invalidas.")
         user = self._row_to_dict(row)
-        if not bool(int(user.get("is_active") or 0)):
-            raise ValidationError("Usuario inactivo.")
         stored_hash = user.get("password_hash") or ""
         if not stored_hash or not check_password_hash(stored_hash, password):
             raise ValidationError("Credenciales invalidas.")
@@ -1315,7 +1298,7 @@ class Database:
             user["permissions"] = json.loads(user.get("permissions_json") or "[]")
         except json.JSONDecodeError:
             user["permissions"] = []
-        user["is_active"] = bool(int(user.get("is_active") or 0))
+        user["is_active"] = True
         user.pop("password_hash", None)
         return user
 

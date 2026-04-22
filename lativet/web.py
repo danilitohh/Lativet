@@ -80,7 +80,7 @@ def create_app(base_dir: Path | None = None, data_dir: Path | None = None) -> Fl
             session.pop("user_authenticated", None)
             session.pop("user_id", None)
             return None
-        if not user or not user.get("is_active"):
+        if not user:
             session.pop("user_authenticated", None)
             session.pop("user_id", None)
             return None
@@ -254,13 +254,6 @@ def create_app(base_dir: Path | None = None, data_dir: Path | None = None) -> Fl
         if not is_admin():
             return jsonify({"ok": False, "error": "Solo administradores."}), 403
         return respond(service.delete_user(user_id))
-
-    @app.patch("/api/users/<user_id>/status")
-    def update_user_status(user_id: str):
-        if not is_admin():
-            return jsonify({"ok": False, "error": "Solo administradores."}), 403
-        is_active = bool(payload().get("is_active"))
-        return respond(service.update_user_status(user_id, is_active))
 
     @app.post("/api/patients")
     def save_patient():

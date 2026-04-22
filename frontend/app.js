@@ -309,7 +309,7 @@ const WORKSPACE_HEADER_CONFIG = {
     description: "Indicadores, reportes financieros y actividad reciente.",
   },
 };
-const usersFilters = { query: "", pageSize: 10, showInactive: false };
+const usersFilters = { query: "", pageSize: 10 };
 const ownersFilters = { query: "", petQuery: "" };
 const consultorioPatientsFilters = { query: "" };
 const authState = { requiresLogin: false, authenticated: false, currentUser: null };
@@ -1628,18 +1628,6 @@ function getUserTableActionIconSvg(action) {
           <path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4Z"></path>
         </svg>
       `,
-      deactivate: `
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <circle cx="12" cy="12" r="8"></circle>
-          <path d="M8.5 8.5 15.5 15.5"></path>
-        </svg>
-      `,
-      activate: `
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <circle cx="12" cy="12" r="8"></circle>
-          <path d="m8.8 12 2.2 2.2 4.2-4.4"></path>
-        </svg>
-      `,
       delete: `
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <path d="M3 6h18"></path>
@@ -2205,11 +2193,6 @@ const api = {
   saveUser: (payload) =>
     apiRequest("/api/users", { method: "POST", body: JSON.stringify(payload) }),
   deleteUser: (userId) => apiRequest(`/api/users/${userId}`, { method: "DELETE" }),
-  updateUserStatus: (userId, is_active) =>
-    apiRequest(`/api/users/${userId}/status`, {
-      method: "PATCH",
-      body: JSON.stringify({ is_active }),
-    }),
   authStatus: () => apiRequest("/api/auth/status"),
   authLogin: (payload) =>
     apiRequest("/api/auth/login", { method: "POST", body: JSON.stringify(payload) }),
@@ -3316,7 +3299,6 @@ function cacheElements() {
     "usersSearchInput",
     "usersPageSizeSelect",
     "openUserModalButton",
-    "toggleInactiveUsersButton",
     "exportUsersButton",
     "userModal",
     "closeUserModalButton",
@@ -5438,9 +5420,6 @@ function serializeGroomingServiceDetails(items = []) {
 function getGroomingStaffOptions(selected = "") {
   const values = new Set();
   (state.users || []).forEach((user) => {
-    if (user?.is_active === false) {
-      return;
-    }
     const name = String(user?.full_name || "").trim();
     if (name) {
       values.add(name);
@@ -10002,9 +9981,6 @@ function syncAdminControls() {
   if (elements.openUserModalButton) {
     elements.openUserModalButton.classList.toggle("is-hidden", !isAdmin);
   }
-  if (elements.toggleInactiveUsersButton) {
-    elements.toggleInactiveUsersButton.classList.toggle("is-hidden", !isAdmin);
-  }
   if (elements.exportUsersButton) {
     elements.exportUsersButton.classList.toggle("is-hidden", !isAdmin);
   }
@@ -10026,9 +10002,6 @@ function renderUsers() {
   elements.usersClinicName.textContent = clinicName;
   const query = usersFilters.query.trim().toLowerCase();
   let users = Array.isArray(state.users) ? [...state.users] : [];
-  if (!usersFilters.showInactive) {
-    users = users.filter((user) => user.is_active);
-  }
   if (query) {
     users = users.filter((user) => {
       const haystack = `${user.full_name || ""} ${user.email || ""} ${user.role || ""}`.toLowerCase();
@@ -10044,12 +10017,10 @@ function renderUsers() {
     const isAdmin = isAdminUser();
     elements.usersTableBody.innerHTML = visible
       .map((user) => {
-        const statusLabel = user.is_active ? "Activo" : "Inactivo";
-        const statusClass = user.is_active ? "pill--confirmed" : "pill--draft";
         const createdLabel = user.created_at ? formatDateTime(user.created_at) : "N/D";
         const permissionsLabel = buildUserPermissionsSummary(user.permissions);
         return `
-          <tr class="${user.is_active ? "" : "is-muted"}">
+          <tr>
             <td>
               <div class="table-actions users-table-actions">
                 ${
@@ -10060,17 +10031,6 @@ function renderUsers() {
                 )}">
                   <span class="table-action-pill__icon">${getUserTableActionIconSvg("edit")}</span>
                   <span>Editar</span>
-                </button>
-                <button
-                  class="table-action-pill ${user.is_active ? "table-action-pill--toggle" : "table-action-pill--activate"}"
-                  type="button"
-                  data-user-toggle="${escapeHtml(user.id)}"
-                  data-user-active="${user.is_active ? "1" : "0"}"
-                >
-                  <span class="table-action-pill__icon">${getUserTableActionIconSvg(
-                    user.is_active ? "deactivate" : "activate"
-                  )}</span>
-                  <span>${user.is_active ? "Desactivar" : "Activar"}</span>
                 </button>
                 <button class="table-action-pill table-action-pill--danger" type="button" data-user-delete="${escapeHtml(
                   user.id
@@ -10087,7 +10047,6 @@ function renderUsers() {
             <td>
               ${escapeHtml(user.role || "Sin rol")}
               <div class="meta-copy">Permisos: ${escapeHtml(permissionsLabel)}</div>
-              <span class="pill ${statusClass}">${statusLabel}</span>
             </td>
             <td>${escapeHtml(createdLabel)}</td>
           </tr>
@@ -14336,9 +14295,6 @@ function resetUserModalContext() {
 function getConsultorioLaboratoryProfessionalOptions(currentProfessional = "") {
   const names = new Set();
   (state.users || []).forEach((user) => {
-    if (!user?.is_active) {
-      return;
-    }
     const name = String(user?.full_name || "").trim();
     if (name) {
       names.add(name);
@@ -16119,7 +16075,6 @@ function openUserModal(user = null, options = {}) {
   elements.userForm.elements.full_name.value = user?.full_name || "";
   elements.userForm.elements.email.value = user?.email || "";
   elements.userForm.elements.role.value = user?.role || "Veterinario";
-  elements.userForm.elements.is_active.checked = user?.is_active ?? true;
   if (elements.userForm.elements.password) {
     elements.userForm.elements.password.value = "";
   }
@@ -16573,7 +16528,6 @@ function buildUserPayload() {
     full_name: form.elements.full_name.value,
     email: form.elements.email.value,
     role: form.elements.role.value,
-    is_active: form.elements.is_active.checked,
   };
   const password = form.elements.password?.value?.trim();
   if (!payload.id && !password) {
@@ -16648,14 +16602,6 @@ async function handleUsersTableClick(event) {
     if (user) {
       openUserModal(user);
     }
-    return;
-  }
-  const toggleButton = event.target.closest("button[data-user-toggle]");
-  if (toggleButton) {
-    const userId = toggleButton.dataset.userToggle;
-    const isActive = toggleButton.dataset.userActive === "1";
-    await api.updateUserStatus(userId, !isActive);
-    await refreshData(isActive ? "Usuario desactivado." : "Usuario activado.");
     return;
   }
   const deleteButton = event.target.closest("button[data-user-delete]");
@@ -17997,15 +17943,6 @@ function bindForms() {
       renderUsers();
     });
   }
-  if (elements.toggleInactiveUsersButton) {
-    elements.toggleInactiveUsersButton.addEventListener("click", () => {
-      usersFilters.showInactive = !usersFilters.showInactive;
-      elements.toggleInactiveUsersButton.textContent = usersFilters.showInactive
-        ? "Ocultar inactivos"
-        : "Usuarios inactivos";
-      renderUsers();
-    });
-  }
   if (elements.ownersList) {
     elements.ownersList.addEventListener("click", wrapAsync(handleOwnersListClick));
   }
@@ -18836,7 +18773,6 @@ function bindForms() {
         Nombre: user.full_name || "",
         Correo: user.email || "",
         Rol: user.role || "",
-        Estado: user.is_active ? "Activo" : "Inactivo",
         Permisos: Array.isArray(user.permissions) ? user.permissions.join("|") : "",
         Creacion: user.created_at || "",
       }));

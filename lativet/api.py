@@ -167,10 +167,6 @@ class LativetService:
         return self._db.get_user(user_id)
 
     @safe_api_call
-    def update_user_status(self, user_id: str, is_active: bool) -> dict:
-        return self._db.update_user_status(user_id, is_active)
-
-    @safe_api_call
     def delete_user(self, user_id: str) -> dict:
         return self._db.delete_user(user_id)
 
