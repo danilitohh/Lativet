@@ -8786,6 +8786,9 @@ textarea:focus-visible {
   position: relative;
   min-height: 136px;
   padding: 18px;
+  display: grid;
+  gap: 14px;
+  align-content: start;
   overflow: hidden;
 }
 
@@ -8800,9 +8803,17 @@ textarea:focus-visible {
   background: linear-gradient(145deg, rgba(93, 143, 242, 0.12), rgba(242, 164, 123, 0.08));
 }
 
-.metric-card span {
+.metric-card__top {
   position: relative;
   z-index: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.metric-card__label {
+  position: relative;
   display: block;
   color: #7f8ea3;
   font-size: 0.74rem;
@@ -8810,10 +8821,28 @@ textarea:focus-visible {
   letter-spacing: 0.08em;
 }
 
+.metric-card__icon {
+  width: 44px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+  background: linear-gradient(145deg, rgba(93, 143, 242, 0.12), rgba(255, 255, 255, 0.94));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.92),
+    0 12px 22px rgba(93, 143, 242, 0.1);
+}
+
+.metric-card__icon svg {
+  width: 22px;
+  height: 22px;
+  display: block;
+}
+
 .metric-card strong {
   position: relative;
   z-index: 1;
-  margin-top: 12px;
   color: var(--text);
   font-size: clamp(1.4rem, 2vw, 1.88rem);
 }
@@ -8837,6 +8866,46 @@ textarea:focus-visible {
 
 .dashboard-kpi-grid .metric-card:nth-child(4n + 4)::before {
   background: linear-gradient(145deg, rgba(212, 107, 120, 0.12), rgba(255, 228, 233, 0.12));
+}
+
+.dashboard-kpi-grid .metric-card[data-metric-type="owners"] .metric-card__icon {
+  color: #5b84dc;
+  background: linear-gradient(145deg, rgba(93, 143, 242, 0.16), rgba(235, 243, 255, 0.94));
+}
+
+.dashboard-kpi-grid .metric-card[data-metric-type="patients"] .metric-card__icon {
+  color: #ea8a5a;
+  background: linear-gradient(145deg, rgba(242, 164, 123, 0.18), rgba(255, 241, 233, 0.94));
+}
+
+.dashboard-kpi-grid .metric-card[data-metric-type="records"] .metric-card__icon {
+  color: #56a094;
+  background: linear-gradient(145deg, rgba(86, 160, 148, 0.16), rgba(236, 249, 246, 0.94));
+}
+
+.dashboard-kpi-grid .metric-card[data-metric-type="consultations"] .metric-card__icon {
+  color: #d97b8a;
+  background: linear-gradient(145deg, rgba(217, 123, 138, 0.16), rgba(255, 239, 243, 0.94));
+}
+
+.dashboard-kpi-grid .metric-card[data-metric-type="appointments"] .metric-card__icon {
+  color: #6a8df0;
+  background: linear-gradient(145deg, rgba(106, 141, 240, 0.16), rgba(237, 243, 255, 0.94));
+}
+
+.dashboard-kpi-grid .metric-card[data-metric-type="consents"] .metric-card__icon {
+  color: #d28a54;
+  background: linear-gradient(145deg, rgba(242, 164, 123, 0.14), rgba(255, 244, 238, 0.94));
+}
+
+.dashboard-kpi-grid .metric-card[data-metric-type="grooming"] .metric-card__icon {
+  color: #53a48f;
+  background: linear-gradient(145deg, rgba(83, 164, 143, 0.14), rgba(238, 249, 245, 0.94));
+}
+
+.dashboard-kpi-grid .metric-card[data-metric-type="availability"] .metric-card__icon {
+  color: #8b73de;
+  background: linear-gradient(145deg, rgba(139, 115, 222, 0.15), rgba(243, 239, 255, 0.94));
 }
 
 .table-controls {
