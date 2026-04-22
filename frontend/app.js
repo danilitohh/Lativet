@@ -1619,6 +1619,40 @@ function escapeHtml(value) {
     .replaceAll("'", "&#39;");
 }
 
+function getUserTableActionIconSvg(action) {
+  return (
+    {
+      edit: `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 20h9"></path>
+          <path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4Z"></path>
+        </svg>
+      `,
+      deactivate: `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="8"></circle>
+          <path d="M8.5 8.5 15.5 15.5"></path>
+        </svg>
+      `,
+      activate: `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="8"></circle>
+          <path d="m8.8 12 2.2 2.2 4.2-4.4"></path>
+        </svg>
+      `,
+      delete: `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M3 6h18"></path>
+          <path d="M8 6V4.8A1.8 1.8 0 0 1 9.8 3h4.4A1.8 1.8 0 0 1 16 4.8V6"></path>
+          <path d="M19 6l-1 13a2 2 0 0 1-2 1.8H8a2 2 0 0 1-2-1.8L5 6"></path>
+          <path d="M10 10.5v6"></path>
+          <path d="M14 10.5v6"></path>
+        </svg>
+      `,
+    }[action] || ""
+  );
+}
+
 function emptyState(message) {
   return `<div class="empty-state">${escapeHtml(message)}</div>`;
 }
@@ -10017,16 +10051,32 @@ function renderUsers() {
         return `
           <tr class="${user.is_active ? "" : "is-muted"}">
             <td>
-              <div class="table-actions">
+              <div class="table-actions users-table-actions">
                 ${
                   isAdmin
                     ? `
-                <button type="button" data-user-edit="${escapeHtml(user.id)}">Editar</button>
-                <button type="button" data-user-toggle="${escapeHtml(user.id)}" data-user-active="${user.is_active ? "1" : "0"}">
-                  ${user.is_active ? "Desactivar" : "Activar"}
+                <button class="table-action-pill table-action-pill--edit" type="button" data-user-edit="${escapeHtml(
+                  user.id
+                )}">
+                  <span class="table-action-pill__icon">${getUserTableActionIconSvg("edit")}</span>
+                  <span>Editar</span>
                 </button>
-                <button class="ghost-button ghost-button--danger" type="button" data-user-delete="${escapeHtml(user.id)}">
-                  Eliminar
+                <button
+                  class="table-action-pill ${user.is_active ? "table-action-pill--toggle" : "table-action-pill--activate"}"
+                  type="button"
+                  data-user-toggle="${escapeHtml(user.id)}"
+                  data-user-active="${user.is_active ? "1" : "0"}"
+                >
+                  <span class="table-action-pill__icon">${getUserTableActionIconSvg(
+                    user.is_active ? "deactivate" : "activate"
+                  )}</span>
+                  <span>${user.is_active ? "Desactivar" : "Activar"}</span>
+                </button>
+                <button class="table-action-pill table-action-pill--danger" type="button" data-user-delete="${escapeHtml(
+                  user.id
+                )}">
+                  <span class="table-action-pill__icon">${getUserTableActionIconSvg("delete")}</span>
+                  <span>Eliminar</span>
                 </button>`
                     : "<span class=\"meta-copy\">Solo administrador</span>"
                 }
