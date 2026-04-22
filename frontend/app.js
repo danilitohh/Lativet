@@ -1928,23 +1928,6 @@ function listCalendarAppointmentsForDate(dateValue) {
   );
 }
 
-function getLatestAppointmentEnd(dateValue) {
-  const appointments = listAppointmentsForDate(dateValue, { activeOnly: true });
-  let latest = null;
-  appointments.forEach((appointment) => {
-    const start = new Date(appointment.appointment_at);
-    if (Number.isNaN(start.getTime())) {
-      return;
-    }
-    const minutes = Number(appointment.duration_minutes || 30);
-    const end = addMinutes(start, minutes);
-    if (!latest || end > latest) {
-      latest = end;
-    }
-  });
-  return latest;
-}
-
 function buildAgendaSlots(dateValue) {
   const target = parseIsoDate(dateValue);
   const activeAppointments = listAppointmentsForDate(dateValue, { activeOnly: true });
@@ -1989,26 +1972,16 @@ function buildAgendaSlots(dateValue) {
   return slots;
 }
 
+function filterAvailableAgendaSlots(slots = [], { currentAppointmentId = "" } = {}) {
+  return slots.filter((slot) => !slot.occupied || slot.appointment_id === currentAppointmentId);
+}
+
 function getAvailableSlotsForDate(dateValue) {
   if (!dateValue) {
     return [];
   }
-  const latestEnd = getLatestAppointmentEnd(dateValue);
   const currentAppointmentId = elements.appointmentIdInput?.value || "";
-  return buildAgendaSlots(dateValue).filter((slot) => {
-    const isCurrent = slot.appointment_id && slot.appointment_id === currentAppointmentId;
-    if (slot.occupied && !isCurrent) {
-      return false;
-    }
-    if (isCurrent) {
-      return true;
-    }
-    if (!latestEnd) {
-      return true;
-    }
-    const slotStart = new Date(slot.slot_at);
-    return slotStart >= latestEnd;
-  });
+  return filterAvailableAgendaSlots(buildAgendaSlots(dateValue), { currentAppointmentId });
 }
 
 function serializeForm(form) {
@@ -3187,6 +3160,7 @@ function cacheElements() {
     "complianceNotes",
     "complianceSources",
     "appointmentForm",
+    "appointmentFormFeedback",
     "appointmentRegisterOwnerButton",
     "appointmentTypeSelect",
     "appointmentProfessionalSelect",
@@ -3374,6 +3348,20 @@ function showStatus(message, tone = "info", html = false) {
   if (plainText) {
     addNotification(plainText, tone);
   }
+}
+
+function setAppointmentFormFeedback(message = "", tone = "error") {
+  if (!elements.appointmentFormFeedback) {
+    return;
+  }
+  const content = String(message || "").trim();
+  elements.appointmentFormFeedback.dataset.tone = tone || "error";
+  elements.appointmentFormFeedback.textContent = content;
+  elements.appointmentFormFeedback.classList.toggle("is-hidden", !content);
+}
+
+function clearAppointmentFormFeedback() {
+  setAppointmentFormFeedback("");
 }
 
 function getNavSectionId(sectionId) {
@@ -9472,17 +9460,7 @@ function renderAgendaMonth() {
     const current = addDays(gridStart, index);
     const currentIso = toIsoDate(current);
     const slots = buildAgendaSlots(currentIso);
-    const latestEnd = getLatestAppointmentEnd(currentIso);
-    const availableSlots = slots.filter((slot) => {
-      if (slot.occupied) {
-        return false;
-      }
-      if (!latestEnd) {
-        return true;
-      }
-      const slotStart = new Date(slot.slot_at);
-      return slotStart >= latestEnd;
-    });
+    const availableSlots = filterAvailableAgendaSlots(slots);
     const appointments = listCalendarAppointmentsForDate(currentIso);
     cards.push(`
       <button
@@ -9553,17 +9531,7 @@ function renderAgendaWeekSlots() {
   for (let index = 0; index < 7; index += 1) {
     const current = addDays(weekStart, index);
     const currentIso = toIsoDate(current);
-    const latestEnd = getLatestAppointmentEnd(currentIso);
-    const slots = buildAgendaSlots(currentIso).filter((slot) => {
-      if (slot.occupied) {
-        return false;
-      }
-      if (!latestEnd) {
-        return true;
-      }
-      const slotStart = new Date(slot.slot_at);
-      return slotStart >= latestEnd;
-    });
+    const slots = filterAvailableAgendaSlots(buildAgendaSlots(currentIso));
     const slotMarkup = slots.length
       ? slots
           .map(
@@ -11098,10 +11066,14 @@ function renderAppointmentSlotsStrip() {
   }
   const startValue = elements.appointmentStartInput?.value || "";
   const dateValue = toIsoDate(startValue) || agendaSelectedDate;
+  const configuredSlots = buildAgendaSlots(dateValue);
   const slots = getAvailableSlotsForDate(dateValue);
   if (!slots.length) {
+    const emptyMessage = configuredSlots.length
+      ? "No hay horarios libres para este dia."
+      : "No hay horarios configurados para este dia.";
     elements.appointmentSlotsStrip.innerHTML =
-      '<div class="appointment-slots-empty">No hay horarios disponibles.</div>';
+      `<div class="appointment-slots-empty">${escapeHtml(emptyMessage)}</div>`;
     elements.appointmentSlotsStrip.classList.remove("is-hidden");
     return;
   }
@@ -11283,7 +11255,15 @@ function openAppointmentModalForDate(dateValue) {
     openAppointmentModal(slots[0].slot_at, Number(slots[0].duration_minutes || 30));
     return;
   }
-  openAppointmentModal(`${targetDate}T08:00`, Number(elements.appointmentDurationInput?.value || 30));
+  openAppointmentModal("", Number(elements.appointmentDurationInput?.value || 30), {
+    allowBlankStart: true,
+  });
+  setAppointmentFormFeedback(
+    buildAgendaSlots(targetDate).length
+      ? "No hay horarios libres para este dia. Elige otra fecha o ajusta la hora."
+      : "No hay horarios configurados para este dia. Crea disponibilidad o elige otra fecha.",
+    "info"
+  );
 }
 
 function openAppointmentModalForSlot(slotAt, durationMinutes) {
@@ -11294,8 +11274,10 @@ function openAppointmentModalForSlot(slotAt, durationMinutes) {
   openAppointmentModal(slotAt, durationMinutes);
 }
 
-function openAppointmentModal(initialDateTime = "", durationMinutes = 30) {
-  const dateTimeValue = initialDateTime || `${agendaSelectedDate}T08:00`;
+function openAppointmentModal(initialDateTime = "", durationMinutes = 30, options = {}) {
+  const { allowBlankStart = false } = options;
+  const hasInitialDateTime = Boolean(initialDateTime);
+  const dateTimeValue = hasInitialDateTime ? initialDateTime : `${agendaSelectedDate}T08:00`;
   elements.appointmentModal.classList.remove("is-hidden");
   elements.appointmentModal.setAttribute("aria-hidden", "false");
   if (elements.appointmentModalTitle) {
@@ -11308,10 +11290,14 @@ function openAppointmentModal(initialDateTime = "", durationMinutes = 30) {
     elements.appointmentStatusInput.value = "scheduled";
   }
   if (elements.appointmentStartInput) {
-    elements.appointmentStartInput.value = toInputDateTime(dateTimeValue);
+    elements.appointmentStartInput.value =
+      allowBlankStart && !hasInitialDateTime ? "" : toInputDateTime(dateTimeValue);
   }
   if (elements.appointmentEndInput) {
-    elements.appointmentEndInput.value = buildAppointmentEndValue(dateTimeValue, durationMinutes);
+    elements.appointmentEndInput.value =
+      allowBlankStart && !hasInitialDateTime
+        ? ""
+        : buildAppointmentEndValue(dateTimeValue, durationMinutes);
   }
   if (elements.appointmentDurationInput) {
     elements.appointmentDurationInput.value = String(durationMinutes || 30);
@@ -11346,6 +11332,7 @@ function openAppointmentModal(initialDateTime = "", durationMinutes = 30) {
       elements.appointmentProfessionalSelect.value = "Agenda general";
     }
   }
+  clearAppointmentFormFeedback();
   renderAppointmentPatientDropdown();
   syncAppointmentSelectedDate();
 }
@@ -11400,6 +11387,7 @@ function openAppointmentModalForEdit(appointment) {
 function closeAppointmentModal() {
   elements.appointmentModal.classList.add("is-hidden");
   elements.appointmentModal.setAttribute("aria-hidden", "true");
+  clearAppointmentFormFeedback();
 }
 
 function openAppointmentDetailModal(appointmentId) {
@@ -16476,40 +16464,47 @@ async function handleCatalogSubmit(event) {
 
 async function handleAppointmentSubmit(event) {
   event.preventDefault();
-  const payload = serializeForm(event.currentTarget);
-  const start = parseAppointmentDateTime(payload.appointment_at);
-  const end = parseAppointmentDateTime(payload.appointment_end_at);
-  if (start && end) {
-    const duration = Math.round((end.getTime() - start.getTime()) / 60000);
-    if (duration > 0) {
-      payload.duration_minutes = Math.min(240, Math.max(15, duration));
+  clearAppointmentFormFeedback();
+  try {
+    const payload = serializeForm(event.currentTarget);
+    const start = parseAppointmentDateTime(payload.appointment_at);
+    const end = parseAppointmentDateTime(payload.appointment_end_at);
+    if (start && end) {
+      const duration = Math.round((end.getTime() - start.getTime()) / 60000);
+      if (duration > 0) {
+        payload.duration_minutes = Math.min(240, Math.max(15, duration));
+      }
     }
+    if (!payload.reason) {
+      payload.reason = payload.appointment_type || "Cita";
+    }
+    if (payload.appointment_type && payload.reason && !payload.reason.includes(payload.appointment_type)) {
+      payload.reason = `${payload.appointment_type} - ${payload.reason}`;
+    }
+    if (!payload.patient_id && !payload.owner_id) {
+      throw new Error("Debes seleccionar un propietario.");
+    }
+    if (!payload.status) {
+      payload.status = "scheduled";
+    }
+    if (!payload.professional_name) {
+      payload.professional_name = "Agenda general";
+    }
+    await api.saveAppointment(payload);
+    agendaSelectedDate = toIsoDate(payload.appointment_at) || agendaSelectedDate;
+    resetForm(event.currentTarget);
+    closeAppointmentModal();
+    setDateTimeDefaults();
+    await refreshData({
+      sections: AGENDA_REFRESH_SECTIONS,
+      message: "Cita guardada.",
+    });
+    setActiveSection("agenda");
+  } catch (error) {
+    const message = error?.message || "No fue posible guardar la cita.";
+    setAppointmentFormFeedback(message);
+    showStatus(message, "error");
   }
-  if (!payload.reason) {
-    payload.reason = payload.appointment_type || "Cita";
-  }
-  if (payload.appointment_type && payload.reason && !payload.reason.includes(payload.appointment_type)) {
-    payload.reason = `${payload.appointment_type} - ${payload.reason}`;
-  }
-  if (!payload.patient_id && !payload.owner_id) {
-    throw new Error("Debes seleccionar un propietario.");
-  }
-  if (!payload.status) {
-    payload.status = "scheduled";
-  }
-  if (!payload.professional_name) {
-    payload.professional_name = "Agenda general";
-  }
-  await api.saveAppointment(payload);
-  agendaSelectedDate = toIsoDate(payload.appointment_at) || agendaSelectedDate;
-  resetForm(event.currentTarget);
-  closeAppointmentModal();
-  setDateTimeDefaults();
-  await refreshData({
-    sections: AGENDA_REFRESH_SECTIONS,
-    message: "Cita guardada.",
-  });
-  setActiveSection("agenda");
 }
 
 async function handleAvailabilitySubmit(event) {
@@ -18836,6 +18831,8 @@ function bindForms() {
     elements.catalogItemsList.addEventListener("click", wrapAsync(handleCatalogItemsClick));
   }
   elements.appointmentForm.addEventListener("submit", wrapAsync(handleAppointmentSubmit));
+  elements.appointmentForm.addEventListener("input", clearAppointmentFormFeedback);
+  elements.appointmentForm.addEventListener("change", clearAppointmentFormFeedback);
   if (elements.availabilityForm) {
     elements.availabilityForm.addEventListener("submit", wrapAsync(handleAvailabilitySubmit));
   }
