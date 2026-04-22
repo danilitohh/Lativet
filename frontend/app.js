@@ -127,64 +127,6 @@ const permissionLabelMap = permissionOptions.reduce((acc, option) => {
   acc[option.key] = option.label;
   return acc;
 }, {});
-const DASHBOARD_RAIL_ITEMS = [
-  {
-    shortcut: "dashboard-home",
-    label: "Inicio",
-    hint: "Portada",
-    icon: "dashboard",
-    requires: "dashboard",
-    activeSection: "dashboard",
-  },
-  {
-    shortcut: "agenda",
-    label: "Agenda",
-    hint: "Citas",
-    icon: "calendar",
-    requires: "agenda",
-    activeSection: "agenda",
-  },
-  {
-    shortcut: "sales",
-    label: "Ventas",
-    hint: "Caja",
-    icon: "sales",
-    requires: "sales",
-    activeSection: "sales",
-  },
-  {
-    shortcut: "consultorio",
-    label: "Clinica",
-    hint: "Pacientes",
-    icon: "patient",
-    requires: "consultorio",
-    activeSection: "consultorio",
-  },
-  {
-    shortcut: "consents",
-    label: "Consent.",
-    hint: "Legal",
-    icon: "consent",
-    requires: "consents",
-    activeSection: "consents",
-  },
-  {
-    shortcut: "reports",
-    label: "Informes",
-    hint: "Resumen",
-    icon: "report",
-    requires: "reports",
-    activeSection: "reports",
-  },
-  {
-    shortcut: "administration",
-    label: "Usuarios",
-    hint: "Equipo",
-    icon: "users",
-    requires: "administration",
-    activeSection: "administration",
-  },
-];
 const DASHBOARD_QUICK_ACTIONS = [
   {
     shortcut: "factura",
@@ -2863,7 +2805,6 @@ function cacheElements() {
     "dashboardUpdated",
     "dashboardHeroStats",
     "dashboardQuickActions",
-    "dashboardQuickRail",
     "metricOwners",
     "metricPatients",
     "metricRecords",
@@ -4647,31 +4588,6 @@ function isDashboardShortcutAllowed(shortcut, allowed = getAllowedSections()) {
   return !requirement || allowed.has(requirement);
 }
 
-function getDashboardRailHint(shortcut) {
-  switch (shortcut) {
-    case "dashboard-home":
-      return getDashboardPendingRequestsCount()
-        ? `${getDashboardPendingRequestsCount()} pendientes`
-        : "Sin alertas";
-    case "agenda":
-      return `${state.dashboard?.appointments_today ?? 0} hoy`;
-    case "sales":
-      return getDashboardPendingBillingDocumentsCount()
-        ? `${getDashboardPendingBillingDocumentsCount()} cobros`
-        : "Operacion";
-    case "consultorio":
-      return `${state.dashboard?.records_total ?? 0} historias`;
-    case "consents":
-      return `${state.dashboard?.consents ?? 0} registros`;
-    case "reports":
-      return `${state.dashboard?.consultations_total ?? 0} consultas`;
-    case "administration":
-      return getDashboardUsersText();
-    default:
-      return "";
-  }
-}
-
 function getDashboardIconSvg(icon) {
   return (
     {
@@ -4853,36 +4769,6 @@ function renderDashboardHeroStats() {
     .join("");
 }
 
-function renderDashboardQuickRail() {
-  if (!elements.dashboardQuickRail) {
-    return;
-  }
-  const allowed = getAllowedSections();
-  const activeNavSection = getNavSectionId(getActiveSectionId());
-  const items = DASHBOARD_RAIL_ITEMS.filter((item) =>
-    isDashboardShortcutAllowed(item.shortcut, allowed)
-  );
-  if (!items.length) {
-    elements.dashboardQuickRail.innerHTML = emptyState("Sin rutas disponibles.");
-    return;
-  }
-  elements.dashboardQuickRail.innerHTML = items
-    .map(
-      (item) => `
-        <button
-          class="dashboard-rail__button${activeNavSection === item.activeSection ? " is-active" : ""}"
-          type="button"
-          data-dashboard-shortcut="${escapeHtml(item.shortcut)}"
-        >
-          <span class="dashboard-rail__icon">${getDashboardIconSvg(item.icon)}</span>
-          <span class="dashboard-rail__label">${escapeHtml(item.label)}</span>
-          <span class="dashboard-rail__hint">${escapeHtml(getDashboardRailHint(item.shortcut))}</span>
-        </button>
-      `
-    )
-    .join("");
-}
-
 function renderDashboardQuickActions() {
   if (!elements.dashboardQuickActions) {
     return;
@@ -4923,7 +4809,6 @@ function renderDashboardQuickActions() {
 
 function renderDashboardHome() {
   renderDashboardHeroStats();
-  renderDashboardQuickRail();
   renderDashboardQuickActions();
   const allowed = getAllowedSections();
   queryAll("#dashboard .dashboard-hero-actions [data-dashboard-shortcut]").forEach((button) => {
