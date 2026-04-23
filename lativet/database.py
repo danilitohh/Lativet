@@ -500,6 +500,7 @@ class Database:
                 stock_quantity REAL NOT NULL DEFAULT 0,
                 min_stock REAL NOT NULL DEFAULT 0,
                 track_inventory INTEGER NOT NULL DEFAULT 0,
+                is_deleted INTEGER NOT NULL DEFAULT 0,
                 notes TEXT,
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL,
@@ -694,6 +695,7 @@ class Database:
         self._ensure_column("grooming_documents", "before_photos", "TEXT")
         self._ensure_column("grooming_documents", "after_photos", "TEXT")
         self._ensure_column("grooming_documents", "rabies_status", "TEXT")
+        self._ensure_column("billing_catalog_items", "is_deleted", "INTEGER NOT NULL DEFAULT 0")
         self._ensure_cash_session_schema()
         self._ensure_control_reminder_schema()
 
@@ -2564,7 +2566,11 @@ class Database:
         rows = self.connection.execute(
             """
             SELECT p.*,
-                   (SELECT COUNT(*) FROM billing_catalog_items c WHERE c.provider_id = p.id) AS items_count
+                   (
+                       SELECT COUNT(*)
+                       FROM billing_catalog_items c
+                       WHERE c.provider_id = p.id AND COALESCE(c.is_deleted, 0) = 0
+                   ) AS items_count
             FROM billing_providers p
             ORDER BY LOWER(p.name)
             """
@@ -2591,7 +2597,8 @@ class Database:
                     UPDATE billing_catalog_items
                     SET provider_id = ?, name = ?, category = ?, purchase_cost = ?, margin_percent = ?,
                         presentation_total = ?, unit_cost = ?, unit_price = ?, profit_amount = ?,
-                        stock_quantity = ?, min_stock = ?, track_inventory = ?, notes = ?, updated_at = ?
+                        stock_quantity = ?, min_stock = ?, track_inventory = ?, is_deleted = 0,
+                        notes = ?, updated_at = ?
                     WHERE id = ?
                     """,
                     (
@@ -2619,8 +2626,8 @@ class Database:
                     INSERT INTO billing_catalog_items (
                         id, provider_id, name, category, purchase_cost, margin_percent,
                         presentation_total, unit_cost, unit_price, profit_amount, stock_quantity,
-                        min_stock, track_inventory, notes, created_at, updated_at
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        min_stock, track_inventory, is_deleted, notes, created_at, updated_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         item_id,
@@ -2636,6 +2643,7 @@ class Database:
                         data["stock_quantity"],
                         data["min_stock"],
                         int(data["track_inventory"]),
+                        0,
                         data["notes"],
                         timestamp,
                         timestamp,
@@ -2647,48 +2655,33 @@ class Database:
 
     def delete_catalog_item(self, item_id: str) -> dict:
         item = self.get_catalog_item(item_id)
-        dependencies = [
-            (
-                "documentos de facturacion o cotizacion",
-                self._scalar(
-                    "SELECT COUNT(*) AS total FROM billing_document_items WHERE catalog_item_id = ?",
-                    (item_id,),
-                ),
-            ),
-            (
-                "movimientos de inventario",
-                self._scalar(
-                    "SELECT COUNT(*) AS total FROM billing_stock_movements WHERE catalog_item_id = ?",
-                    (item_id,),
-                ),
-            ),
-        ]
-        active_dependencies = [label for label, total in dependencies if total > 0]
-        if active_dependencies:
-            raise ValidationError(
-                "No puedes eliminar el producto porque tiene registros asociados en: "
-                + ", ".join(active_dependencies)
-                + "."
-            )
         with self._tx():
-            deleted = self.connection.execute(
-                "DELETE FROM billing_catalog_items WHERE id = ?",
-                (item_id,),
+            archived = self.connection.execute(
+                """
+                UPDATE billing_catalog_items
+                SET is_deleted = 1, updated_at = ?
+                WHERE id = ? AND COALESCE(is_deleted, 0) = 0
+                """,
+                (now_iso(), item_id),
             )
-            if not deleted.rowcount:
+            if not archived.rowcount:
                 raise ValidationError("El item de catalogo seleccionado no existe.")
             self._record_audit("billing_catalog_item", item_id, "delete", "inventario", item)
         return {"id": item_id, "deleted": True}
 
-    def get_catalog_item(self, item_id: str) -> dict:
-        row = self.connection.execute(
-            """
+    def get_catalog_item(self, item_id: str, *, include_deleted: bool = False) -> dict:
+        params: list[str] = [item_id]
+        query = """
             SELECT c.*, p.name AS provider_name
             FROM billing_catalog_items c
             LEFT JOIN billing_providers p ON p.id = c.provider_id
             WHERE c.id = ?
-            """,
-            (item_id,),
+        """
+        if not include_deleted:
+            query += " AND COALESCE(c.is_deleted, 0) = 0"
+        row = self.connection.execute(
+            query,
+            params,
         ).fetchone()
         if row is None:
             raise ValidationError("El item de catalogo no existe.")
@@ -2704,6 +2697,7 @@ class Database:
             SELECT c.*, p.name AS provider_name
             FROM billing_catalog_items c
             LEFT JOIN billing_providers p ON p.id = c.provider_id
+            WHERE COALESCE(c.is_deleted, 0) = 0
             ORDER BY LOWER(c.name)
             """
         ).fetchall()
@@ -3628,7 +3622,9 @@ class Database:
             """
             SELECT COUNT(*) AS total
             FROM billing_catalog_items
-            WHERE track_inventory = 1 AND stock_quantity < min_stock
+            WHERE track_inventory = 1
+              AND COALESCE(is_deleted, 0) = 0
+              AND stock_quantity < min_stock
             """
         ).fetchone()["total"]
         return {
@@ -3661,12 +3657,20 @@ class Database:
             ),
             "tracked_items_count": int(
                 self.connection.execute(
-                    "SELECT COUNT(*) AS total FROM billing_catalog_items WHERE track_inventory = 1"
+                    """
+                    SELECT COUNT(*) AS total
+                    FROM billing_catalog_items
+                    WHERE track_inventory = 1 AND COALESCE(is_deleted, 0) = 0
+                    """
                 ).fetchone()["total"]
             ),
             "low_stock_count": int(low_stock),
             "inventory_units": scalar(
-                "SELECT COALESCE(SUM(stock_quantity), 0) AS total FROM billing_catalog_items WHERE track_inventory = 1"
+                """
+                SELECT COALESCE(SUM(stock_quantity), 0) AS total
+                FROM billing_catalog_items
+                WHERE track_inventory = 1 AND COALESCE(is_deleted, 0) = 0
+                """
             ),
         }
 

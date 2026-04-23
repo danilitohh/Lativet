@@ -1034,6 +1034,72 @@ class WebSmokeTests(unittest.TestCase):
         snapshot = self.assert_ok(self.client.get("/api/bootstrap"))
         self.assertEqual(snapshot["catalog_items"], [])
 
+    def test_http_hides_catalog_item_delete_when_it_has_history(self) -> None:
+        owner = self.assert_ok(
+            self.client.post(
+                "/api/owners",
+                json={
+                    "full_name": "Cliente Inventario",
+                    "identification_type": "CC",
+                    "identification_number": "778899",
+                    "phone": "3007788990",
+                    "email": "cliente.inventario@example.com",
+                    "address": "Calle 77 # 88-99",
+                },
+            )
+        )
+        patient = self.assert_ok(
+            self.client.post(
+                "/api/patients",
+                json={
+                    "owner_id": owner["id"],
+                    "name": "Milo",
+                    "species": "Canino",
+                    "breed": "Criollo",
+                    "sex": "Macho",
+                    "age_years": "4",
+                    "reproductive_status": "No esterilizado",
+                    "weight_kg": "14.2",
+                    "notes": "Paciente para prueba de inventario.",
+                },
+            )
+        )
+        item = self.assert_ok(
+            self.client.post(
+                "/api/catalog-items",
+                json={
+                    "name": "Producto con historial",
+                    "category": "Medicamento",
+                    "purchase_cost": "30",
+                    "margin_percent": "20",
+                    "presentation_total": "1",
+                    "stock_quantity": "2",
+                    "min_stock": "1",
+                    "track_inventory": True,
+                },
+            )
+        )
+        self.assert_ok(
+            self.client.post(
+                "/api/billing-documents",
+                json={
+                    "document_type": "factura",
+                    "patient_id": patient["id"],
+                    "issue_date": "2026-03-28",
+                    "payment_method": "Pendiente",
+                    "cash_account": "caja_menor",
+                    "lines": [{"catalog_item_id": item["id"], "quantity": 1}],
+                },
+            )
+        )
+
+        deleted = self.assert_ok(self.client.delete(f"/api/catalog-items/{item['id']}"))
+        self.assertTrue(deleted["deleted"])
+
+        snapshot = self.assert_ok(self.client.get("/api/bootstrap"))
+        self.assertEqual(snapshot["catalog_items"], [])
+        self.assertEqual(len(snapshot["stock_movements"]), 1)
+
     def test_http_supports_cash_opening_and_closing(self) -> None:
         opened = self.assert_ok(
             self.client.post(

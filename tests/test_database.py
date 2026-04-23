@@ -281,8 +281,9 @@ class DatabaseSmokeTests(unittest.TestCase):
         self.assertEqual(deleted["id"], item["id"])
         with self.assertRaises(ValidationError):
             self.db.get_catalog_item(item["id"])
+        self.assertEqual(self.db.list_catalog_items(), [])
 
-    def test_catalog_item_delete_is_blocked_when_it_has_related_documents_or_movements(self) -> None:
+    def test_can_hide_catalog_item_with_related_documents_or_movements(self) -> None:
         owner = self.db.save_owner(
             {
                 "full_name": "Cliente Inventario",
@@ -329,11 +330,11 @@ class DatabaseSmokeTests(unittest.TestCase):
             }
         )
 
-        with self.assertRaises(ValidationError) as context:
-            self.db.delete_catalog_item(item["id"])
+        deleted = self.db.delete_catalog_item(item["id"])
 
-        self.assertIn("documentos de facturacion o cotizacion", str(context.exception))
-        self.assertIn("movimientos de inventario", str(context.exception))
+        self.assertTrue(deleted["deleted"])
+        self.assertEqual(self.db.list_catalog_items(), [])
+        self.assertEqual(len(self.db.list_stock_movements()), 1)
 
     def test_available_slots_summary_counts_without_building_full_calendar(self) -> None:
         owner = self.db.save_owner(
