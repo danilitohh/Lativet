@@ -4359,6 +4359,59 @@ function getInventoryStats(items) {
   };
 }
 
+function sortCatalogItemsByName(items) {
+  return [...(items || [])].sort((left, right) =>
+    String(left?.name || "").localeCompare(String(right?.name || ""), "es", {
+      sensitivity: "base",
+    })
+  );
+}
+
+function syncBillingSummaryInventorySnapshot() {
+  const catalogItems = Array.isArray(state.catalog_items) ? state.catalog_items : [];
+  const trackedItems = catalogItems.filter((item) => item?.track_inventory);
+  state.billing_summary = {
+    ...(state.billing_summary || {}),
+    tracked_items_count: trackedItems.length,
+    low_stock_count: trackedItems.filter(
+      (item) => getInventoryItemStatusMeta(item).key === "low_stock"
+    ).length,
+    inventory_units: trackedItems.reduce(
+      (total, item) => total + Number(item?.stock_quantity || 0),
+      0
+    ),
+  };
+}
+
+function upsertCatalogItemInState(item) {
+  if (!item?.id) {
+    return;
+  }
+  const currentItems = Array.isArray(state.catalog_items) ? [...state.catalog_items] : [];
+  const itemIndex = currentItems.findIndex(
+    (entry) => String(entry?.id || "") === String(item.id || "")
+  );
+  if (itemIndex >= 0) {
+    currentItems[itemIndex] = { ...currentItems[itemIndex], ...item };
+  } else {
+    currentItems.push(item);
+  }
+  state.catalog_items = sortCatalogItemsByName(currentItems);
+  syncBillingSummaryInventorySnapshot();
+}
+
+function removeCatalogItemFromState(itemId) {
+  if (!itemId) {
+    return;
+  }
+  state.catalog_items = sortCatalogItemsByName(
+    (state.catalog_items || []).filter(
+      (item) => String(item?.id || "") !== String(itemId || "")
+    )
+  );
+  syncBillingSummaryInventorySnapshot();
+}
+
 function ensureInventorySelection(filteredItems) {
   const hasSelection = filteredItems.some(
     (item) => String(item.id || "") === String(inventoryUiState.selectedItemId || "")
@@ -5246,12 +5299,13 @@ async function submitInventoryInlineForm(form) {
     }
     if (formType === "product") {
       const savedItem = await api.saveCatalogItem(serializeForm(form));
+      upsertCatalogItemInState(savedItem);
       inventoryUiState.showProductForm = false;
       inventoryUiState.selectedItemId = savedItem?.id || inventoryUiState.selectedItemId;
       salesReportState.loaded = false;
-      await refreshData("Item de catalogo guardado.");
       setActiveSection("sales");
       setSectionSubsection("sales", "inventario");
+      await refreshData("Item de catalogo guardado.");
       return;
     }
     if (formType === "stock") {
@@ -5318,11 +5372,12 @@ async function handleInventoryDetailSave(itemId) {
   }
   try {
     const savedItem = await api.saveCatalogItem(payload);
+    upsertCatalogItemInState(savedItem);
     inventoryUiState.selectedItemId = savedItem?.id || item.id;
     salesReportState.loaded = false;
-    await refreshData("Producto de inventario actualizado.");
     setActiveSection("sales");
     setSectionSubsection("sales", "inventario");
+    await refreshData("Producto de inventario actualizado.");
   } finally {
     if (saveButton) {
       saveButton.disabled = false;
@@ -5353,6 +5408,7 @@ async function handleInventoryItemDelete(itemId) {
   }
   try {
     await api.deleteCatalogItem(itemId);
+    removeCatalogItemFromState(itemId);
     billingDraft.lines = billingDraft.lines.filter(
       (line) => String(line.catalog_item_id || "") !== String(itemId)
     );
@@ -5361,9 +5417,9 @@ async function handleInventoryItemDelete(itemId) {
     }
     inventoryUiState.showStockForm = false;
     salesReportState.loaded = false;
-    await refreshData("Producto eliminado del inventario.");
     setActiveSection("sales");
     setSectionSubsection("sales", "inventario");
+    await refreshData("Producto eliminado del inventario.");
   } finally {
     if (deleteButton) {
       deleteButton.disabled = false;
@@ -5402,11 +5458,12 @@ async function handleCatalogPricingSave(itemId) {
     saveButton.disabled = true;
   }
   try {
-    await api.saveCatalogItem(payload);
+    const savedItem = await api.saveCatalogItem(payload);
+    upsertCatalogItemInState(savedItem);
     salesReportState.loaded = false;
-    await refreshData("Precio de venta actualizado.");
     setActiveSection("sales");
     setSectionSubsection("sales", "precios");
+    await refreshData("Precio de venta actualizado.");
   } finally {
     if (saveButton) {
       saveButton.disabled = false;
@@ -18381,6 +18438,7 @@ async function handleCatalogSubmit(event) {
   event.preventDefault();
   const isInventoryView = getActiveSalesSubsectionValue() === "inventario";
   const savedItem = await api.saveCatalogItem(serializeForm(event.currentTarget));
+  upsertCatalogItemInState(savedItem);
   resetForm(event.currentTarget);
   if (event.currentTarget.elements.track_inventory) {
     event.currentTarget.elements.track_inventory.checked = true;
@@ -18408,11 +18466,11 @@ async function handleCatalogSubmit(event) {
     inventoryUiState.selectedItemId = savedItem?.id || inventoryUiState.selectedItemId;
   }
   salesReportState.loaded = false;
-  await refreshData("Item de catalogo guardado.");
   setActiveSection("sales");
   if (isInventoryView) {
     setSectionSubsection("sales", "inventario");
   }
+  await refreshData("Item de catalogo guardado.");
 }
 
 async function handleAppointmentSubmit(event) {
