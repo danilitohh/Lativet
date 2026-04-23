@@ -9427,12 +9427,12 @@ textarea:focus {
 }
 
 .agenda-appointment-icon {
-  width: 34px;
-  height: 34px;
-  min-width: 34px;
-  min-height: 34px;
-  max-width: 34px;
-  max-height: 34px;
+  width: 38px;
+  height: 38px;
+  min-width: 38px;
+  min-height: 38px;
+  max-width: 38px;
+  max-height: 38px;
   border-radius: 12px;
   display: inline-flex;
   align-items: center;
@@ -9448,54 +9448,89 @@ textarea:focus {
 .agenda-appointment-icon__image,
 .agenda-appointment-icon svg,
 .agenda-appointment-icon__svg {
-  width: 18px !important;
-  height: 18px !important;
-  min-width: 18px;
-  min-height: 18px;
-  max-width: 18px;
-  max-height: 18px;
+  width: 22px !important;
+  height: 22px !important;
+  min-width: 22px;
+  min-height: 22px;
+  max-width: 22px;
+  max-height: 22px;
   display: block;
-  flex: 0 0 18px;
+  flex: 0 0 22px;
   object-fit: contain;
 }
 
 .agenda-quick-stat .agenda-appointment-icon {
-  width: 36px;
-  height: 36px;
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  min-height: 48px;
+  max-width: 48px;
+  max-height: 48px;
+  border-radius: 14px;
+}
+
+.agenda-quick-stat .agenda-appointment-icon img,
+.agenda-quick-stat .agenda-appointment-icon__image,
+.agenda-quick-stat .agenda-appointment-icon svg,
+.agenda-quick-stat .agenda-appointment-icon__svg {
+  width: 30px !important;
+  height: 30px !important;
+  min-width: 30px;
+  min-height: 30px;
+  max-width: 30px;
+  max-height: 30px;
+  flex-basis: 30px;
 }
 
 .agenda-next-card__tag .agenda-appointment-icon,
 .agenda-event-chip .agenda-appointment-icon {
-  width: 26px;
-  height: 26px;
-  min-width: 26px;
-  min-height: 26px;
-  max-width: 26px;
-  max-height: 26px;
+  width: 30px;
+  height: 30px;
+  min-width: 30px;
+  min-height: 30px;
+  max-width: 30px;
+  max-height: 30px;
   border-radius: 10px;
 }
 
+.agenda-next-card__tag .agenda-appointment-icon img,
+.agenda-next-card__tag .agenda-appointment-icon__image,
+.agenda-next-card__tag .agenda-appointment-icon svg,
+.agenda-next-card__tag .agenda-appointment-icon__svg,
+.agenda-event-chip .agenda-appointment-icon img,
+.agenda-event-chip .agenda-appointment-icon__image,
+.agenda-event-chip .agenda-appointment-icon svg,
+.agenda-event-chip .agenda-appointment-icon__svg {
+  width: 19px !important;
+  height: 19px !important;
+  min-width: 19px;
+  min-height: 19px;
+  max-width: 19px;
+  max-height: 19px;
+  flex-basis: 19px;
+}
+
 .agenda-timeline-event .agenda-appointment-icon {
-  width: 20px;
-  height: 20px;
-  min-width: 20px;
-  min-height: 20px;
-  max-width: 20px;
-  max-height: 20px;
-  border-radius: 7px;
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  min-height: 24px;
+  max-width: 24px;
+  max-height: 24px;
+  border-radius: 8px;
 }
 
 .agenda-timeline-event .agenda-appointment-icon img,
 .agenda-timeline-event .agenda-appointment-icon__image,
 .agenda-timeline-event .agenda-appointment-icon svg,
 .agenda-timeline-event .agenda-appointment-icon__svg {
-  width: 12px !important;
-  height: 12px !important;
-  min-width: 12px;
-  min-height: 12px;
-  max-width: 12px;
-  max-height: 12px;
-  flex-basis: 12px;
+  width: 16px !important;
+  height: 16px !important;
+  min-width: 16px;
+  min-height: 16px;
+  max-width: 16px;
+  max-height: 16px;
+  flex-basis: 16px;
 }
 
 .agenda-list-title {
