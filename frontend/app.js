@@ -1991,7 +1991,7 @@ function getAgendaAppointmentIconPath(typeKey) {
   const safeType = AGENDA_APPOINTMENT_TYPE_META[typeKey] ? typeKey : "default";
   return (
     {
-      consulta: "/iconos/agenda/citas%20activas.png",
+      consulta: "/iconos/agenda/consulta.png",
       vacunacion: "/iconos/agenda/vacunacion.png",
       cirugia: "/iconos/agenda/cirugia.png",
       peluqueria: "/iconos/agenda/peluqueria.png",
