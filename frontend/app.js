@@ -44,6 +44,27 @@ const inventoryUiState = {
   showProviderForm: false,
   showProductForm: false,
 };
+const CATALOG_PRESENTATION_OPTIONS = [
+  { value: "unidad", label: "Unidad" },
+  { value: "caja", label: "Caja" },
+  { value: "frasco", label: "Frasco" },
+  { value: "blister", label: "Blister" },
+  { value: "tableta", label: "Tableta" },
+  { value: "capsula", label: "Capsula" },
+  { value: "ampolla", label: "Ampolla" },
+  { value: "vial", label: "Vial" },
+  { value: "bolsa", label: "Bolsa" },
+  { value: "tubo", label: "Tubo" },
+  { value: "sobre", label: "Sobre" },
+  { value: "spray", label: "Spray" },
+  { value: "gotero", label: "Gotero" },
+  { value: "kit", label: "Kit" },
+  { value: "paquete", label: "Paquete" },
+  { value: "servicio", label: "Servicio" },
+  { value: "sesion", label: "Sesion" },
+  { value: "procedimiento", label: "Procedimiento" },
+  { value: "otro", label: "Otro" },
+];
 const BILLING_WIZARD_STEPS = [
   { step: 1, label: "Datos de factura" },
   { step: 2, label: "Items" },
@@ -1713,6 +1734,31 @@ function computeCatalogSalePrice(purchaseCost, presentationTotal, marginPercent)
   const units = Number(presentationTotal || 1) > 0 ? Number(presentationTotal || 1) : 1;
   const unitCost = roundPricingMoney(Number(purchaseCost || 0) / units);
   return roundPricingMoney(unitCost * (1 + Number(marginPercent || 0) / 100));
+}
+
+function buildCatalogPresentationOptions(selectedValue = "unidad") {
+  const normalizedValue = String(selectedValue || "unidad").trim().toLowerCase() || "unidad";
+  const options = [...CATALOG_PRESENTATION_OPTIONS];
+  if (normalizedValue && !options.some((option) => option.value === normalizedValue)) {
+    options.push({ value: normalizedValue, label: capitalizeLabel(normalizedValue) });
+  }
+  return options
+    .map(
+      (option) =>
+        `<option value="${escapeHtml(option.value)}"${
+          option.value === normalizedValue ? " selected" : ""
+        }>${escapeHtml(option.label)}</option>`
+    )
+    .join("");
+}
+
+function getCatalogPresentationLabel(value) {
+  const normalizedValue = String(value || "").trim().toLowerCase();
+  return (
+    CATALOG_PRESENTATION_OPTIONS.find((option) => option.value === normalizedValue)?.label ||
+    capitalizeLabel(normalizedValue) ||
+    "Unidad"
+  );
 }
 
 function formatDateTime(value) {
@@ -4337,6 +4383,7 @@ function buildInventoryDetailPanel(item) {
     Number(item.presentation_total || 1) || 1,
     Number(item.margin_percent || 0)
   );
+  const presentationOptions = buildCatalogPresentationOptions(item.presentation_type || "unidad");
   const providers = state.providers
     .map(
       (provider) =>
@@ -4351,6 +4398,9 @@ function buildInventoryDetailPanel(item) {
       <div class="sales-inventory-detail__copy">
         <strong>${escapeHtml(item.name || "Producto")}</strong>
         <span>SKU ${escapeHtml(String(item.id || "").slice(0, 8).toUpperCase() || "TEMP")}</span>
+        <span>${escapeHtml(getCatalogPresentationLabel(item.presentation_type))} x ${escapeHtml(
+          formatEditableNumber(Number(item.presentation_total || 1) || 1)
+        )}</span>
       </div>
       <span class="sales-stock-badge ${itemStatus.badgeClass}">${escapeHtml(itemStatus.label)}</span>
     </div>
@@ -4403,7 +4453,7 @@ function buildInventoryDetailPanel(item) {
           )}">${escapeHtml(formatMoney(previewPrice))}</div>
         </label>
         <label>
-          <span>Presentacion</span>
+          <span>Contenido</span>
           <input
             data-inventory-detail-field="presentation_total"
             name="presentation_total"
@@ -4414,6 +4464,12 @@ function buildInventoryDetailPanel(item) {
           />
         </label>
       </div>
+      <label>
+        <span>Presentacion</span>
+        <select data-inventory-detail-field="presentation_type" name="presentation_type">
+          ${presentationOptions}
+        </select>
+      </label>
       <div class="sales-inventory-detail__grid">
         <label>
           <span>Stock actual</span>
@@ -4502,7 +4558,7 @@ function buildInventoryProviderQuickForm() {
         </label>
         <div class="sales-inventory-inline-form__actions">
           <button class="ghost-button" data-inventory-toggle-panel="provider" type="button">Cancelar</button>
-          <button class="primary-button" type="submit">Guardar proveedor</button>
+          <button class="primary-button" data-inventory-inline-submit="provider" type="submit">Guardar proveedor</button>
         </div>
       </form>
     </article>
@@ -4510,6 +4566,7 @@ function buildInventoryProviderQuickForm() {
 }
 
 function buildInventoryProductQuickForm() {
+  const presentationOptions = buildCatalogPresentationOptions("unidad");
   const providers = state.providers
     .map(
       (provider) =>
@@ -4554,6 +4611,12 @@ function buildInventoryProductQuickForm() {
           </label>
           <label>
             <span>Presentacion</span>
+            <select name="presentation_type">
+              ${presentationOptions}
+            </select>
+          </label>
+          <label>
+            <span>Contenido</span>
             <input name="presentation_total" type="number" step="0.01" min="0.01" value="1" />
           </label>
           <label>
@@ -4575,7 +4638,7 @@ function buildInventoryProductQuickForm() {
         </label>
         <div class="sales-inventory-inline-form__actions">
           <button class="ghost-button" data-inventory-toggle-panel="product" type="button">Cancelar</button>
-          <button class="primary-button" type="submit">Guardar producto</button>
+          <button class="primary-button" data-inventory-inline-submit="product" type="submit">Guardar producto</button>
         </div>
       </form>
     </article>
@@ -4684,7 +4747,7 @@ function buildInventorySupportSection(selectedItem) {
                 </label>
                 <div class="sales-inventory-inline-form__actions">
                   <button class="ghost-button" data-inventory-close-support="stock" type="button">Cancelar</button>
-                  <button class="primary-button" type="submit">Aplicar ajuste</button>
+                  <button class="primary-button" data-inventory-inline-submit="stock" type="submit">Aplicar ajuste</button>
                 </div>
               </form>
             `
@@ -5158,15 +5221,14 @@ function bindInventoryInlineForms() {
     });
 }
 
-async function handleInventoryInlineFormSubmit(event) {
-  const form = event.target.closest("[data-inventory-inline-form]");
+async function submitInventoryInlineForm(form) {
   if (!form) {
     return;
   }
-  event.preventDefault();
-  event.stopPropagation();
   const formType = form.dataset.inventoryInlineForm || "";
-  const submitButton = form.querySelector('button[type="submit"]');
+  const submitButton =
+    form.querySelector(`[data-inventory-inline-submit="${formType}"]`) ||
+    form.querySelector('button[type="submit"]');
   if (submitButton) {
     submitButton.disabled = true;
   }
@@ -5204,6 +5266,16 @@ async function handleInventoryInlineFormSubmit(event) {
   }
 }
 
+async function handleInventoryInlineFormSubmit(event) {
+  const form = event.target.closest("[data-inventory-inline-form]");
+  if (!form) {
+    return;
+  }
+  event.preventDefault();
+  event.stopPropagation();
+  await submitInventoryInlineForm(form);
+}
+
 async function handleInventoryDetailSave(itemId) {
   if (!itemId || !elements.catalogItemsList) {
     return;
@@ -5222,6 +5294,9 @@ async function handleInventoryDetailSave(itemId) {
     category: String(detailForm.elements.category?.value || "").trim(),
     purchase_cost: Math.max(0, Number(detailForm.elements.purchase_cost?.value || 0)),
     margin_percent: Math.max(0, Number(detailForm.elements.margin_percent?.value || 0)),
+    presentation_type: String(
+      detailForm.elements.presentation_type?.value || item.presentation_type || "unidad"
+    ).trim(),
     presentation_total: Math.max(
       0.01,
       Number(detailForm.elements.presentation_total?.value || item.presentation_total || 1)
@@ -5313,6 +5388,7 @@ async function handleCatalogPricingSave(itemId) {
     category: item.category || "",
     purchase_cost: Number.isFinite(purchaseCost) ? purchaseCost : 0,
     margin_percent: Number.isFinite(marginPercent) ? marginPercent : 0,
+    presentation_type: item.presentation_type || "unidad",
     presentation_total: Number(item.presentation_total || 1) || 1,
     stock_quantity: Number(item.stock_quantity || 0) || 0,
     min_stock: Number(item.min_stock || 0) || 0,
@@ -5385,6 +5461,19 @@ function handleCatalogItemsInput(event) {
 }
 
 async function handleCatalogItemsClick(event) {
+  const inlineSubmitButton = event.target.closest("[data-inventory-inline-submit]");
+  if (inlineSubmitButton) {
+    event.preventDefault();
+    const form = inlineSubmitButton.closest("[data-inventory-inline-form]");
+    if (!form) {
+      return;
+    }
+    if (typeof form.reportValidity === "function" && !form.reportValidity()) {
+      return;
+    }
+    await submitInventoryInlineForm(form);
+    return;
+  }
   const togglePanelButton = event.target.closest("[data-inventory-toggle-panel]");
   if (togglePanelButton) {
     const targetPanel = togglePanelButton.dataset.inventoryTogglePanel || "";
@@ -18301,6 +18390,9 @@ async function handleCatalogSubmit(event) {
   }
   if (event.currentTarget.elements.presentation_total) {
     event.currentTarget.elements.presentation_total.value = "1";
+  }
+  if (event.currentTarget.elements.presentation_type) {
+    event.currentTarget.elements.presentation_type.value = "unidad";
   }
   if (event.currentTarget.elements.stock_quantity) {
     event.currentTarget.elements.stock_quantity.value = "0";

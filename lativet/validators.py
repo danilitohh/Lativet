@@ -429,6 +429,7 @@ def validate_catalog_item(payload: dict) -> dict:
     presentation_total = optional_float(payload, "presentation_total")
     stock_quantity = optional_float(payload, "stock_quantity")
     min_stock = optional_float(payload, "min_stock")
+    presentation_type = optional_text(payload, "presentation_type") or "unidad"
     return {
         "id": optional_text(payload, "id"),
         "provider_id": optional_text(payload, "provider_id"),
@@ -436,6 +437,7 @@ def validate_catalog_item(payload: dict) -> dict:
         "category": required_text(payload, "category", "Categoria"),
         "purchase_cost": purchase_cost if purchase_cost is not None else 0.0,
         "margin_percent": margin_percent if margin_percent is not None else 0.0,
+        "presentation_type": presentation_type,
         "presentation_total": presentation_total if presentation_total not in (None, 0) else 1.0,
         "stock_quantity": stock_quantity if stock_quantity is not None else 0.0,
         "min_stock": min_stock if min_stock is not None else 0.0,

@@ -268,12 +268,14 @@ class DatabaseSmokeTests(unittest.TestCase):
                 "category": "Peluqueria",
                 "purchase_cost": "10",
                 "margin_percent": "30",
+                "presentation_type": "frasco",
                 "presentation_total": "1",
                 "stock_quantity": "3",
                 "min_stock": "1",
                 "track_inventory": True,
             }
         )
+        self.assertEqual(item["presentation_type"], "frasco")
 
         deleted = self.db.delete_catalog_item(item["id"])
 
@@ -313,12 +315,14 @@ class DatabaseSmokeTests(unittest.TestCase):
                 "category": "Medicamento",
                 "purchase_cost": "12",
                 "margin_percent": "25",
+                "presentation_type": "tableta",
                 "presentation_total": "1",
                 "stock_quantity": "4",
                 "min_stock": "1",
                 "track_inventory": True,
             }
         )
+        self.assertEqual(item["presentation_type"], "tableta")
         self.db.save_billing_document(
             {
                 "document_type": "factura",

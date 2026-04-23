@@ -495,6 +495,7 @@ class Database:
                 purchase_cost REAL NOT NULL DEFAULT 0,
                 margin_percent REAL NOT NULL DEFAULT 0,
                 presentation_total REAL NOT NULL DEFAULT 1,
+                presentation_type TEXT,
                 unit_cost REAL NOT NULL DEFAULT 0,
                 unit_price REAL NOT NULL DEFAULT 0,
                 profit_amount REAL NOT NULL DEFAULT 0,
@@ -697,6 +698,7 @@ class Database:
         self._ensure_column("grooming_documents", "after_photos", "TEXT")
         self._ensure_column("grooming_documents", "rabies_status", "TEXT")
         self._ensure_column("billing_catalog_items", "is_deleted", "INTEGER NOT NULL DEFAULT 0")
+        self._ensure_column("billing_catalog_items", "presentation_type", "TEXT")
         self._ensure_cash_session_schema()
         self._ensure_control_reminder_schema()
 
@@ -719,17 +721,27 @@ class Database:
         return exists
 
     def _catalog_item_soft_delete_enabled(self, ensure: bool = False) -> bool:
-        if self._column_exists("billing_catalog_items", "is_deleted"):
+        return self._table_column_enabled(
+            "billing_catalog_items", "is_deleted", "INTEGER NOT NULL DEFAULT 0", ensure=ensure
+        )
+
+    def _catalog_item_presentation_type_enabled(self, ensure: bool = False) -> bool:
+        return self._table_column_enabled(
+            "billing_catalog_items", "presentation_type", "TEXT", ensure=ensure
+        )
+
+    def _table_column_enabled(
+        self, table: str, column: str, definition: str, *, ensure: bool = False
+    ) -> bool:
+        if self._column_exists(table, column):
             return True
         if not ensure:
             return False
         with self._lock:
-            if self._column_exists("billing_catalog_items", "is_deleted"):
+            if self._column_exists(table, column):
                 return True
             try:
-                self._ensure_column(
-                    "billing_catalog_items", "is_deleted", "INTEGER NOT NULL DEFAULT 0"
-                )
+                self._ensure_column(table, column, definition)
                 self.connection.commit()
                 return True
             except Exception:
@@ -737,7 +749,7 @@ class Database:
                     self.connection.rollback()
                 except Exception:
                     pass
-                self._column_exists_cache[("billing_catalog_items", "is_deleted")] = False
+                self._column_exists_cache[(table, column)] = False
                 return False
 
     def _ensure_control_reminder_schema(self) -> None:
@@ -2619,6 +2631,7 @@ class Database:
         item_id = data["id"] or uuid.uuid4().hex
         timestamp = now_iso()
         soft_delete_enabled = self._catalog_item_soft_delete_enabled(ensure=True)
+        presentation_type_enabled = self._catalog_item_presentation_type_enabled(ensure=True)
         unit_cost, unit_price, profit_amount = compute_catalog_pricing(
             data["purchase_cost"], data["presentation_total"], data["margin_percent"]
         )
@@ -2629,121 +2642,44 @@ class Database:
                     "SELECT id FROM billing_catalog_items WHERE id = ?",
                     (item_id,),
                 ).fetchone()
+            base_fields = [
+                ("provider_id", data["provider_id"] or None),
+                ("name", data["name"]),
+                ("category", data["category"]),
+                ("purchase_cost", data["purchase_cost"]),
+                ("margin_percent", data["margin_percent"]),
+                ("presentation_total", data["presentation_total"]),
+                ("unit_cost", unit_cost),
+                ("unit_price", unit_price),
+                ("profit_amount", profit_amount),
+                ("stock_quantity", data["stock_quantity"]),
+                ("min_stock", data["min_stock"]),
+                ("track_inventory", int(data["track_inventory"])),
+            ]
+            if presentation_type_enabled:
+                base_fields.append(("presentation_type", data["presentation_type"]))
+            if soft_delete_enabled:
+                base_fields.append(("is_deleted", 0))
             if existing:
-                if soft_delete_enabled:
-                    self.connection.execute(
-                        """
-                        UPDATE billing_catalog_items
-                        SET provider_id = ?, name = ?, category = ?, purchase_cost = ?, margin_percent = ?,
-                            presentation_total = ?, unit_cost = ?, unit_price = ?, profit_amount = ?,
-                            stock_quantity = ?, min_stock = ?, track_inventory = ?, is_deleted = 0,
-                            notes = ?, updated_at = ?
-                        WHERE id = ?
-                        """,
-                        (
-                            data["provider_id"] or None,
-                            data["name"],
-                            data["category"],
-                            data["purchase_cost"],
-                            data["margin_percent"],
-                            data["presentation_total"],
-                            unit_cost,
-                            unit_price,
-                            profit_amount,
-                            data["stock_quantity"],
-                            data["min_stock"],
-                            int(data["track_inventory"]),
-                            data["notes"],
-                            timestamp,
-                            item_id,
-                        ),
-                    )
-                else:
-                    self.connection.execute(
-                        """
-                        UPDATE billing_catalog_items
-                        SET provider_id = ?, name = ?, category = ?, purchase_cost = ?, margin_percent = ?,
-                            presentation_total = ?, unit_cost = ?, unit_price = ?, profit_amount = ?,
-                            stock_quantity = ?, min_stock = ?, track_inventory = ?, notes = ?, updated_at = ?
-                        WHERE id = ?
-                        """,
-                        (
-                            data["provider_id"] or None,
-                            data["name"],
-                            data["category"],
-                            data["purchase_cost"],
-                            data["margin_percent"],
-                            data["presentation_total"],
-                            unit_cost,
-                            unit_price,
-                            profit_amount,
-                            data["stock_quantity"],
-                            data["min_stock"],
-                            int(data["track_inventory"]),
-                            data["notes"],
-                            timestamp,
-                            item_id,
-                        ),
-                    )
+                update_fields = base_fields + [("notes", data["notes"]), ("updated_at", timestamp)]
+                assignments = ", ".join(f"{field} = ?" for field, _ in update_fields)
+                self.connection.execute(
+                    f"UPDATE billing_catalog_items SET {assignments} WHERE id = ?",
+                    tuple(value for _, value in update_fields) + (item_id,),
+                )
                 action = "update"
             else:
-                if soft_delete_enabled:
-                    self.connection.execute(
-                        """
-                        INSERT INTO billing_catalog_items (
-                            id, provider_id, name, category, purchase_cost, margin_percent,
-                            presentation_total, unit_cost, unit_price, profit_amount, stock_quantity,
-                            min_stock, track_inventory, is_deleted, notes, created_at, updated_at
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        """,
-                        (
-                            item_id,
-                            data["provider_id"] or None,
-                            data["name"],
-                            data["category"],
-                            data["purchase_cost"],
-                            data["margin_percent"],
-                            data["presentation_total"],
-                            unit_cost,
-                            unit_price,
-                            profit_amount,
-                            data["stock_quantity"],
-                            data["min_stock"],
-                            int(data["track_inventory"]),
-                            0,
-                            data["notes"],
-                            timestamp,
-                            timestamp,
-                        ),
-                    )
-                else:
-                    self.connection.execute(
-                        """
-                        INSERT INTO billing_catalog_items (
-                            id, provider_id, name, category, purchase_cost, margin_percent,
-                            presentation_total, unit_cost, unit_price, profit_amount, stock_quantity,
-                            min_stock, track_inventory, notes, created_at, updated_at
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        """,
-                        (
-                            item_id,
-                            data["provider_id"] or None,
-                            data["name"],
-                            data["category"],
-                            data["purchase_cost"],
-                            data["margin_percent"],
-                            data["presentation_total"],
-                            unit_cost,
-                            unit_price,
-                            profit_amount,
-                            data["stock_quantity"],
-                            data["min_stock"],
-                            int(data["track_inventory"]),
-                            data["notes"],
-                            timestamp,
-                            timestamp,
-                        ),
-                    )
+                insert_fields = [("id", item_id)] + base_fields + [
+                    ("notes", data["notes"]),
+                    ("created_at", timestamp),
+                    ("updated_at", timestamp),
+                ]
+                columns = ", ".join(field for field, _ in insert_fields)
+                placeholders = ", ".join("?" for _ in insert_fields)
+                self.connection.execute(
+                    f"INSERT INTO billing_catalog_items ({columns}) VALUES ({placeholders})",
+                    tuple(value for _, value in insert_fields),
+                )
                 action = "create"
             self._record_audit("billing_catalog_item", item_id, action, "ventas", data)
         return self.get_catalog_item(item_id)

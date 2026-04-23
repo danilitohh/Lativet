@@ -1019,6 +1019,7 @@ class WebSmokeTests(unittest.TestCase):
                     "category": "Accesorio",
                     "purchase_cost": "15",
                     "margin_percent": "20",
+                    "presentation_type": "caja",
                     "presentation_total": "1",
                     "stock_quantity": "1",
                     "min_stock": "0",
@@ -1026,6 +1027,7 @@ class WebSmokeTests(unittest.TestCase):
                 },
             )
         )
+        self.assertEqual(item["presentation_type"], "caja")
 
         deleted = self.assert_ok(self.client.delete(f"/api/catalog-items/{item['id']}"))
         self.assertTrue(deleted["deleted"])
@@ -1072,6 +1074,7 @@ class WebSmokeTests(unittest.TestCase):
                     "category": "Medicamento",
                     "purchase_cost": "30",
                     "margin_percent": "20",
+                    "presentation_type": "ampolla",
                     "presentation_total": "1",
                     "stock_quantity": "2",
                     "min_stock": "1",
@@ -1079,6 +1082,7 @@ class WebSmokeTests(unittest.TestCase):
                 },
             )
         )
+        self.assertEqual(item["presentation_type"], "ampolla")
         self.assert_ok(
             self.client.post(
                 "/api/billing-documents",
