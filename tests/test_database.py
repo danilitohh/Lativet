@@ -1131,6 +1131,15 @@ class DatabaseSmokeTests(unittest.TestCase):
                 }
             )
 
+    def test_list_cash_sessions_recreates_missing_table(self) -> None:
+        self.db.connection.execute("DROP TABLE IF EXISTS billing_cash_sessions")
+        self.db.connection.commit()
+
+        sessions = self.db.list_cash_sessions()
+
+        self.assertEqual(sessions, [])
+        self.assertTrue(self.db._table_exists("billing_cash_sessions"))
+
 
 if __name__ == "__main__":
     unittest.main()

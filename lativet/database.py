@@ -699,8 +699,8 @@ class Database:
         self._ensure_column("grooming_documents", "rabies_status", "TEXT")
         self._ensure_column("billing_catalog_items", "is_deleted", "INTEGER NOT NULL DEFAULT 0")
         self._ensure_column("billing_catalog_items", "presentation_type", "TEXT")
-        self._ensure_cash_session_schema()
         self._ensure_control_reminder_schema()
+        self._ensure_cash_session_schema()
 
     def _ensure_column(self, table: str, column: str, definition: str) -> None:
         if self._column_exists(table, column):
@@ -719,6 +719,17 @@ class Database:
         exists = column in columns
         self._column_exists_cache[cache_key] = exists
         return exists
+
+    def _table_exists(self, table: str) -> bool:
+        row = self.connection.execute(
+            """
+            SELECT COUNT(*) AS total
+            FROM sqlite_master
+            WHERE type = 'table' AND name = ?
+            """,
+            (table,),
+        ).fetchone()
+        return bool(row and int(row["total"] or 0) > 0)
 
     def _catalog_item_soft_delete_enabled(self, ensure: bool = False) -> bool:
         return self._table_column_enabled(
@@ -771,6 +782,24 @@ class Database:
             )
             """
         )
+        self.connection.execute(
+            """
+            CREATE UNIQUE INDEX IF NOT EXISTS idx_control_reminders_consultation
+            ON control_reminders(consultation_id)
+            """
+        )
+        self.connection.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_control_reminders_status_date
+            ON control_reminders(status, scheduled_for)
+            """
+        )
+        self.connection.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_control_reminders_owner
+            ON control_reminders(owner_id)
+            """
+        )
 
     def _ensure_cash_session_schema(self) -> None:
         self.connection.execute(
@@ -805,24 +834,15 @@ class Database:
             ON billing_cash_sessions(session_date, cash_account)
             """
         )
-        self.connection.execute(
-            """
-            CREATE UNIQUE INDEX IF NOT EXISTS idx_control_reminders_consultation
-            ON control_reminders(consultation_id)
-            """
-        )
-        self.connection.execute(
-            """
-            CREATE INDEX IF NOT EXISTS idx_control_reminders_status_date
-            ON control_reminders(status, scheduled_for)
-            """
-        )
-        self.connection.execute(
-            """
-            CREATE INDEX IF NOT EXISTS idx_control_reminders_owner
-            ON control_reminders(owner_id)
-            """
-        )
+
+    def _ensure_cash_session_schema_ready(self) -> None:
+        if self._table_exists("billing_cash_sessions"):
+            return
+        with self._lock:
+            if self._table_exists("billing_cash_sessions"):
+                return
+            self._ensure_cash_session_schema()
+            self.connection.commit()
 
     def _has_settings(self) -> bool:
         row = self.connection.execute("SELECT COUNT(*) AS total FROM settings").fetchone()
@@ -3246,6 +3266,7 @@ class Database:
         return session
 
     def get_cash_session(self, session_id: str) -> dict:
+        self._ensure_cash_session_schema_ready()
         row = self.connection.execute(
             "SELECT * FROM billing_cash_sessions WHERE id = ?",
             (session_id,),
@@ -3253,6 +3274,7 @@ class Database:
         return self._serialize_cash_session(row)
 
     def open_cash_session(self, payload: dict) -> dict:
+        self._ensure_cash_session_schema_ready()
         data = validate_cash_session_open(payload)
         if data["cash_account"] not in BILLING_CASH_ACCOUNTS:
             raise ValidationError("La cuenta de caja no es valida.")
@@ -3297,6 +3319,7 @@ class Database:
         return self.get_cash_session(session_id)
 
     def close_cash_session(self, payload: dict) -> dict:
+        self._ensure_cash_session_schema_ready()
         data = validate_cash_session_close(payload)
         if data["cash_account"] not in BILLING_CASH_ACCOUNTS:
             raise ValidationError("La cuenta de caja no es valida.")
@@ -3416,6 +3439,7 @@ class Database:
         return [self._row_to_dict(row) for row in rows]
 
     def list_cash_sessions(self) -> list[dict]:
+        self._ensure_cash_session_schema_ready()
         rows = self.connection.execute(
             """
             SELECT *
@@ -4436,6 +4460,18 @@ class PostgresDatabase(Database):
         exists = bool(row and int(row["total"] or 0) > 0)
         self._column_exists_cache[cache_key] = exists
         return exists
+
+    def _table_exists(self, table: str) -> bool:
+        row = self.connection.execute(
+            """
+            SELECT COUNT(*) AS total
+            FROM information_schema.tables
+            WHERE table_schema = 'public'
+              AND table_name = ?
+            """,
+            (table,),
+        ).fetchone()
+        return bool(row and int(row["total"] or 0) > 0)
 
     def backup_database(self) -> dict:
         raise ValidationError(

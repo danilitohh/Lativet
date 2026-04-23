@@ -573,6 +573,14 @@ const SUBSECTION_DATA_REQUIREMENTS = {
     grooming: ["owners", "patients", "grooming_documents"],
   },
 };
+const SALES_PROVIDER_REFRESH_SECTIONS = ["providers"];
+const SALES_INVENTORY_REFRESH_SECTIONS = [
+  "providers",
+  "catalog_items",
+  "stock_movements",
+  "billing_summary",
+];
+const SALES_PRICING_REFRESH_SECTIONS = ["catalog_items", "billing_summary"];
 const ALL_BOOTSTRAP_SECTIONS = Array.from(
   new Set([
     ...BOOTSTRAP_CORE_SECTIONS,
@@ -4412,6 +4420,31 @@ function removeCatalogItemFromState(itemId) {
   syncBillingSummaryInventorySnapshot();
 }
 
+function sortProvidersByName(providers) {
+  return [...(providers || [])].sort((left, right) =>
+    String(left?.name || "").localeCompare(String(right?.name || ""), "es", {
+      sensitivity: "base",
+    })
+  );
+}
+
+function upsertProviderInState(provider) {
+  if (!provider?.id) {
+    return;
+  }
+  const currentProviders = Array.isArray(state.providers) ? [...state.providers] : [];
+  const providerIndex = currentProviders.findIndex(
+    (entry) => String(entry?.id || "") === String(provider.id || "")
+  );
+  const nextProvider = { items_count: 0, ...provider };
+  if (providerIndex >= 0) {
+    currentProviders[providerIndex] = { ...currentProviders[providerIndex], ...nextProvider };
+  } else {
+    currentProviders.push(nextProvider);
+  }
+  state.providers = sortProvidersByName(currentProviders);
+}
+
 function ensureInventorySelection(filteredItems) {
   const hasSelection = filteredItems.some(
     (item) => String(item.id || "") === String(inventoryUiState.selectedItemId || "")
@@ -5290,11 +5323,15 @@ async function submitInventoryInlineForm(form) {
   }
   try {
     if (formType === "provider") {
-      await api.saveProvider(serializeForm(form));
+      const savedProvider = await api.saveProvider(serializeForm(form));
+      upsertProviderInState(savedProvider);
       inventoryUiState.showProviderForm = false;
-      await refreshData("Proveedor guardado.");
       setActiveSection("sales");
       setSectionSubsection("sales", "inventario");
+      await refreshData({
+        sections: SALES_PROVIDER_REFRESH_SECTIONS,
+        message: "Proveedor guardado.",
+      });
       return;
     }
     if (formType === "product") {
@@ -5305,14 +5342,20 @@ async function submitInventoryInlineForm(form) {
       salesReportState.loaded = false;
       setActiveSection("sales");
       setSectionSubsection("sales", "inventario");
-      await refreshData("Item de catalogo guardado.");
+      await refreshData({
+        sections: SALES_INVENTORY_REFRESH_SECTIONS,
+        message: "Item de catalogo guardado.",
+      });
       return;
     }
     if (formType === "stock") {
       await api.saveStockAdjustment(serializeForm(form));
       inventoryUiState.showStockForm = false;
       salesReportState.loaded = false;
-      await refreshData("Ajuste de inventario aplicado.");
+      await refreshData({
+        sections: SALES_INVENTORY_REFRESH_SECTIONS,
+        message: "Ajuste de inventario aplicado.",
+      });
       setActiveSection("sales");
       setSectionSubsection("sales", "inventario");
     }
@@ -5377,7 +5420,10 @@ async function handleInventoryDetailSave(itemId) {
     salesReportState.loaded = false;
     setActiveSection("sales");
     setSectionSubsection("sales", "inventario");
-    await refreshData("Producto de inventario actualizado.");
+    await refreshData({
+      sections: SALES_INVENTORY_REFRESH_SECTIONS,
+      message: "Producto de inventario actualizado.",
+    });
   } finally {
     if (saveButton) {
       saveButton.disabled = false;
@@ -5419,7 +5465,10 @@ async function handleInventoryItemDelete(itemId) {
     salesReportState.loaded = false;
     setActiveSection("sales");
     setSectionSubsection("sales", "inventario");
-    await refreshData("Producto eliminado del inventario.");
+    await refreshData({
+      sections: SALES_INVENTORY_REFRESH_SECTIONS,
+      message: "Producto eliminado del inventario.",
+    });
   } finally {
     if (deleteButton) {
       deleteButton.disabled = false;
@@ -5463,7 +5512,10 @@ async function handleCatalogPricingSave(itemId) {
     salesReportState.loaded = false;
     setActiveSection("sales");
     setSectionSubsection("sales", "precios");
-    await refreshData("Precio de venta actualizado.");
+    await refreshData({
+      sections: SALES_PRICING_REFRESH_SECTIONS,
+      message: "Precio de venta actualizado.",
+    });
   } finally {
     if (saveButton) {
       saveButton.disabled = false;
@@ -18394,16 +18446,17 @@ async function handleOwnerSubmit(event) {
 async function handleProviderSubmit(event) {
   event.preventDefault();
   const isInventoryView = getActiveSalesSubsectionValue() === "inventario";
-  await api.saveProvider(serializeForm(event.currentTarget));
+  const savedProvider = await api.saveProvider(serializeForm(event.currentTarget));
+  upsertProviderInState(savedProvider);
   resetForm(event.currentTarget);
   if (isInventoryView) {
     inventoryUiState.showProviderForm = false;
   }
-  await refreshData("Proveedor guardado.");
   setActiveSection("sales");
   if (isInventoryView) {
     setSectionSubsection("sales", "inventario");
   }
+  await refreshData({ sections: SALES_PROVIDER_REFRESH_SECTIONS, message: "Proveedor guardado." });
 }
 
 async function handlePatientSubmit(event) {
@@ -18470,7 +18523,10 @@ async function handleCatalogSubmit(event) {
   if (isInventoryView) {
     setSectionSubsection("sales", "inventario");
   }
-  await refreshData("Item de catalogo guardado.");
+  await refreshData({
+    sections: SALES_INVENTORY_REFRESH_SECTIONS,
+    message: "Item de catalogo guardado.",
+  });
 }
 
 async function handleAppointmentSubmit(event) {
