@@ -295,6 +295,14 @@ def create_app(base_dir: Path | None = None, data_dir: Path | None = None) -> Fl
     def save_catalog_item():
         return respond(service.save_catalog_item(payload()))
 
+    @app.delete("/api/catalog-items/<item_id>")
+    def delete_catalog_item(item_id: str):
+        return respond(service.delete_catalog_item(item_id))
+
+    @app.post("/api/catalog-items/<item_id>/delete")
+    def delete_catalog_item_post(item_id: str):
+        return respond(service.delete_catalog_item(item_id))
+
     @app.post("/api/appointments")
     def save_appointment():
         return respond(service.save_appointment(payload()))

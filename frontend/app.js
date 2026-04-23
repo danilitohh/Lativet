@@ -2391,6 +2391,7 @@ const api = {
     apiRequest(`/api/patients/${patientId}/delete`, { method: "POST", body: "{}" }),
   saveCatalogItem: (payload) =>
     apiRequest("/api/catalog-items", { method: "POST", body: JSON.stringify(payload) }),
+  deleteCatalogItem: (itemId) => apiRequest(`/api/catalog-items/${itemId}`, { method: "DELETE" }),
   saveAppointment: (payload) =>
     apiRequest("/api/appointments", { method: "POST", body: JSON.stringify(payload) }),
   updateAppointmentStatus: (appointmentId, status) =>
@@ -4452,6 +4453,9 @@ function buildInventoryDetailPanel(item) {
         )}</textarea>
       </label>
       <div class="sales-inventory-detail__actions">
+        <button class="ghost-button ghost-button--danger" type="button" data-delete-inventory-item="${escapeHtml(
+          String(item.id || "")
+        )}">Eliminar</button>
         <button class="ghost-button" type="button" data-reset-inventory-detail="${escapeHtml(
           String(item.id || "")
         )}">Cancelar</button>
@@ -5248,6 +5252,47 @@ async function handleInventoryDetailSave(itemId) {
   }
 }
 
+async function handleInventoryItemDelete(itemId) {
+  if (!itemId || !elements.catalogItemsList) {
+    return;
+  }
+  const item = state.catalog_items.find((entry) => String(entry.id) === String(itemId));
+  if (!item) {
+    throw new Error("No se encontro el producto seleccionado para eliminar.");
+  }
+  const confirmed = window.confirm(
+    `Eliminar "${item.name || "este producto"}" del inventario? Esta accion no se puede deshacer.`
+  );
+  if (!confirmed) {
+    return;
+  }
+  const detailForm = elements.catalogItemsList.querySelector(
+    `[data-inventory-detail-form="${itemId}"]`
+  );
+  const deleteButton = detailForm?.querySelector(`[data-delete-inventory-item="${itemId}"]`);
+  if (deleteButton) {
+    deleteButton.disabled = true;
+  }
+  try {
+    await api.deleteCatalogItem(itemId);
+    billingDraft.lines = billingDraft.lines.filter(
+      (line) => String(line.catalog_item_id || "") !== String(itemId)
+    );
+    if (String(inventoryUiState.selectedItemId || "") === String(itemId)) {
+      inventoryUiState.selectedItemId = "";
+    }
+    inventoryUiState.showStockForm = false;
+    salesReportState.loaded = false;
+    await refreshData("Producto eliminado del inventario.");
+    setActiveSection("sales");
+    setSectionSubsection("sales", "inventario");
+  } finally {
+    if (deleteButton) {
+      deleteButton.disabled = false;
+    }
+  }
+}
+
 async function handleCatalogPricingSave(itemId) {
   if (!itemId || !elements.catalogItemsList) {
     return;
@@ -5406,6 +5451,11 @@ async function handleCatalogItemsClick(event) {
   const resetDetailButton = event.target.closest("[data-reset-inventory-detail]");
   if (resetDetailButton) {
     renderSales();
+    return;
+  }
+  const deleteInventoryButton = event.target.closest("[data-delete-inventory-item]");
+  if (deleteInventoryButton) {
+    await handleInventoryItemDelete(deleteInventoryButton.dataset.deleteInventoryItem || "");
     return;
   }
   const adjustButton = event.target.closest("[data-inventory-adjust-item]");

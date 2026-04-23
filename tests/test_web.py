@@ -1010,6 +1010,30 @@ class WebSmokeTests(unittest.TestCase):
         self.assertEqual(snapshot["reports"]["totals"]["providers"], 1)
         self.assertEqual(snapshot["reports"]["totals"]["catalog_items"], 1)
 
+    def test_http_supports_catalog_item_delete_when_unused(self) -> None:
+        item = self.assert_ok(
+            self.client.post(
+                "/api/catalog-items",
+                json={
+                    "name": "Producto temporal",
+                    "category": "Accesorio",
+                    "purchase_cost": "15",
+                    "margin_percent": "20",
+                    "presentation_total": "1",
+                    "stock_quantity": "1",
+                    "min_stock": "0",
+                    "track_inventory": True,
+                },
+            )
+        )
+
+        deleted = self.assert_ok(self.client.delete(f"/api/catalog-items/{item['id']}"))
+        self.assertTrue(deleted["deleted"])
+        self.assertEqual(deleted["id"], item["id"])
+
+        snapshot = self.assert_ok(self.client.get("/api/bootstrap"))
+        self.assertEqual(snapshot["catalog_items"], [])
+
     def test_http_supports_cash_opening_and_closing(self) -> None:
         opened = self.assert_ok(
             self.client.post(

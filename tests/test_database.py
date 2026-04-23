@@ -261,6 +261,80 @@ class DatabaseSmokeTests(unittest.TestCase):
         self.assertTrue(deleted["deleted"])
         self.assertEqual(len(self.db.list_patients()), 0)
 
+    def test_can_delete_catalog_item_without_dependencies(self) -> None:
+        item = self.db.save_catalog_item(
+            {
+                "name": "Shampoo duplicado",
+                "category": "Peluqueria",
+                "purchase_cost": "10",
+                "margin_percent": "30",
+                "presentation_total": "1",
+                "stock_quantity": "3",
+                "min_stock": "1",
+                "track_inventory": True,
+            }
+        )
+
+        deleted = self.db.delete_catalog_item(item["id"])
+
+        self.assertTrue(deleted["deleted"])
+        self.assertEqual(deleted["id"], item["id"])
+        with self.assertRaises(ValidationError):
+            self.db.get_catalog_item(item["id"])
+
+    def test_catalog_item_delete_is_blocked_when_it_has_related_documents_or_movements(self) -> None:
+        owner = self.db.save_owner(
+            {
+                "full_name": "Cliente Inventario",
+                "identification_type": "CC",
+                "identification_number": "908070",
+                "phone": "3009080700",
+                "email": "inventario@example.com",
+                "address": "Calle 90 # 80-70",
+            }
+        )
+        patient = self.db.save_patient(
+            {
+                "owner_id": owner["id"],
+                "name": "Milo",
+                "species": "Canino",
+                "breed": "Criollo",
+                "sex": "Macho",
+                "age_years": "4",
+                "reproductive_status": "No esterilizado",
+                "weight_kg": "14.2",
+                "notes": "Paciente para prueba de inventario.",
+            }
+        )
+        item = self.db.save_catalog_item(
+            {
+                "name": "Antibiotico de prueba",
+                "category": "Medicamento",
+                "purchase_cost": "12",
+                "margin_percent": "25",
+                "presentation_total": "1",
+                "stock_quantity": "4",
+                "min_stock": "1",
+                "track_inventory": True,
+            }
+        )
+        self.db.save_billing_document(
+            {
+                "document_type": "factura",
+                "patient_id": patient["id"],
+                "issue_date": "2026-03-20",
+                "payment_method": "Pendiente",
+                "cash_account": "caja_menor",
+                "lines": [{"catalog_item_id": item["id"], "quantity": 1}],
+            }
+        )
+
+        with self.assertRaises(ValidationError) as context:
+            self.db.delete_catalog_item(item["id"])
+
+        self.assertIn("documentos de facturacion o cotizacion", str(context.exception))
+        self.assertIn("movimientos de inventario", str(context.exception))
+
     def test_available_slots_summary_counts_without_building_full_calendar(self) -> None:
         owner = self.db.save_owner(
             {

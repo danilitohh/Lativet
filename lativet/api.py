@@ -184,6 +184,10 @@ class LativetService:
         return self._db.save_catalog_item(payload)
 
     @safe_api_call
+    def delete_catalog_item(self, item_id: str) -> dict:
+        return self._db.delete_catalog_item(item_id)
+
+    @safe_api_call
     def save_appointment(self, payload: dict) -> dict:
         appointment = self._db.save_appointment(payload)
         appointment["google_calendar"] = self._sync_google_calendar_for_appointment(appointment)

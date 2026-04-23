@@ -2645,6 +2645,41 @@ class Database:
             self._record_audit("billing_catalog_item", item_id, action, "ventas", data)
         return self.get_catalog_item(item_id)
 
+    def delete_catalog_item(self, item_id: str) -> dict:
+        item = self.get_catalog_item(item_id)
+        dependencies = [
+            (
+                "documentos de facturacion o cotizacion",
+                self._scalar(
+                    "SELECT COUNT(*) AS total FROM billing_document_items WHERE catalog_item_id = ?",
+                    (item_id,),
+                ),
+            ),
+            (
+                "movimientos de inventario",
+                self._scalar(
+                    "SELECT COUNT(*) AS total FROM billing_stock_movements WHERE catalog_item_id = ?",
+                    (item_id,),
+                ),
+            ),
+        ]
+        active_dependencies = [label for label, total in dependencies if total > 0]
+        if active_dependencies:
+            raise ValidationError(
+                "No puedes eliminar el producto porque tiene registros asociados en: "
+                + ", ".join(active_dependencies)
+                + "."
+            )
+        with self._tx():
+            deleted = self.connection.execute(
+                "DELETE FROM billing_catalog_items WHERE id = ?",
+                (item_id,),
+            )
+            if not deleted.rowcount:
+                raise ValidationError("El item de catalogo seleccionado no existe.")
+            self._record_audit("billing_catalog_item", item_id, "delete", "inventario", item)
+        return {"id": item_id, "deleted": True}
+
     def get_catalog_item(self, item_id: str) -> dict:
         row = self.connection.execute(
             """
