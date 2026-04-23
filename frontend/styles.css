@@ -7830,6 +7830,11 @@ body.auth-locked .page-shell > :not(#loginModal) {
   font-size: 0.82rem;
 }
 
+.sales-pricing-product small {
+  color: #7d8aa5;
+  font-size: 0.74rem;
+}
+
 .sales-pricing-input {
   width: 88px;
   min-width: 88px;
@@ -7847,6 +7852,39 @@ body.auth-locked .page-shell > :not(#loginModal) {
 .sales-pricing-save {
   min-width: 86px;
   padding-inline: 12px;
+}
+
+.sales-inventory-shell--catalog {
+  gap: 14px;
+}
+
+.sales-inventory-shell__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.sales-inventory-table-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  color: inherit;
+}
+
+.sales-inventory-table-item:hover .sales-pricing-product strong {
+  color: #f46b2c;
+}
+
+.sales-inventory-table-actions {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .sales-inventory-browser {
@@ -7906,8 +7944,15 @@ body.auth-locked .page-shell > :not(#loginModal) {
 .sales-inventory-management,
 .sales-inventory-support {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
+}
+
+.sales-inventory-management {
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.sales-inventory-support {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .sales-inventory-form-card,
@@ -8075,6 +8120,24 @@ body.auth-locked .page-shell > :not(#loginModal) {
   padding: 18px 24px 24px;
 }
 
+.inventory-item-modal {
+  width: min(760px, 100%);
+  padding: 0;
+  overflow: hidden;
+}
+
+.inventory-item-modal .panel-heading {
+  margin: 0;
+  padding: 24px 24px 18px;
+  border-bottom: 1px solid rgba(223, 229, 239, 0.92);
+}
+
+.inventory-item-modal__body {
+  max-height: min(72vh, 720px);
+  overflow: auto;
+  padding: 18px 24px 24px;
+}
+
 .provider-directory-list {
   display: grid;
   gap: 12px;
@@ -8181,11 +8244,23 @@ body.auth-locked .page-shell > :not(#loginModal) {
 }
 
 @media (max-width: 640px) {
+  .sales-inventory-shell__actions > button {
+    flex: 1 1 calc(50% - 10px);
+  }
+
   .provider-directory-modal .panel-heading {
     padding: 18px 16px 14px;
   }
 
   .provider-directory-modal__body {
+    padding: 16px;
+  }
+
+  .inventory-item-modal .panel-heading {
+    padding: 18px 16px 14px;
+  }
+
+  .inventory-item-modal__body {
     padding: 16px;
   }
 
