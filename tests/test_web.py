@@ -957,6 +957,19 @@ class WebSmokeTests(unittest.TestCase):
         )
         self.assertEqual(payment["document_status"], "Pagado")
 
+        extra_payment = self.client.post(
+            "/api/billing-payments",
+            json={
+                "document_id": invoice["id"],
+                "payment_date": "2026-03-27",
+                "amount": "1",
+                "payment_method": "Efectivo",
+                "cash_account": "caja_menor",
+                "note": "Intento extra",
+            },
+        )
+        self.assertEqual(extra_payment.status_code, 400, extra_payment.get_data(as_text=True))
+
         adjustment = self.assert_ok(
             self.client.post(
                 "/api/stock-adjustments",

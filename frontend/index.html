@@ -611,42 +611,127 @@
           </div>
 
           <div class="two-column-grid">
-            <article id="salesDocumentFormPanel" class="panel-card">
+            <article id="salesDocumentFormPanel" class="panel-card panel-card--wide">
               <div class="panel-heading"><div><p class="eyebrow">Documentos</p><h3 id="salesDocumentFormTitle">Nuevo documento</h3></div></div>
-              <form id="billingDocumentForm" class="form-grid">
-                <label class="full"><span>Paciente</span><select id="billingPatientSelect" name="patient_id" required></select></label>
-                <div class="sales-form-row sales-form-row--compact full">
-                  <label id="billingDocumentTypeField" class="sales-field--xs"><span>Tipo</span><select id="billingDocumentTypeSelect" name="document_type"><option value="factura">Factura</option><option value="cotizacion">Cotizacion</option></select></label>
-                  <label class="sales-field--sm"><span>Fecha de emision</span><input name="issue_date" type="date" required /></label>
-                  <label class="sales-field--sm"><span>Vencimiento</span><input name="due_date" type="date" /></label>
-                  <label class="sales-field--xs"><span>Descuento</span><input name="discount" type="number" step="0.01" min="0" value="0" /></label>
+              <form id="billingDocumentForm" class="form-grid sales-billing-wizard">
+                <div class="full sales-billing-stepper" aria-label="Flujo de facturacion">
+                  <button class="sales-billing-step" data-billing-step="1" type="button">
+                    <span class="sales-billing-step__number">1</span>
+                    <span class="sales-billing-step__copy">
+                      <strong>Datos de factura</strong>
+                      <small>Paciente, fechas y contacto</small>
+                    </span>
+                  </button>
+                  <button class="sales-billing-step" data-billing-step="2" type="button">
+                    <span class="sales-billing-step__number">2</span>
+                    <span class="sales-billing-step__copy">
+                      <strong>Items</strong>
+                      <small>Productos o servicios</small>
+                    </span>
+                  </button>
+                  <button class="sales-billing-step" data-billing-step="3" type="button">
+                    <span class="sales-billing-step__number">3</span>
+                    <span class="sales-billing-step__copy">
+                      <strong>Pago</strong>
+                      <small>Metodo y abono inicial</small>
+                    </span>
+                  </button>
+                  <button class="sales-billing-step" data-billing-step="4" type="button">
+                    <span class="sales-billing-step__number">4</span>
+                    <span class="sales-billing-step__copy">
+                      <strong>Resumen</strong>
+                      <small>Revision final</small>
+                    </span>
+                  </button>
                 </div>
-                <div class="sales-form-row full">
-                  <label class="sales-field--md"><span>Metodo de pago</span><select id="billingPaymentMethodSelect" name="payment_method"><option value="Pendiente">Pendiente</option><option value="Efectivo">Efectivo</option><option value="Transferencia">Transferencia</option><option value="Tarjeta">Tarjeta</option><option value="Otro">Otro</option></select></label>
-                  <label class="sales-field--sm"><span>Cuenta de caja</span><select id="billingCashAccountSelect" name="cash_account"><option value="caja_menor">Caja menor</option><option value="caja_mayor">Caja mayor</option><option value="transferencia">Transferencias</option></select></label>
-                  <label class="sales-field--grow"><span>Correo del receptor</span><input name="recipient_email" type="email" /></label>
+
+                <div class="full sales-billing-wizard__layout">
+                  <div class="sales-billing-wizard__main">
+                    <section class="sales-billing-stage" data-billing-stage="1">
+                      <div class="sales-billing-stage__card">
+                        <div class="sales-billing-stage__header">
+                          <h4>Datos de factura</h4>
+                          <p>Completa la informacion principal del documento antes de agregar items.</p>
+                        </div>
+                        <label class="full"><span>Paciente</span><select id="billingPatientSelect" name="patient_id" required></select></label>
+                        <div class="sales-form-row sales-form-row--compact full">
+                          <label id="billingDocumentTypeField" class="sales-field--xs"><span>Tipo</span><select id="billingDocumentTypeSelect" name="document_type"><option value="factura">Factura</option><option value="cotizacion">Cotizacion</option></select></label>
+                          <label class="sales-field--sm"><span>Fecha de emision</span><input name="issue_date" type="date" required /></label>
+                          <label class="sales-field--sm"><span>Vencimiento</span><input name="due_date" type="date" /></label>
+                          <label class="sales-field--xs"><span>Descuento</span><input name="discount" type="number" step="0.01" min="0" value="0" /></label>
+                        </div>
+                        <div class="sales-form-row full">
+                          <label class="sales-field--grow"><span>Correo del receptor</span><input name="recipient_email" type="email" placeholder="correo@cliente.com" /></label>
+                        </div>
+                        <label class="full"><span>Notas</span><textarea name="notes" rows="4" placeholder="Notas internas, condiciones o mensaje para el cliente."></textarea></label>
+                      </div>
+                    </section>
+
+                    <section class="sales-billing-stage is-hidden" data-billing-stage="2">
+                      <div class="sales-billing-stage__card">
+                        <div class="sales-billing-stage__header">
+                          <h4>Items del documento</h4>
+                          <p>Selecciona productos o servicios y arma el detalle de la factura.</p>
+                        </div>
+                        <label class="full"><span>Item del documento</span><select id="billingLineItemSelect"></select></label>
+                        <div class="sales-form-row sales-form-row--compact full">
+                          <label class="sales-field--xs"><span>Cantidad</span><input id="billingLineQuantity" type="number" step="0.01" min="0.01" value="1" /></label>
+                          <div class="form-actions align-end sales-form-actions-inline"><button id="addBillingLineButton" class="secondary-button" type="button">Agregar item</button></div>
+                        </div>
+                        <div class="full">
+                          <div id="billingDraftLines" class="list-surface"></div>
+                        </div>
+                      </div>
+                    </section>
+
+                    <section class="sales-billing-stage is-hidden" data-billing-stage="3">
+                      <div class="sales-billing-stage__card">
+                        <div class="sales-billing-stage__header">
+                          <h4>Pago</h4>
+                          <p>Define si la factura queda pendiente o si se registra pago al emitir.</p>
+                        </div>
+                        <p id="billingPaymentStepHint" class="sales-billing-stage__note"></p>
+                        <div class="sales-form-row full">
+                          <label class="sales-field--md"><span>Metodo de pago</span><select id="billingPaymentMethodSelect" name="payment_method"><option value="Pendiente">Pendiente</option><option value="Efectivo">Efectivo</option><option value="Transferencia">Transferencia</option><option value="Tarjeta">Tarjeta</option><option value="Otro">Otro</option></select></label>
+                          <label class="sales-field--sm"><span>Cuenta de caja</span><select id="billingCashAccountSelect" name="cash_account"><option value="caja_menor">Caja menor</option><option value="caja_mayor">Caja mayor</option><option value="transferencia">Transferencias</option></select></label>
+                        </div>
+                        <div id="billingInitialPaymentGroup" class="sales-form-row full">
+                          <label class="sales-field--xs"><span>Abono inicial</span><input name="initial_payment_amount" type="number" step="0.01" min="0" value="0" /></label>
+                          <label class="sales-field--sm"><span>Fecha del abono</span><input name="initial_payment_date" type="date" /></label>
+                          <label class="sales-field--md"><span>Metodo del abono</span><select name="initial_payment_method"><option value="Efectivo">Efectivo</option><option value="Transferencia">Transferencia</option><option value="Tarjeta">Tarjeta</option><option value="Otro">Otro</option></select></label>
+                          <label class="sales-field--sm"><span>Caja del abono</span><select name="initial_payment_cash_account"><option value="caja_menor">Caja menor</option><option value="caja_mayor">Caja mayor</option><option value="transferencia">Transferencias</option></select></label>
+                        </div>
+                      </div>
+                    </section>
+
+                    <section class="sales-billing-stage is-hidden" data-billing-stage="4">
+                      <div class="sales-billing-stage__card">
+                        <div class="sales-billing-stage__header">
+                          <h4>Resumen final</h4>
+                          <p>Verifica los datos de la factura antes de guardarla.</p>
+                        </div>
+                        <div id="billingWizardReview" class="sales-billing-review"></div>
+                      </div>
+                    </section>
+
+                    <div class="sales-billing-wizard__actions">
+                      <button id="billingStepPrevButton" class="ghost-button is-hidden" type="button">Anterior</button>
+                      <div class="sales-billing-wizard__actions-main">
+                        <button id="billingStepNextButton" class="primary-button" type="button">Siguiente</button>
+                        <button id="billingDocumentSubmitButton" class="primary-button is-hidden" type="submit">Guardar documento</button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <aside id="billingWizardSummary" class="sales-billing-summary"></aside>
                 </div>
-                <label class="full"><span>Item del documento</span><select id="billingLineItemSelect"></select></label>
-                <div class="sales-form-row sales-form-row--compact full">
-                  <label class="sales-field--xs"><span>Cantidad</span><input id="billingLineQuantity" type="number" step="0.01" min="0.01" value="1" /></label>
-                  <div class="form-actions align-end sales-form-actions-inline"><button id="addBillingLineButton" class="secondary-button" type="button">Agregar item</button></div>
-                </div>
-                <div class="full">
-                  <div id="billingDraftLines" class="list-surface"></div>
-                </div>
-                <div id="billingInitialPaymentGroup" class="sales-form-row full">
-                  <label class="sales-field--xs"><span>Abono inicial</span><input name="initial_payment_amount" type="number" step="0.01" min="0" value="0" /></label>
-                  <label class="sales-field--sm"><span>Fecha del abono</span><input name="initial_payment_date" type="date" /></label>
-                  <label class="sales-field--md"><span>Metodo del abono</span><select name="initial_payment_method"><option value="Efectivo">Efectivo</option><option value="Transferencia">Transferencia</option><option value="Tarjeta">Tarjeta</option><option value="Otro">Otro</option></select></label>
-                  <label class="sales-field--sm"><span>Caja del abono</span><select name="initial_payment_cash_account"><option value="caja_menor">Caja menor</option><option value="caja_mayor">Caja mayor</option><option value="transferencia">Transferencias</option></select></label>
-                </div>
-                <label class="full"><span>Notas</span><textarea name="notes" rows="3"></textarea></label>
-                <div class="full form-actions"><button id="billingDocumentSubmitButton" class="primary-button" type="submit">Guardar documento</button></div>
               </form>
             </article>
 
-            <article id="salesPaymentFormPanel" class="panel-card">
+            <article id="salesPaymentFormPanel" class="panel-card panel-card--wide">
               <div class="panel-heading"><div><p class="eyebrow">Abonos</p><h3>Registrar pago</h3></div></div>
+              <p id="billingPaymentPanelHint" class="sales-section-note">Los abonos solo se habilitan para facturas pendientes.</p>
+              <div id="billingPaymentEmptyState" class="sales-detail-empty is-hidden">No hay facturas pendientes para registrar abonos en este momento.</div>
               <form id="billingPaymentForm" class="form-grid">
                 <label class="full"><span>Factura pendiente</span><select id="billingPaymentDocumentSelect" name="document_id" required></select></label>
                 <div class="sales-form-row sales-form-row--compact full">

@@ -2972,6 +2972,8 @@ class Database:
             raise ValidationError("Solo las facturas admiten abonos.")
         if document["status"] == "Cotizacion":
             raise ValidationError("Las cotizaciones no admiten abonos.")
+        if document["status"] != "Pendiente":
+            raise ValidationError("Solo las facturas pendientes admiten abonos.")
         if float(data["amount"]) > float(document["balance_due"]):
             raise ValidationError("El abono no puede superar el saldo pendiente.")
         payment_id = uuid.uuid4().hex

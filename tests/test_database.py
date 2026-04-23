@@ -931,6 +931,18 @@ class DatabaseSmokeTests(unittest.TestCase):
         self.assertEqual(payment["document_status"], "Pagado")
 
         with self.assertRaises(ValidationError):
+            self.db.register_billing_payment(
+                {
+                    "document_id": invoice["id"],
+                    "payment_date": "2026-03-23",
+                    "amount": "1",
+                    "payment_method": "Efectivo",
+                    "cash_account": "caja_menor",
+                    "note": "Intento extra",
+                }
+            )
+
+        with self.assertRaises(ValidationError):
             self.db.adjust_catalog_stock(
                 {
                     "item_id": item["id"],

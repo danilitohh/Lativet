@@ -31,6 +31,13 @@ const state = {
 
 const elements = {};
 const billingDraft = { lines: [] };
+const BILLING_WIZARD_STEPS = [
+  { step: 1, label: "Datos de factura" },
+  { step: 2, label: "Items" },
+  { step: 3, label: "Pago" },
+  { step: 4, label: "Resumen" },
+];
+const billingWizardState = { currentStep: 1 };
 let salesSelectedDocumentId = "";
 let salesSelectedDocument = null;
 let salesReportPromise = null;
@@ -3558,6 +3565,13 @@ function cacheElements() {
     "salesDocumentsPanelTitle",
     "billingDocumentTypeField",
     "billingDocumentSubmitButton",
+    "billingStepPrevButton",
+    "billingStepNextButton",
+    "billingWizardSummary",
+    "billingWizardReview",
+    "billingPaymentStepHint",
+    "billingPaymentPanelHint",
+    "billingPaymentEmptyState",
     "usersClinicName",
     "usersTableBody",
     "usersSummary",
@@ -4085,6 +4099,12 @@ function resolveSalesSubsectionForDocument(document) {
   return document?.document_type === "cotizacion" ? "cotizacion" : "factura";
 }
 
+function getPendingBillingDocuments(documents = state.billing_documents || []) {
+  return documents.filter(
+    (document) => document.document_type === "factura" && document.status === "Pendiente"
+  );
+}
+
 function getSalesCatalogPanelMeta() {
   if (getActiveSalesSubsectionValue() === "precios") {
     return {
@@ -4473,13 +4493,15 @@ function renderSalesDocumentDetail() {
   }
   if (!salesSelectedDocument) {
     elements.salesDocumentDetail.innerHTML =
-      '<div class="sales-detail-empty">Selecciona un documento para ver lineas, abonos, PDF y correo.</div>';
+      '<div class="sales-detail-empty">Selecciona un documento para ver lineas, pagos, PDF y correo.</div>';
     return;
   }
 
   const document = salesSelectedDocument;
   const lines = Array.isArray(document.lines) ? document.lines : [];
   const payments = Array.isArray(document.payments) ? document.payments : [];
+  const showPaymentsSection =
+    document.document_type === "factura" && (document.status === "Pendiente" || payments.length > 0);
   const emailDraft = document.email_draft || {};
   const documentTypeLabel =
     document.document_type === "cotizacion" ? "Cotizacion" : "Factura";
@@ -4587,10 +4609,16 @@ function renderSalesDocumentDetail() {
       <h4>Lineas del documento</h4>
       ${linesTable}
     </article>
-    <article class="sales-detail-card">
-      <h4>Historial de pagos</h4>
-      ${paymentsTable}
-    </article>
+    ${
+      showPaymentsSection
+        ? `
+          <article class="sales-detail-card">
+            <h4>Historial de pagos</h4>
+            ${paymentsTable}
+          </article>
+        `
+        : ""
+    }
   `;
 }
 
@@ -4816,9 +4844,402 @@ function renderBillingDraftLines() {
   );
 }
 
+function getBillingDocumentTypeValue() {
+  return getSalesDocumentFilterType() || elements.billingDocumentTypeSelect?.value || "factura";
+}
+
+function formatBillingLineQuantity(value) {
+  const quantity = Number(value || 0);
+  if (!Number.isFinite(quantity)) {
+    return "0";
+  }
+  if (Number.isInteger(quantity)) {
+    return String(quantity);
+  }
+  return quantity.toLocaleString("es-CO", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+  });
+}
+
+function getBillingDraftLineItems() {
+  return billingDraft.lines.map((line, index) => {
+    const item = state.catalog_items.find((catalogItem) => catalogItem.id === line.catalog_item_id) || {};
+    const quantity = Number(line.quantity || 0);
+    const unitPrice = Number(item.unit_price || 0);
+    const lineTotal = unitPrice * quantity;
+    return {
+      index,
+      quantity,
+      quantityLabel: formatBillingLineQuantity(quantity),
+      unitPrice,
+      lineTotal,
+      itemId: line.catalog_item_id,
+      itemName: item.name || "Item",
+      category: item.category || "Sin categoria",
+    };
+  });
+}
+
+function getBillingDraftSnapshot() {
+  const form = elements.billingDocumentForm;
+  const values = form ? serializeForm(form) : {};
+  const documentType = getBillingDocumentTypeValue();
+  const documentTypeLabel = documentType === "cotizacion" ? "Cotizacion" : "Factura";
+  const patientId = String(values.patient_id || "").trim();
+  const patient = state.patients.find((item) => String(item.id) === patientId) || null;
+  const ownerName =
+    patient?.owner_name ||
+    state.owners.find((owner) => String(owner.id) === String(patient?.owner_id || ""))?.full_name ||
+    "";
+  const lines = getBillingDraftLineItems();
+  const subtotal = lines.reduce((total, line) => total + line.lineTotal, 0);
+  const discount = Math.max(0, Number(values.discount || 0));
+  const total = Math.max(0, subtotal - discount);
+  const paymentMethod = documentType === "cotizacion" ? "Pendiente" : values.payment_method || "Pendiente";
+  const cashAccount =
+    documentType === "cotizacion"
+      ? ""
+      : values.cash_account || state.settings.billing_default_cash_account || "caja_menor";
+  const initialPaymentAmount =
+    documentType === "factura" && paymentMethod === "Pendiente"
+      ? Math.min(Math.max(0, Number(values.initial_payment_amount || 0)), total)
+      : 0;
+  const balanceAfterCreation = paymentMethod === "Pendiente" ? Math.max(0, total - initialPaymentAmount) : 0;
+  return {
+    currentStep: billingWizardState.currentStep,
+    currentStepMeta:
+      BILLING_WIZARD_STEPS.find((item) => item.step === billingWizardState.currentStep) ||
+      BILLING_WIZARD_STEPS[0],
+    documentType,
+    documentTypeLabel,
+    patient,
+    patientName: patient?.name || "",
+    patientMeta: patient ? `${patient.species || "Paciente"}${patient.breed ? ` · ${patient.breed}` : ""}` : "",
+    ownerName,
+    issueDate: String(values.issue_date || "").trim(),
+    dueDate: String(values.due_date || "").trim(),
+    recipientEmail: String(values.recipient_email || "").trim(),
+    notes: String(values.notes || "").trim(),
+    paymentMethod,
+    paymentMethodLabel: humanStatus(paymentMethod),
+    cashAccount,
+    cashAccountLabel: cashAccount ? formatBillingCashAccount(cashAccount) : "Sin caja",
+    initialPaymentAmount,
+    initialPaymentDate:
+      documentType === "factura" && paymentMethod === "Pendiente"
+        ? String(values.initial_payment_date || values.issue_date || "").trim()
+        : "",
+    initialPaymentMethod:
+      documentType === "factura" && paymentMethod === "Pendiente"
+        ? String(values.initial_payment_method || paymentMethod || "Efectivo").trim()
+        : "",
+    initialPaymentMethodLabel:
+      documentType === "factura" && paymentMethod === "Pendiente"
+        ? humanStatus(String(values.initial_payment_method || paymentMethod || "Efectivo").trim())
+        : "",
+    initialPaymentCashAccount:
+      documentType === "factura" && paymentMethod === "Pendiente"
+        ? String(
+            values.initial_payment_cash_account ||
+              cashAccount ||
+              state.settings.billing_default_cash_account ||
+              "caja_menor"
+          ).trim()
+        : "",
+    lines,
+    linesCount: lines.length,
+    subtotal,
+    discount,
+    total,
+    balanceAfterCreation,
+  };
+}
+
+function renderBillingWizardSummary() {
+  if (!elements.billingWizardSummary) {
+    return;
+  }
+  const snapshot = getBillingDraftSnapshot();
+  const itemPreview = snapshot.lines.length
+    ? snapshot.lines
+        .slice(0, 4)
+        .map(
+          (line) => `
+            <div class="sales-billing-summary__item">
+              <div>
+                <strong>${escapeHtml(line.itemName)}</strong>
+                <span>${escapeHtml(line.category)}</span>
+              </div>
+              <span>${escapeHtml(line.quantityLabel)} u</span>
+            </div>
+          `
+        )
+        .join("")
+    : `<div class="sales-billing-summary__empty">Aun no has agregado items a este documento.</div>`;
+  const paymentCopy =
+    snapshot.documentType === "cotizacion"
+      ? "La cotizacion no genera abonos ni movimientos de caja."
+      : snapshot.paymentMethod === "Pendiente"
+      ? `Pendiente por ${escapeHtml(formatMoney(snapshot.balanceAfterCreation))}${
+          snapshot.initialPaymentAmount
+            ? ` despues de un abono inicial de ${escapeHtml(formatMoney(snapshot.initialPaymentAmount))}.`
+            : "."
+        }`
+      : `Pago completo al emitir por ${escapeHtml(formatMoney(snapshot.total))}.`;
+
+  elements.billingWizardSummary.innerHTML = `
+    <div class="sales-billing-summary__card sales-billing-summary__card--hero">
+      <span class="sales-billing-summary__eyebrow">Paso ${snapshot.currentStep} de ${BILLING_WIZARD_STEPS.length}</span>
+      <h4>${escapeHtml(snapshot.documentTypeLabel)} en proceso</h4>
+      <p>${escapeHtml(snapshot.currentStepMeta.label)}</p>
+    </div>
+
+    <div class="sales-billing-summary__card">
+      <div class="sales-billing-summary__row">
+        <span>Paciente</span>
+        <strong>${escapeHtml(snapshot.patientName || "Sin seleccionar")}</strong>
+      </div>
+      <div class="sales-billing-summary__row">
+        <span>Propietario</span>
+        <strong>${escapeHtml(snapshot.ownerName || "Sin propietario")}</strong>
+      </div>
+      <div class="sales-billing-summary__row">
+        <span>Emision</span>
+        <strong>${escapeHtml(snapshot.issueDate || "Pendiente")}</strong>
+      </div>
+      <div class="sales-billing-summary__row">
+        <span>Vencimiento</span>
+        <strong>${escapeHtml(snapshot.dueDate || "Sin fecha")}</strong>
+      </div>
+    </div>
+
+    <div class="sales-billing-summary__card">
+      <div class="sales-billing-summary__section-head">
+        <h5>Items</h5>
+        <span>${escapeHtml(String(snapshot.linesCount))}</span>
+      </div>
+      <div class="sales-billing-summary__items">${itemPreview}</div>
+    </div>
+
+    <div class="sales-billing-summary__card">
+      <div class="sales-billing-summary__row">
+        <span>Subtotal</span>
+        <strong>${escapeHtml(formatMoney(snapshot.subtotal))}</strong>
+      </div>
+      <div class="sales-billing-summary__row">
+        <span>Descuento</span>
+        <strong>${escapeHtml(formatMoney(snapshot.discount))}</strong>
+      </div>
+      <div class="sales-billing-summary__row sales-billing-summary__row--total">
+        <span>Total</span>
+        <strong>${escapeHtml(formatMoney(snapshot.total))}</strong>
+      </div>
+    </div>
+
+    <div class="sales-billing-summary__card">
+      <div class="sales-billing-summary__section-head">
+        <h5>Pago</h5>
+        <span>${escapeHtml(snapshot.paymentMethodLabel)}</span>
+      </div>
+      <p class="sales-billing-summary__copy">${paymentCopy}</p>
+    </div>
+  `;
+}
+
+function renderBillingWizardReview() {
+  if (!elements.billingWizardReview) {
+    return;
+  }
+  const snapshot = getBillingDraftSnapshot();
+  const linesHtml = snapshot.lines.length
+    ? snapshot.lines
+        .map(
+          (line) => `
+            <div class="sales-billing-review__line">
+              <div>
+                <strong>${escapeHtml(line.itemName)}</strong>
+                <span>${escapeHtml(line.category)}</span>
+              </div>
+              <div class="sales-billing-review__line-meta">
+                <span>${escapeHtml(line.quantityLabel)} u</span>
+                <strong>${escapeHtml(formatMoney(line.lineTotal))}</strong>
+              </div>
+            </div>
+          `
+        )
+        .join("")
+    : `<div class="sales-billing-summary__empty">Agrega items para completar el resumen.</div>`;
+  const paymentSummary =
+    snapshot.documentType === "cotizacion"
+      ? "Cotizacion sin cobro ni abonos."
+      : snapshot.paymentMethod === "Pendiente"
+      ? `Factura pendiente. Saldo inicial: ${formatMoney(snapshot.balanceAfterCreation)}`
+      : `Factura pagada al emitir mediante ${snapshot.paymentMethodLabel}.`;
+
+  elements.billingWizardReview.innerHTML = `
+    <div class="sales-billing-review__grid">
+      <article class="sales-billing-review__card">
+        <h5>Datos del documento</h5>
+        <div class="sales-billing-review__kv">
+          <div><span>Tipo</span><strong>${escapeHtml(snapshot.documentTypeLabel)}</strong></div>
+          <div><span>Paciente</span><strong>${escapeHtml(snapshot.patientName || "Sin seleccionar")}</strong></div>
+          <div><span>Propietario</span><strong>${escapeHtml(snapshot.ownerName || "Sin propietario")}</strong></div>
+          <div><span>Emision</span><strong>${escapeHtml(snapshot.issueDate || "Pendiente")}</strong></div>
+          <div><span>Vencimiento</span><strong>${escapeHtml(snapshot.dueDate || "Sin fecha")}</strong></div>
+          <div><span>Correo</span><strong>${escapeHtml(snapshot.recipientEmail || "Sin correo")}</strong></div>
+        </div>
+      </article>
+
+      <article class="sales-billing-review__card">
+        <h5>Pago</h5>
+        <div class="sales-billing-review__kv">
+          <div><span>Metodo</span><strong>${escapeHtml(snapshot.paymentMethodLabel)}</strong></div>
+          <div><span>Caja</span><strong>${escapeHtml(snapshot.cashAccountLabel)}</strong></div>
+          <div><span>Estado esperado</span><strong>${escapeHtml(snapshot.paymentMethod === "Pendiente" ? "Pendiente" : "Pagado")}</strong></div>
+          <div><span>Detalle</span><strong>${escapeHtml(paymentSummary)}</strong></div>
+        </div>
+      </article>
+    </div>
+
+    <article class="sales-billing-review__card">
+      <h5>Items incluidos</h5>
+      <div class="sales-billing-review__lines">${linesHtml}</div>
+    </article>
+
+    <article class="sales-billing-review__card">
+      <h5>Totales</h5>
+      <div class="sales-billing-review__kv sales-billing-review__kv--totals">
+        <div><span>Subtotal</span><strong>${escapeHtml(formatMoney(snapshot.subtotal))}</strong></div>
+        <div><span>Descuento</span><strong>${escapeHtml(formatMoney(snapshot.discount))}</strong></div>
+        <div><span>Total</span><strong>${escapeHtml(formatMoney(snapshot.total))}</strong></div>
+        <div><span>Saldo inicial</span><strong>${escapeHtml(formatMoney(snapshot.balanceAfterCreation))}</strong></div>
+      </div>
+      <p class="sales-billing-review__notes">${escapeHtml(snapshot.notes || "Sin notas adicionales.")}</p>
+    </article>
+  `;
+}
+
+function validateBillingWizardStep(step) {
+  const form = elements.billingDocumentForm;
+  const snapshot = getBillingDraftSnapshot();
+  if (!form) {
+    return true;
+  }
+  if (step === 1) {
+    if (!elements.billingPatientSelect?.value) {
+      elements.billingPatientSelect?.focus();
+      throw new Error("Selecciona un paciente antes de continuar.");
+    }
+    if (!form.elements.issue_date?.value) {
+      form.elements.issue_date?.focus();
+      throw new Error("Define la fecha de emision de la factura.");
+    }
+    const recipientEmail = form.elements.recipient_email;
+    if (recipientEmail?.value && typeof recipientEmail.checkValidity === "function" && !recipientEmail.checkValidity()) {
+      recipientEmail.reportValidity?.();
+      throw new Error("Revisa el correo del receptor antes de continuar.");
+    }
+  }
+  if (step === 2 && !billingDraft.lines.length) {
+    elements.billingLineItemSelect?.focus();
+    throw new Error("Agrega al menos un item al documento antes de continuar.");
+  }
+  if (step === 3 && snapshot.documentType === "factura") {
+    if (!elements.billingPaymentMethodSelect?.value) {
+      elements.billingPaymentMethodSelect?.focus();
+      throw new Error("Selecciona el metodo de pago de la factura.");
+    }
+    const initialPaymentAmount = Number(form.elements.initial_payment_amount?.value || 0);
+    if (snapshot.paymentMethod === "Pendiente" && initialPaymentAmount > snapshot.total) {
+      form.elements.initial_payment_amount?.focus();
+      throw new Error("El abono inicial no puede superar el total del documento.");
+    }
+  }
+  return true;
+}
+
+function setBillingWizardStep(targetStep, { skipValidation = false, silent = false } = {}) {
+  const normalizedStep = Math.min(
+    BILLING_WIZARD_STEPS.length,
+    Math.max(1, Number(targetStep || billingWizardState.currentStep))
+  );
+  if (!skipValidation && normalizedStep > billingWizardState.currentStep) {
+    try {
+      for (let step = billingWizardState.currentStep; step < normalizedStep; step += 1) {
+        validateBillingWizardStep(step);
+      }
+    } catch (error) {
+      if (!silent) {
+        showStatus(error.message || "Completa este paso antes de continuar.", "error");
+      }
+      renderBillingWizard();
+      return false;
+    }
+  }
+  billingWizardState.currentStep = normalizedStep;
+  renderBillingWizard();
+  return true;
+}
+
+function renderBillingPaymentFormAvailability() {
+  const pendingDocuments = getPendingBillingDocuments();
+  const hasPendingDocuments = pendingDocuments.length > 0;
+  elements.billingPaymentForm?.classList.toggle("is-hidden", !hasPendingDocuments);
+  elements.billingPaymentEmptyState?.classList.toggle("is-hidden", hasPendingDocuments);
+  if (!hasPendingDocuments && elements.billingPaymentDocumentSelect) {
+    elements.billingPaymentDocumentSelect.value = "";
+    if (elements.billingPaymentForm?.elements?.amount) {
+      elements.billingPaymentForm.elements.amount.value = "";
+    }
+  }
+  if (elements.billingPaymentPanelHint) {
+    elements.billingPaymentPanelHint.textContent = hasPendingDocuments
+      ? `${pendingDocuments.length} factura${pendingDocuments.length === 1 ? "" : "s"} pendiente${
+          pendingDocuments.length === 1 ? "" : "s"
+        } disponible${pendingDocuments.length === 1 ? "" : "s"} para registrar abonos.`
+      : "Los abonos solo se habilitan para facturas pendientes.";
+  }
+}
+
+function renderBillingWizard() {
+  const form = elements.billingDocumentForm;
+  if (!form) {
+    return;
+  }
+  const currentStep = billingWizardState.currentStep;
+  form.querySelectorAll("[data-billing-stage]").forEach((stage) => {
+    stage.classList.toggle("is-hidden", Number(stage.dataset.billingStage) !== currentStep);
+  });
+  form.querySelectorAll("[data-billing-step]").forEach((button) => {
+    const step = Number(button.dataset.billingStep || 0);
+    button.classList.toggle("is-active", step === currentStep);
+    button.classList.toggle("is-complete", step < currentStep);
+    button.setAttribute("aria-current", step === currentStep ? "step" : "false");
+  });
+  elements.billingStepPrevButton?.classList.toggle("is-hidden", currentStep === 1);
+  elements.billingStepNextButton?.classList.toggle("is-hidden", currentStep === BILLING_WIZARD_STEPS.length);
+  elements.billingDocumentSubmitButton?.classList.toggle("is-hidden", currentStep !== BILLING_WIZARD_STEPS.length);
+  if (elements.billingStepNextButton) {
+    elements.billingStepNextButton.textContent =
+      currentStep === BILLING_WIZARD_STEPS.length - 1 ? "Ir al resumen" : "Siguiente";
+  }
+  if (elements.billingPaymentStepHint) {
+    const snapshot = getBillingDraftSnapshot();
+    elements.billingPaymentStepHint.textContent =
+      snapshot.documentType === "cotizacion"
+        ? "Las cotizaciones no generan cobro ni abonos. Este paso se mantiene solo como referencia comercial."
+        : snapshot.paymentMethod === "Pendiente"
+        ? "Puedes dejar la factura pendiente y, si ya recibiste dinero, registrar un abono inicial."
+        : "La factura quedara pagada al emitirse y el ingreso se registrara en la caja seleccionada.";
+  }
+  renderBillingWizardSummary();
+  renderBillingWizardReview();
+}
+
 function syncBillingDocumentFormState() {
   const defaultCashAccount = state.settings.billing_default_cash_account || "caja_menor";
-  const documentType = elements.billingDocumentTypeSelect?.value || "factura";
+  const documentType = getBillingDocumentTypeValue();
   const paymentMethod = elements.billingPaymentMethodSelect?.value || "Pendiente";
 
   [
@@ -4838,13 +5259,27 @@ function syncBillingDocumentFormState() {
     elements.billingPaymentMethodSelect.value = "Pendiente";
   }
 
+  if (elements.billingPaymentMethodSelect) {
+    elements.billingPaymentMethodSelect.disabled = documentType === "cotizacion";
+  }
+  if (elements.billingCashAccountSelect) {
+    elements.billingCashAccountSelect.disabled = documentType === "cotizacion";
+  }
+
   const shouldShowInitialPayment = documentType === "factura" && paymentMethod === "Pendiente";
   elements.billingInitialPaymentGroup?.classList.toggle("is-hidden", !shouldShowInitialPayment);
+  elements.billingInitialPaymentGroup
+    ?.querySelectorAll("input, select")
+    .forEach((field) => {
+      field.disabled = documentType === "cotizacion" || !shouldShowInitialPayment;
+    });
+  renderBillingWizard();
 }
 
 function renderSales() {
   ensureSalesReportDefaults();
   syncSalesDocumentModeUI();
+  renderBillingPaymentFormAvailability();
   const selectedDocument = state.billing_documents.find(
     (item) => String(item.id) === String(salesSelectedDocumentId)
   );
@@ -10987,9 +11422,7 @@ function renderSelects() {
   );
   populateSelect(
     elements.billingPaymentDocumentSelect,
-    state.billing_documents.filter(
-      (document) => document.document_type === "factura" && document.status === "Pendiente"
-    ),
+    getPendingBillingDocuments(),
     (document) =>
       `${document.document_number} / ${document.patient_name} / saldo ${formatMoney(
         document.balance_due || 0
@@ -16617,6 +17050,7 @@ function addDraftBillingLine() {
   }
   elements.billingLineQuantity.value = "1";
   renderBillingDraftLines();
+  renderBillingWizard();
 }
 
 function buildBillingDocumentPayload(form) {
@@ -16968,11 +17402,20 @@ async function handleLogout() {
 
 async function handleBillingDocumentSubmit(event) {
   event.preventDefault();
+  if (billingWizardState.currentStep < BILLING_WIZARD_STEPS.length) {
+    setBillingWizardStep(billingWizardState.currentStep + 1);
+    return;
+  }
+  for (let step = 1; step < BILLING_WIZARD_STEPS.length; step += 1) {
+    validateBillingWizardStep(step);
+  }
   const savedDocument = await api.saveBillingDocument(buildBillingDocumentPayload(event.currentTarget));
   billingDraft.lines = [];
+  billingWizardState.currentStep = 1;
   resetForm(event.currentTarget);
   setDateTimeDefaults();
   syncBillingDocumentFormState();
+  renderBillingDraftLines();
   salesReportState.loaded = false;
   await refreshData("Documento de facturacion guardado.");
   if (savedDocument?.id) {
@@ -16986,6 +17429,12 @@ async function handleBillingDocumentSubmit(event) {
 async function handleBillingPaymentSubmit(event) {
   event.preventDefault();
   const payload = serializeForm(event.currentTarget);
+  const pendingDocumentIds = new Set(
+    getPendingBillingDocuments().map((document) => String(document.id))
+  );
+  if (!pendingDocumentIds.has(String(payload.document_id || ""))) {
+    throw new Error("Solo puedes registrar abonos sobre facturas pendientes.");
+  }
   await api.registerBillingPayment(payload);
   resetForm(event.currentTarget);
   setDateTimeDefaults();
@@ -17650,6 +18099,22 @@ function handleBillingDraftClick(event) {
   }
   billingDraft.lines.splice(Number(button.dataset.removeBillingLine), 1);
   renderBillingDraftLines();
+  renderBillingWizard();
+}
+
+function handleBillingWizardClick(event) {
+  const stepButton = event.target.closest("button[data-billing-step]");
+  if (stepButton) {
+    setBillingWizardStep(Number(stepButton.dataset.billingStep || 1));
+    return;
+  }
+  if (event.target.closest("#billingStepPrevButton")) {
+    setBillingWizardStep(billingWizardState.currentStep - 1, { skipValidation: true });
+    return;
+  }
+  if (event.target.closest("#billingStepNextButton")) {
+    setBillingWizardStep(billingWizardState.currentStep + 1);
+  }
 }
 
 async function handleAppointmentsClick(event) {
@@ -19100,6 +19565,9 @@ function bindForms() {
     );
   }
   elements.billingDocumentForm.addEventListener("submit", wrapAsync(handleBillingDocumentSubmit));
+  elements.billingDocumentForm.addEventListener("click", handleBillingWizardClick);
+  elements.billingDocumentForm.addEventListener("input", renderBillingWizard);
+  elements.billingDocumentForm.addEventListener("change", renderBillingWizard);
   elements.billingPaymentForm.addEventListener("submit", wrapAsync(handleBillingPaymentSubmit));
   elements.cashMovementForm.addEventListener("submit", wrapAsync(handleCashMovementSubmit));
   if (elements.cashSessionOpenForm) {
