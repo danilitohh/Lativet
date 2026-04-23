@@ -4924,7 +4924,7 @@ function getBillingDraftSnapshot() {
     paymentMethod,
     paymentMethodLabel: humanStatus(paymentMethod),
     cashAccount,
-    cashAccountLabel: cashAccount ? formatBillingCashAccount(cashAccount) : "Sin caja",
+    cashAccountLabel: cashAccount ? cashAccountLabel(cashAccount) : "Sin caja",
     initialPaymentAmount,
     initialPaymentDate:
       documentType === "factura" && paymentMethod === "Pendiente"
