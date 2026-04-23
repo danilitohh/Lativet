@@ -1541,13 +1541,7 @@ const sectionSubsections = {
       {
         value: "inventario",
         label: "Inventario",
-        panels: [
-          "salesCatalogPanel",
-          "salesProviderFormPanel",
-          "salesCatalogFormPanel",
-          "salesStockFormPanel",
-          "salesStockHistoryPanel",
-        ],
+        panels: ["salesCatalogPanel"],
       },
       {
         value: "precios",
@@ -4469,6 +4463,254 @@ function buildInventoryDetailPanel(item) {
   `;
 }
 
+function buildInventoryProviderQuickForm() {
+  return `
+    <article id="salesInventoryProviderCard" class="sales-inventory-form-card">
+      <div class="sales-inventory-form-card__header">
+        <div>
+          <p class="eyebrow">Proveedor</p>
+          <h4>Nuevo proveedor</h4>
+        </div>
+        <button class="ghost-button" data-inventory-toggle-panel="provider" type="button">Cerrar</button>
+      </div>
+      <form class="sales-inventory-inline-form" data-inventory-inline-form="provider">
+        <div class="sales-inventory-inline-form__grid">
+          <label>
+            <span>Nombre</span>
+            <input name="name" required />
+          </label>
+          <label>
+            <span>Contacto</span>
+            <input name="contact_name" />
+          </label>
+          <label>
+            <span>Telefono</span>
+            <input name="phone" />
+          </label>
+          <label>
+            <span>Correo</span>
+            <input name="email" type="email" />
+          </label>
+        </div>
+        <label>
+          <span>Notas</span>
+          <textarea name="notes" rows="3" placeholder="Observaciones internas del proveedor."></textarea>
+        </label>
+        <div class="sales-inventory-inline-form__actions">
+          <button class="ghost-button" data-inventory-toggle-panel="provider" type="button">Cancelar</button>
+          <button class="primary-button" type="submit">Guardar proveedor</button>
+        </div>
+      </form>
+    </article>
+  `;
+}
+
+function buildInventoryProductQuickForm() {
+  const providers = state.providers
+    .map(
+      (provider) =>
+        `<option value="${escapeHtml(String(provider.id || ""))}">${escapeHtml(
+          provider.name || "Proveedor"
+        )}</option>`
+    )
+    .join("");
+  return `
+    <article id="salesInventoryProductCard" class="sales-inventory-form-card">
+      <div class="sales-inventory-form-card__header">
+        <div>
+          <p class="eyebrow">Producto</p>
+          <h4>Nuevo producto</h4>
+        </div>
+        <button class="ghost-button" data-inventory-toggle-panel="product" type="button">Cerrar</button>
+      </div>
+      <form class="sales-inventory-inline-form" data-inventory-inline-form="product">
+        <div class="sales-inventory-inline-form__grid sales-inventory-inline-form__grid--product">
+          <label>
+            <span>Proveedor</span>
+            <select name="provider_id">
+              <option value="">Sin proveedor</option>
+              ${providers}
+            </select>
+          </label>
+          <label>
+            <span>Categoria</span>
+            <input name="category" placeholder="Medicamento, alimento..." required />
+          </label>
+          <label class="sales-inventory-inline-form__field--wide">
+            <span>Nombre</span>
+            <input name="name" required />
+          </label>
+          <label>
+            <span>Costo base</span>
+            <input name="purchase_cost" type="number" step="0.01" min="0" value="0" />
+          </label>
+          <label>
+            <span>Margen %</span>
+            <input name="margin_percent" type="number" step="0.01" min="0" value="0" />
+          </label>
+          <label>
+            <span>Presentacion</span>
+            <input name="presentation_total" type="number" step="0.01" min="0.01" value="1" />
+          </label>
+          <label>
+            <span>Stock actual</span>
+            <input name="stock_quantity" type="number" step="0.01" value="0" />
+          </label>
+          <label>
+            <span>Stock minimo</span>
+            <input name="min_stock" type="number" step="0.01" min="0" value="0" />
+          </label>
+        </div>
+        <label class="checkbox-row sales-inventory-inline-form__checkbox">
+          <input name="track_inventory" type="checkbox" checked />
+          <span>Controlar inventario</span>
+        </label>
+        <label>
+          <span>Notas</span>
+          <textarea name="notes" rows="3" placeholder="Notas internas, codigo, lote o detalle adicional."></textarea>
+        </label>
+        <div class="sales-inventory-inline-form__actions">
+          <button class="ghost-button" data-inventory-toggle-panel="product" type="button">Cancelar</button>
+          <button class="primary-button" type="submit">Guardar producto</button>
+        </div>
+      </form>
+    </article>
+  `;
+}
+
+function buildInventorySupportSection(selectedItem) {
+  const trackableItems = state.catalog_items.filter((item) => item.track_inventory);
+  const selectedTrackableItem =
+    selectedItem && selectedItem.track_inventory
+      ? selectedItem
+      : trackableItems.find((item) => String(item.id || "") === String(inventoryUiState.selectedItemId || "")) ||
+        trackableItems[0] ||
+        null;
+  const selectedTrackableId = String(selectedTrackableItem?.id || "");
+  const adjustmentOptions = trackableItems
+    .map(
+      (item) =>
+        `<option value="${escapeHtml(String(item.id || ""))}"${
+          String(item.id || "") === selectedTrackableId ? " selected" : ""
+        }>${escapeHtml(item.name || "Producto")} / stock ${escapeHtml(
+          formatEditableNumber(Number(item.stock_quantity || 0))
+        )}</option>`
+    )
+    .join("");
+  const recentMovements = [...(state.stock_movements || [])]
+    .sort(
+      (left, right) =>
+        new Date(right?.movement_date || 0).getTime() - new Date(left?.movement_date || 0).getTime()
+    )
+    .slice(0, 6);
+  const movementItems = recentMovements.length
+    ? recentMovements
+        .map((movement) => {
+          const isEntry = movement.movement_type === "entrada";
+          const quantity = Number(movement.quantity || 0);
+          return `
+            <article class="sales-inventory-activity__item">
+              <div class="sales-inventory-activity__copy">
+                <strong>${escapeHtml(movement.item_name || "Movimiento")}</strong>
+                <small>${escapeHtml(humanStatus(movement.movement_type))} · ${escapeHtml(
+                  formatDateTime(movement.movement_date)
+                )}</small>
+              </div>
+              <div class="sales-inventory-activity__meta">
+                <strong class="${isEntry ? "sales-stock-ok" : "sales-stock-alert"}">${
+                  isEntry ? "+" : "-"
+                }${escapeHtml(formatEditableNumber(quantity))}</strong>
+                <small>Saldo ${escapeHtml(
+                  formatEditableNumber(Number(movement.balance_after || 0))
+                )}</small>
+              </div>
+            </article>
+          `;
+        })
+        .join("")
+    : '<div class="sales-inventory-support__empty">Aun no hay movimientos recientes de inventario.</div>';
+  return `
+    <div class="sales-inventory-support">
+      <article id="salesInventoryAdjustCard" class="sales-inventory-support-card">
+        <div class="sales-inventory-support-card__header">
+          <div>
+            <p class="eyebrow">Inventario</p>
+            <h4>Ajuste manual</h4>
+          </div>
+          ${
+            inventoryUiState.showStockForm
+              ? '<button class="ghost-button" data-inventory-close-support="stock" type="button">Cerrar</button>'
+              : ""
+          }
+        </div>
+        ${
+          !trackableItems.length
+            ? '<div class="sales-inventory-support__empty">Aun no hay productos con control de inventario activo.</div>'
+            : inventoryUiState.showStockForm
+            ? `
+              <form class="sales-inventory-inline-form sales-inventory-inline-form--support" data-inventory-inline-form="stock">
+                <div class="sales-inventory-inline-form__grid">
+                  <label class="sales-inventory-inline-form__field--wide">
+                    <span>Producto</span>
+                    <select name="item_id" required>
+                      ${adjustmentOptions}
+                    </select>
+                  </label>
+                  <label>
+                    <span>Tipo</span>
+                    <select name="movement_type">
+                      <option value="entrada">Entrada</option>
+                      <option value="salida">Salida</option>
+                    </select>
+                  </label>
+                  <label>
+                    <span>Fecha</span>
+                    <input name="movement_date" type="date" value="${escapeHtml(
+                      toIsoDate(new Date())
+                    )}" required />
+                  </label>
+                  <label>
+                    <span>Cantidad</span>
+                    <input name="quantity" type="number" step="0.01" min="0.01" required />
+                  </label>
+                </div>
+                <label>
+                  <span>Nota</span>
+                  <textarea name="note" rows="3" placeholder="Motivo del ajuste manual."></textarea>
+                </label>
+                <div class="sales-inventory-inline-form__actions">
+                  <button class="ghost-button" data-inventory-close-support="stock" type="button">Cancelar</button>
+                  <button class="primary-button" type="submit">Aplicar ajuste</button>
+                </div>
+              </form>
+            `
+            : `
+              <div class="sales-inventory-support__intro">
+                <p class="sales-section-note">${
+                  selectedTrackableItem
+                    ? `Producto sugerido: ${escapeHtml(selectedTrackableItem.name || "Producto")}.`
+                    : "Selecciona un producto de la tabla para preparar el ajuste."
+                }</p>
+                <button class="secondary-button" data-inventory-open-support="stock" type="button">Registrar ajuste</button>
+              </div>
+            `
+        }
+      </article>
+
+      <article class="sales-inventory-support-card">
+        <div class="sales-inventory-support-card__header">
+          <div>
+            <p class="eyebrow">Actividad</p>
+            <h4>Movimientos recientes</h4>
+          </div>
+          <span class="sales-section-note">Ultimos 6 registros</span>
+        </div>
+        <div class="sales-inventory-activity">${movementItems}</div>
+      </article>
+    </div>
+  `;
+}
+
 function buildInventoryTable(items) {
   const filterOptions = getInventoryFilterOptions(items);
   const filteredItems = getFilteredInventoryItems(items);
@@ -4556,6 +4798,12 @@ function buildInventoryTable(items) {
         </td>
       </tr>
     `;
+  const managementPanels = [
+    inventoryUiState.showProviderForm ? buildInventoryProviderQuickForm() : "",
+    inventoryUiState.showProductForm ? buildInventoryProductQuickForm() : "",
+  ]
+    .filter(Boolean)
+    .join("");
 
   return `
     <div class="sales-inventory-browser">
@@ -4588,6 +4836,11 @@ function buildInventoryTable(items) {
       </aside>
 
       <div class="sales-inventory-browser__main">
+        ${
+          managementPanels
+            ? `<div class="sales-inventory-management">${managementPanels}</div>`
+            : ""
+        }
         <div class="sales-inventory-toolbar">
           <label class="sales-inventory-toolbar__search">
             <span>Buscar</span>
@@ -4722,6 +4975,8 @@ function buildInventoryTable(items) {
             </label>
           </div>
         </div>
+
+        ${buildInventorySupportSection(selectedItem)}
       </div>
 
       <aside class="sales-inventory-browser__detail">
@@ -4876,12 +5131,57 @@ function syncInventoryPanelVisibility() {
     return;
   }
   elements.salesCatalogPanel?.classList.remove("is-hidden");
-  elements.salesStockFormPanel?.classList.toggle("is-hidden", !inventoryUiState.showStockForm);
-  elements.salesStockHistoryPanel?.classList.remove("is-hidden");
-  elements.salesProviderFormPanel?.classList.toggle("is-hidden", !inventoryUiState.showProviderForm);
-  elements.salesCatalogFormPanel?.classList.toggle("is-hidden", !inventoryUiState.showProductForm);
+  elements.salesProviderFormPanel?.classList.add("is-hidden");
+  elements.salesCatalogFormPanel?.classList.add("is-hidden");
+  elements.salesStockFormPanel?.classList.add("is-hidden");
+  elements.salesStockHistoryPanel?.classList.add("is-hidden");
   elements.salesProvidersPanel?.classList.add("is-hidden");
   syncSectionContainers("sales");
+}
+
+async function handleInventoryInlineFormSubmit(event) {
+  const form = event.target.closest("[data-inventory-inline-form]");
+  if (!form) {
+    return;
+  }
+  event.preventDefault();
+  const formType = form.dataset.inventoryInlineForm || "";
+  const submitButton = form.querySelector('button[type="submit"]');
+  if (submitButton) {
+    submitButton.disabled = true;
+  }
+  try {
+    if (formType === "provider") {
+      await api.saveProvider(serializeForm(form));
+      inventoryUiState.showProviderForm = false;
+      await refreshData("Proveedor guardado.");
+      setActiveSection("sales");
+      setSectionSubsection("sales", "inventario");
+      return;
+    }
+    if (formType === "product") {
+      const savedItem = await api.saveCatalogItem(serializeForm(form));
+      inventoryUiState.showProductForm = false;
+      inventoryUiState.selectedItemId = savedItem?.id || inventoryUiState.selectedItemId;
+      salesReportState.loaded = false;
+      await refreshData("Item de catalogo guardado.");
+      setActiveSection("sales");
+      setSectionSubsection("sales", "inventario");
+      return;
+    }
+    if (formType === "stock") {
+      await api.saveStockAdjustment(serializeForm(form));
+      inventoryUiState.showStockForm = false;
+      salesReportState.loaded = false;
+      await refreshData("Ajuste de inventario aplicado.");
+      setActiveSection("sales");
+      setSectionSubsection("sales", "inventario");
+    }
+  } finally {
+    if (submitButton) {
+      submitButton.disabled = false;
+    }
+  }
 }
 
 async function handleInventoryDetailSave(itemId) {
@@ -5030,14 +5330,38 @@ async function handleCatalogItemsClick(event) {
     let scrollTarget = "salesCatalogPanel";
     if (targetPanel === "provider") {
       inventoryUiState.showProviderForm = !inventoryUiState.showProviderForm;
-      scrollTarget = inventoryUiState.showProviderForm ? "salesProviderFormPanel" : "salesCatalogPanel";
+      scrollTarget = inventoryUiState.showProviderForm ? "salesInventoryProviderCard" : "salesCatalogPanel";
     }
     if (targetPanel === "product") {
       inventoryUiState.showProductForm = !inventoryUiState.showProductForm;
-      scrollTarget = inventoryUiState.showProductForm ? "salesCatalogFormPanel" : "salesCatalogPanel";
+      scrollTarget = inventoryUiState.showProductForm ? "salesInventoryProductCard" : "salesCatalogPanel";
     }
     renderSales();
     scrollToDashboardTarget(scrollTarget);
+    return;
+  }
+  const openSupportButton = event.target.closest("[data-inventory-open-support]");
+  if (openSupportButton) {
+    const supportType = openSupportButton.dataset.inventoryOpenSupport || "";
+    if (supportType === "stock") {
+      const hasTrackableItems = state.catalog_items.some((item) => item.track_inventory);
+      if (!hasTrackableItems) {
+        showStatus("Primero crea un producto con control de inventario activo.", "info");
+        return;
+      }
+      inventoryUiState.showStockForm = true;
+      renderSales();
+      scrollToDashboardTarget("salesInventoryAdjustCard");
+    }
+    return;
+  }
+  const closeSupportButton = event.target.closest("[data-inventory-close-support]");
+  if (closeSupportButton) {
+    const supportType = closeSupportButton.dataset.inventoryCloseSupport || "";
+    if (supportType === "stock") {
+      inventoryUiState.showStockForm = false;
+      renderSales();
+    }
     return;
   }
   const clearFiltersButton = event.target.closest("[data-inventory-clear-filters]");
@@ -5082,11 +5406,8 @@ async function handleCatalogItemsClick(event) {
     inventoryUiState.selectedItemId = itemId;
     inventoryUiState.showStockForm = true;
     renderSales();
-    if (elements.stockAdjustmentItemSelect) {
-      elements.stockAdjustmentItemSelect.value = itemId;
-    }
     showStatus(`"${item.name || "Producto"}" listo para ajuste manual.`, "info");
-    scrollToDashboardTarget("salesStockFormPanel");
+    scrollToDashboardTarget("salesInventoryAdjustCard");
     return;
   }
   const saveInventoryDetailButton = event.target.closest("[data-save-inventory-detail]");
@@ -20325,6 +20646,7 @@ function bindForms() {
     elements.catalogItemsList.addEventListener("input", handleCatalogItemsInput);
     elements.catalogItemsList.addEventListener("change", handleCatalogItemsInput);
     elements.catalogItemsList.addEventListener("click", wrapAsync(handleCatalogItemsClick));
+    elements.catalogItemsList.addEventListener("submit", wrapAsync(handleInventoryInlineFormSubmit));
   }
   elements.appointmentForm.addEventListener("submit", wrapAsync(handleAppointmentSubmit));
   elements.appointmentForm.addEventListener("input", clearAppointmentFormFeedback);
