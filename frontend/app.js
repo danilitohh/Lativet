@@ -1989,7 +1989,20 @@ function getAgendaEntityInitials(value, fallback = "CT") {
 
 function getAgendaAppointmentIconPath(typeKey) {
   const safeType = AGENDA_APPOINTMENT_TYPE_META[typeKey] ? typeKey : "default";
-  return `/iconos/agenda/${safeType}.svg`;
+  return (
+    {
+      consulta: "/iconos/agenda/citas%20activas.png",
+      vacunacion: "/iconos/agenda/vacunacion.png",
+      cirugia: "/iconos/agenda/cirugia.png",
+      peluqueria: "/iconos/agenda/peluqueria.png",
+      seguimiento: "/iconos/agenda/seguimiento.png",
+      laboratorio: "/iconos/agenda/laboratorio.png",
+      imagen: "/iconos/agenda/imagen.png",
+      desparasitacion: "/iconos/agenda/desparasitacion.png",
+      documento: "/iconos/agenda/documento.png",
+      default: "/iconos/agenda/default.png",
+    }[safeType] || "/iconos/agenda/default.png"
+  );
 }
 
 function getAgendaAppointmentIconMarkup(typeKey) {
