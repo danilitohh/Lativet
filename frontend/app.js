@@ -2382,12 +2382,15 @@ function cashAccountLabel(value) {
 }
 
 async function apiRequest(path, options = {}) {
+  const requestMethod = String(options.method || "GET").toUpperCase();
   const response = await fetch(path, {
+    ...options,
+    method: requestMethod,
+    cache: options.cache || "no-store",
     headers: {
       "Content-Type": "application/json",
       ...(options.headers || {}),
     },
-    ...options,
   });
   const contentType = response.headers.get("content-type") || "";
   let payload = null;

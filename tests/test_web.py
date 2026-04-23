@@ -46,6 +46,15 @@ class WebSmokeTests(unittest.TestCase):
         self.assertIn("dashboard", snapshot)
         self.assertIn("compliance", snapshot)
 
+        bootstrap_response = self.client.get("/api/bootstrap")
+        self.assertEqual(
+            bootstrap_response.headers.get("Cache-Control"),
+            "no-store, no-cache, must-revalidate, max-age=0",
+        )
+        self.assertEqual(bootstrap_response.headers.get("Pragma"), "no-cache")
+        self.assertEqual(bootstrap_response.headers.get("Expires"), "0")
+        bootstrap_response.close()
+
     def test_vercel_requires_persistent_database_config(self) -> None:
         with patch.dict(
             os.environ,

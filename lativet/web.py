@@ -94,6 +94,14 @@ def create_app(base_dir: Path | None = None, data_dir: Path | None = None) -> Fl
         status_code = 200 if result.get("ok") else 400
         return jsonify(result), status_code
 
+    @app.after_request
+    def prevent_api_caching(response):
+        if request.path.startswith("/api/"):
+            response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+            response.headers["Pragma"] = "no-cache"
+            response.headers["Expires"] = "0"
+        return response
+
     def job_authorized() -> bool:
         cron_secret = os.getenv("CRON_SECRET", "").strip()
         if not cron_secret:
