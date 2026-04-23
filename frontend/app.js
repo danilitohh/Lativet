@@ -36,7 +36,6 @@ const inventoryUiState = {
   category: "",
   providerId: "",
   providerDraftId: "",
-  showProviderDirectory: false,
   status: "all",
   lowStockOnly: false,
   selectedItemId: "",
@@ -3595,6 +3594,10 @@ function cacheElements() {
     "patientFormSubmitButton",
     "cancelPatientEditButton",
     "providerForm",
+    "providerDirectoryModal",
+    "providerDirectoryModalBody",
+    "providerDirectoryModalSummary",
+    "closeProviderDirectoryModalButton",
     "catalogForm",
     "billingDocumentForm",
     "billingSettingsForm",
@@ -4710,7 +4713,6 @@ function buildInventoryProviderQuickForm() {
 
 function buildInventoryProviderRoster() {
   const providers = sortProvidersByName(state.providers || []);
-  const hasProviders = providers.length > 0;
   const providerItems = providers.length
     ? providers
         .map((provider) => {
@@ -4718,27 +4720,43 @@ function buildInventoryProviderRoster() {
           const isEditing =
             inventoryUiState.showProviderForm &&
             providerId === String(inventoryUiState.providerDraftId || "");
-          const contactLine = [
-            provider.contact_name || "",
-            provider.phone || "",
-            provider.email || "",
-          ]
-            .filter(Boolean)
-            .join(" / ");
           const itemsCount = Number(provider.items_count || 0);
+          const contactName = provider.contact_name || "Sin contacto";
+          const phone = provider.phone || "Sin telefono";
+          const email = provider.email || "Sin correo";
+          const notes = provider.notes || "Sin notas internas.";
           return `
-            <article class="sales-inventory-provider-item${isEditing ? " is-active" : ""}">
-              <div class="sales-inventory-provider-item__header">
-                <div class="sales-inventory-provider-item__copy">
-                  <strong>${escapeHtml(provider.name || "Proveedor")}</strong>
-                  <small>${escapeHtml(contactLine || "Sin contacto registrado")}</small>
+            <article class="provider-directory-list__item${isEditing ? " is-active" : ""}" role="listitem">
+              <div class="provider-directory-list__header">
+                <div class="provider-directory-list__identity">
+                  <span class="provider-directory-list__avatar">${escapeHtml(
+                    getInventoryItemInitials(provider.name || "Proveedor")
+                  )}</span>
+                  <div class="provider-directory-list__copy">
+                    <strong>${escapeHtml(provider.name || "Proveedor")}</strong>
+                    <small>${escapeHtml(contactName)}</small>
+                  </div>
                 </div>
                 <span class="sales-stock-badge sales-stock-badge--neutral">${escapeHtml(
-                  `${itemsCount} ${itemsCount === 1 ? "item" : "items"}`
+                  `${itemsCount} ${itemsCount === 1 ? "producto" : "productos"}`
                 )}</span>
               </div>
-              <p>${escapeHtml(provider.notes || "Sin notas internas.")}</p>
-              <div class="sales-inventory-provider-item__actions">
+              <div class="provider-directory-list__meta">
+                <div class="provider-directory-list__meta-item">
+                  <span>Telefono</span>
+                  <strong>${escapeHtml(phone)}</strong>
+                </div>
+                <div class="provider-directory-list__meta-item">
+                  <span>Correo</span>
+                  <strong>${escapeHtml(email)}</strong>
+                </div>
+                <div class="provider-directory-list__meta-item">
+                  <span>Estado</span>
+                  <strong>${itemsCount ? "Con productos asociados" : "Sin productos asociados"}</strong>
+                </div>
+              </div>
+              <p class="provider-directory-list__notes">${escapeHtml(notes)}</p>
+              <div class="provider-directory-list__actions">
                 <button class="ghost-button" data-inventory-edit-provider="${escapeHtml(
                   providerId
                 )}" type="button">Editar</button>
@@ -4752,44 +4770,7 @@ function buildInventoryProviderRoster() {
         .join("")
     : '<div class="sales-inventory-support__empty">Aun no hay proveedores registrados.</div>';
   return `
-    <article class="sales-inventory-form-card sales-inventory-provider-roster">
-      <div class="sales-inventory-form-card__header sales-inventory-provider-roster__header">
-        <div class="sales-inventory-provider-roster__header-main">
-          <p class="eyebrow">Directorio</p>
-          <h4>Proveedores registrados</h4>
-          <small class="sales-inventory-provider-roster__summary">${escapeHtml(
-            hasProviders
-              ? `Consulta y administra ${providers.length} ${
-                  providers.length === 1 ? "proveedor" : "proveedores"
-                }.`
-              : "Aun no hay proveedores registrados."
-          )}</small>
-        </div>
-        <div class="sales-inventory-provider-roster__header-actions">
-          <span class="sales-section-note">${escapeHtml(
-            `${providers.length} ${providers.length === 1 ? "proveedor" : "proveedores"}`
-          )}</span>
-          ${
-            hasProviders
-              ? `<button class="ghost-button" data-inventory-toggle-directory="provider" type="button">${
-                  inventoryUiState.showProviderDirectory ? "Ocultar" : "Ver directorio"
-                }</button>`
-              : ""
-          }
-        </div>
-      </div>
-      ${
-        hasProviders
-          ? `
-            <div class="sales-inventory-provider-roster__body${
-              inventoryUiState.showProviderDirectory ? " is-open" : ""
-            }">
-              <div class="sales-inventory-provider-list">${providerItems}</div>
-            </div>
-          `
-          : `<div class="sales-inventory-provider-roster__body is-open"><div class="sales-inventory-provider-list">${providerItems}</div></div>`
-      }
-    </article>
+    <div class="provider-directory-list" role="list">${providerItems}</div>
   `;
 }
 
@@ -5109,14 +5090,19 @@ function buildInventoryTable(items) {
             <h4>Nuevo proveedor</h4>
             <p>Registra proveedores de productos y medicamentos.</p>
           </div>
-          <button
-            class="secondary-button"
-            data-inventory-toggle-panel="provider"
-            type="button"
-          >${inventoryUiState.showProviderForm ? "Ocultar formulario" : "Agregar proveedor"}</button>
+          <div class="sales-inventory-quick-card__actions">
+            <button
+              class="secondary-button"
+              data-inventory-toggle-panel="provider"
+              type="button"
+            >${inventoryUiState.showProviderForm ? "Ocultar formulario" : "Agregar proveedor"}</button>
+            <button
+              class="ghost-button"
+              data-open-provider-directory="true"
+              type="button"
+            >Ver directorio</button>
+          </div>
         </article>
-
-        ${buildInventoryProviderRoster()}
 
         <article class="sales-inventory-quick-card">
           <div class="sales-inventory-quick-card__icon">+</div>
@@ -5469,7 +5455,6 @@ async function submitInventoryInlineForm(form) {
       upsertProviderInState(savedProvider);
       inventoryUiState.showProviderForm = false;
       inventoryUiState.providerDraftId = "";
-      inventoryUiState.showProviderDirectory = true;
       salesReportState.loaded = false;
       setActiveSection("sales");
       setSectionSubsection("sales", "inventario");
@@ -5622,7 +5607,7 @@ async function handleInventoryItemDelete(itemId) {
 }
 
 async function handleInventoryProviderDelete(providerId) {
-  if (!providerId || !elements.catalogItemsList) {
+  if (!providerId) {
     return;
   }
   const provider = state.providers.find((entry) => String(entry.id || "") === String(providerId));
@@ -5640,9 +5625,7 @@ async function handleInventoryProviderDelete(providerId) {
   if (!confirmed) {
     return;
   }
-  const deleteButtons = Array.from(
-    elements.catalogItemsList.querySelectorAll(`[data-inventory-delete-provider="${providerId}"]`)
-  );
+  const deleteButtons = queryAll(`[data-inventory-delete-provider="${providerId}"]`);
   deleteButtons.forEach((button) => {
     button.disabled = true;
   });
@@ -5651,7 +5634,6 @@ async function handleInventoryProviderDelete(providerId) {
     removeProviderFromState(providerId);
     inventoryUiState.showProviderForm = false;
     inventoryUiState.providerDraftId = "";
-    inventoryUiState.showProviderDirectory = state.providers.length > 0;
     salesReportState.loaded = false;
     setActiveSection("sales");
     setSectionSubsection("sales", "inventario");
@@ -5798,20 +5780,15 @@ async function handleCatalogItemsClick(event) {
     scrollToDashboardTarget(scrollTarget);
     return;
   }
-  const toggleDirectoryButton = event.target.closest("[data-inventory-toggle-directory]");
-  if (toggleDirectoryButton) {
-    const targetDirectory = toggleDirectoryButton.dataset.inventoryToggleDirectory || "";
-    if (targetDirectory === "provider") {
-      inventoryUiState.showProviderDirectory = !inventoryUiState.showProviderDirectory;
-      renderSales();
-    }
+  const openProviderDirectoryButton = event.target.closest("[data-open-provider-directory]");
+  if (openProviderDirectoryButton) {
+    openProviderDirectoryModal();
     return;
   }
   const editProviderButton = event.target.closest("[data-inventory-edit-provider]");
   if (editProviderButton) {
     inventoryUiState.providerDraftId = editProviderButton.dataset.inventoryEditProvider || "";
     inventoryUiState.showProviderForm = true;
-    inventoryUiState.showProviderDirectory = true;
     renderSales();
     scrollToDashboardTarget("salesInventoryProviderCard");
     return;
@@ -5906,6 +5883,26 @@ async function handleCatalogItemsClick(event) {
     return;
   }
   await handleCatalogPricingSave(saveButton.dataset.savePricing || "");
+}
+
+async function handleProviderDirectoryModalClick(event) {
+  if (event.target.dataset.closeProviderDirectoryModal) {
+    closeProviderDirectoryModal();
+    return;
+  }
+  const editProviderButton = event.target.closest("[data-inventory-edit-provider]");
+  if (editProviderButton) {
+    inventoryUiState.providerDraftId = editProviderButton.dataset.inventoryEditProvider || "";
+    inventoryUiState.showProviderForm = true;
+    closeProviderDirectoryModal();
+    renderSales();
+    scrollToDashboardTarget("salesInventoryProviderCard");
+    return;
+  }
+  const deleteProviderButton = event.target.closest("[data-inventory-delete-provider]");
+  if (deleteProviderButton) {
+    await handleInventoryProviderDelete(deleteProviderButton.dataset.inventoryDeleteProvider || "");
+  }
 }
 
 function getSelectedCashSessionDate() {
@@ -6864,6 +6861,7 @@ function renderSales() {
   if (elements.catalogItemsList) {
     elements.catalogItemsList.innerHTML = catalogPanelMeta.content;
   }
+  renderProviderDirectoryModal();
   if (getActiveSalesSubsectionValue() === "inventario") {
     bindInventoryInlineForms();
     syncInventoryPanelVisibility();
@@ -13772,6 +13770,39 @@ function closeOwnerModal(options = {}) {
   }
 }
 
+function renderProviderDirectoryModal() {
+  if (!elements.providerDirectoryModalBody) {
+    return;
+  }
+  elements.providerDirectoryModalBody.innerHTML = buildInventoryProviderRoster();
+  if (elements.providerDirectoryModalSummary) {
+    const providers = Array.isArray(state.providers) ? state.providers.length : 0;
+    elements.providerDirectoryModalSummary.textContent = providers
+      ? `${providers} ${providers === 1 ? "proveedor registrado" : "proveedores registrados"}`
+      : "Aun no hay proveedores registrados.";
+  }
+}
+
+function openProviderDirectoryModal() {
+  if (!elements.providerDirectoryModal) {
+    return;
+  }
+  renderProviderDirectoryModal();
+  elements.providerDirectoryModal.parentElement?.appendChild(elements.providerDirectoryModal);
+  elements.providerDirectoryModal.classList.remove("is-hidden");
+  elements.providerDirectoryModal.setAttribute("aria-hidden", "false");
+  syncModalOpenState();
+}
+
+function closeProviderDirectoryModal() {
+  if (!elements.providerDirectoryModal) {
+    return;
+  }
+  elements.providerDirectoryModal.classList.add("is-hidden");
+  elements.providerDirectoryModal.setAttribute("aria-hidden", "true");
+  syncModalOpenState();
+}
+
 function normalizeDateFieldValue(value) {
   if (!value) {
     return "";
@@ -18673,7 +18704,6 @@ async function handleProviderSubmit(event) {
     inventoryUiState.showProviderForm = false;
   }
   inventoryUiState.providerDraftId = "";
-  inventoryUiState.showProviderDirectory = true;
   salesReportState.loaded = false;
   setActiveSection("sales");
   if (isInventoryView) {
@@ -20220,6 +20250,15 @@ function bindForms() {
         closeOwnerModal();
       }
     });
+  }
+  if (elements.closeProviderDirectoryModalButton) {
+    elements.closeProviderDirectoryModalButton.addEventListener("click", closeProviderDirectoryModal);
+  }
+  if (elements.providerDirectoryModal) {
+    elements.providerDirectoryModal.addEventListener(
+      "click",
+      wrapAsync(handleProviderDirectoryModalClick)
+    );
   }
   if (elements.userForm) {
     elements.userForm.addEventListener("submit", wrapAsync(handleUserSubmit));

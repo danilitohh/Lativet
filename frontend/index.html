@@ -411,6 +411,21 @@
           </div>
         </div>
 
+        <div id="providerDirectoryModal" class="modal-shell is-hidden" aria-hidden="true">
+          <div class="modal-backdrop" data-close-provider-directory-modal="true"></div>
+          <div class="modal-card provider-directory-modal" role="dialog" aria-modal="true" aria-labelledby="providerDirectoryModalTitle">
+            <div class="panel-heading">
+              <div>
+                <p class="eyebrow">Inventario</p>
+                <h3 id="providerDirectoryModalTitle">Lista de proveedores</h3>
+                <p id="providerDirectoryModalSummary" class="meta-copy">Aun no hay proveedores registrados.</p>
+              </div>
+              <button id="closeProviderDirectoryModalButton" class="ghost-button" type="button">Cerrar</button>
+            </div>
+            <div id="providerDirectoryModalBody" class="provider-directory-modal__body"></div>
+          </div>
+        </div>
+
         <section id="agenda" class="workspace-section">
           <div class="section-hero">
             <div>
