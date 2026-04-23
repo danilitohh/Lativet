@@ -9234,6 +9234,443 @@ textarea:focus {
   color: var(--danger);
 }
 
+.agenda-sidebar-stack {
+  display: grid;
+  gap: 16px;
+}
+
+.agenda-quick-panel,
+.agenda-next-panel {
+  padding: 14px;
+}
+
+.agenda-quick-heading,
+.agenda-next-heading {
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.agenda-quick-heading .meta-copy {
+  margin: 0;
+  color: var(--brand-strong);
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+
+.agenda-quick-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.agenda-quick-stat,
+.agenda-next-card,
+.agenda-event-chip,
+.agenda-timeline-event {
+  border: 1px solid var(--agenda-border, rgba(119, 142, 173, 0.16));
+  background: linear-gradient(135deg, var(--agenda-bg, rgba(93, 143, 242, 0.1)), rgba(255, 255, 255, 0.98));
+}
+
+.agenda-quick-stat {
+  min-height: 104px;
+  padding: 14px 12px;
+  border-radius: 18px;
+  display: grid;
+  align-content: start;
+  gap: 8px;
+}
+
+.agenda-quick-stat strong {
+  font-family: var(--font-head);
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+.agenda-quick-stat span {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.agenda-quick-stat__icon,
+.agenda-list-title__main {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.agenda-next-appointment {
+  display: grid;
+}
+
+.agenda-next-card {
+  width: 100%;
+  padding: 14px;
+  border-radius: 20px;
+  display: grid;
+  gap: 14px;
+  text-align: left;
+  box-shadow: 0 16px 32px rgba(33, 49, 75, 0.08);
+}
+
+.agenda-next-card--empty {
+  background: rgba(255, 255, 255, 0.94);
+  border-color: rgba(119, 142, 173, 0.14);
+  cursor: default;
+}
+
+.agenda-next-card--empty strong {
+  font-size: 0.9rem;
+}
+
+.agenda-next-card--empty p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+
+.agenda-next-card__top {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+}
+
+.agenda-next-card__avatar {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.86rem;
+  color: var(--agenda-tone, var(--brand-strong));
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.86);
+}
+
+.agenda-next-card__copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.agenda-next-card__copy strong,
+.agenda-timeline-event__patient {
+  font-size: 0.82rem;
+  line-height: 1.2;
+}
+
+.agenda-next-card__copy strong,
+.agenda-next-card__copy span,
+.agenda-list-title__main strong,
+.agenda-timeline-event__patient,
+.agenda-timeline-event__text,
+.agenda-event-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agenda-next-card__copy span {
+  color: rgba(15, 34, 48, 0.68);
+  font-size: 0.74rem;
+}
+
+.agenda-next-card__time,
+.agenda-timeline-event__meta {
+  display: grid;
+  gap: 4px;
+  justify-items: end;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.agenda-next-card__time span,
+.agenda-timeline-event__time {
+  color: var(--agenda-tone, var(--brand-strong));
+  font-weight: 700;
+}
+
+.agenda-next-card__time small,
+.agenda-timeline-event__duration {
+  color: rgba(15, 34, 48, 0.56);
+  font-size: 0.68rem;
+}
+
+.agenda-next-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--muted);
+}
+
+.agenda-next-card__tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: var(--text);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.agenda-next-card__action {
+  color: var(--brand-strong);
+  font-size: 0.74rem;
+  font-weight: 700;
+}
+
+.agenda-appointment-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--agenda-tone, var(--brand-strong));
+  background: var(--agenda-bg-strong, rgba(93, 143, 242, 0.16));
+}
+
+.agenda-appointment-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.agenda-quick-stat .agenda-appointment-icon {
+  width: 36px;
+  height: 36px;
+}
+
+.agenda-next-card__tag .agenda-appointment-icon,
+.agenda-event-chip .agenda-appointment-icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 10px;
+}
+
+.agenda-list-title {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.agenda-list-title span {
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+
+.agenda-list-title__main strong {
+  min-width: 0;
+}
+
+.agenda-event-dot {
+  display: none;
+}
+
+.agenda-event-chip {
+  gap: 8px;
+  color: var(--text);
+}
+
+.agenda-event-time {
+  color: var(--agenda-tone, var(--brand-strong));
+}
+
+.agenda-timeline {
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.98);
+}
+
+.agenda-timeline__header {
+  background: rgba(250, 252, 255, 0.96);
+}
+
+.agenda-timeline__day-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: rgba(15, 34, 48, 0.58);
+}
+
+.agenda-timeline-event {
+  padding: 8px 10px;
+  color: var(--text);
+}
+
+.agenda-timeline-event__row,
+.agenda-timeline-event__identity,
+.agenda-timeline-event__copy {
+  display: grid;
+}
+
+.agenda-timeline-event__row {
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: start;
+  height: 100%;
+}
+
+.agenda-timeline-event__identity {
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  min-width: 0;
+}
+
+.agenda-timeline-event__copy {
+  gap: 3px;
+  min-width: 0;
+}
+
+.agenda-timeline-event__text {
+  font-size: 0.68rem;
+  color: rgba(15, 34, 48, 0.68);
+}
+
+.agenda-quick-stat--consulta,
+.agenda-next-card--consulta,
+.agenda-event-chip--consulta,
+.agenda-timeline-event--consulta,
+.agenda-list-title--consulta {
+  --agenda-tone: #4d8de8;
+  --agenda-bg: rgba(77, 141, 232, 0.15);
+  --agenda-bg-strong: rgba(77, 141, 232, 0.22);
+  --agenda-border: rgba(77, 141, 232, 0.24);
+}
+
+.agenda-quick-stat--vacunacion,
+.agenda-next-card--vacunacion,
+.agenda-event-chip--vacunacion,
+.agenda-timeline-event--vacunacion,
+.agenda-list-title--vacunacion {
+  --agenda-tone: #2f9b72;
+  --agenda-bg: rgba(47, 155, 114, 0.14);
+  --agenda-bg-strong: rgba(47, 155, 114, 0.2);
+  --agenda-border: rgba(47, 155, 114, 0.22);
+}
+
+.agenda-quick-stat--desparasitacion,
+.agenda-next-card--desparasitacion,
+.agenda-event-chip--desparasitacion,
+.agenda-timeline-event--desparasitacion,
+.agenda-list-title--desparasitacion {
+  --agenda-tone: #7aa948;
+  --agenda-bg: rgba(122, 169, 72, 0.14);
+  --agenda-bg-strong: rgba(122, 169, 72, 0.2);
+  --agenda-border: rgba(122, 169, 72, 0.22);
+}
+
+.agenda-quick-stat--cirugia,
+.agenda-next-card--cirugia,
+.agenda-event-chip--cirugia,
+.agenda-timeline-event--cirugia,
+.agenda-list-title--cirugia {
+  --agenda-tone: #dd6b55;
+  --agenda-bg: rgba(221, 107, 85, 0.15);
+  --agenda-bg-strong: rgba(221, 107, 85, 0.22);
+  --agenda-border: rgba(221, 107, 85, 0.24);
+}
+
+.agenda-quick-stat--laboratorio,
+.agenda-next-card--laboratorio,
+.agenda-event-chip--laboratorio,
+.agenda-timeline-event--laboratorio,
+.agenda-list-title--laboratorio {
+  --agenda-tone: #bf8a2a;
+  --agenda-bg: rgba(191, 138, 42, 0.14);
+  --agenda-bg-strong: rgba(191, 138, 42, 0.2);
+  --agenda-border: rgba(191, 138, 42, 0.24);
+}
+
+.agenda-quick-stat--imagen,
+.agenda-next-card--imagen,
+.agenda-event-chip--imagen,
+.agenda-timeline-event--imagen,
+.agenda-list-title--imagen {
+  --agenda-tone: #5f86d6;
+  --agenda-bg: rgba(95, 134, 214, 0.14);
+  --agenda-bg-strong: rgba(95, 134, 214, 0.21);
+  --agenda-border: rgba(95, 134, 214, 0.24);
+}
+
+.agenda-quick-stat--seguimiento,
+.agenda-next-card--seguimiento,
+.agenda-event-chip--seguimiento,
+.agenda-timeline-event--seguimiento,
+.agenda-list-title--seguimiento {
+  --agenda-tone: #1b8aa5;
+  --agenda-bg: rgba(27, 138, 165, 0.14);
+  --agenda-bg-strong: rgba(27, 138, 165, 0.2);
+  --agenda-border: rgba(27, 138, 165, 0.22);
+}
+
+.agenda-quick-stat--peluqueria,
+.agenda-next-card--peluqueria,
+.agenda-event-chip--peluqueria,
+.agenda-timeline-event--peluqueria,
+.agenda-list-title--peluqueria {
+  --agenda-tone: #9f73c8;
+  --agenda-bg: rgba(159, 115, 200, 0.14);
+  --agenda-bg-strong: rgba(159, 115, 200, 0.2);
+  --agenda-border: rgba(159, 115, 200, 0.24);
+}
+
+.agenda-quick-stat--documento,
+.agenda-next-card--documento,
+.agenda-event-chip--documento,
+.agenda-timeline-event--documento,
+.agenda-list-title--documento,
+.agenda-quick-stat--default,
+.agenda-next-card--default,
+.agenda-event-chip--default,
+.agenda-timeline-event--default,
+.agenda-list-title--default {
+  --agenda-tone: #6c7a8d;
+  --agenda-bg: rgba(108, 122, 141, 0.14);
+  --agenda-bg-strong: rgba(108, 122, 141, 0.2);
+  --agenda-border: rgba(108, 122, 141, 0.22);
+}
+
+@media (max-width: 1180px) {
+  .agenda-timeline-event__row {
+    grid-template-columns: 1fr;
+  }
+
+  .agenda-timeline-event__meta {
+    justify-items: start;
+    text-align: left;
+    grid-auto-flow: column;
+    gap: 8px;
+  }
+}
+
+@media (max-width: 820px) {
+  .agenda-quick-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .agenda-next-card__top {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .agenda-next-card__time {
+    grid-column: 2;
+    justify-items: start;
+    text-align: left;
+  }
+
+  .agenda-next-card__footer {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
 .owner-card,
 .patient-card,
 .owner-pet-chip,

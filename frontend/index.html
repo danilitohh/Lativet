@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Lativet Web</title>
-    <link rel="stylesheet" href="/styles.css?v=20260422-01" />
+    <link rel="stylesheet" href="/styles.css?v=20260422-02" />
   </head>
   <body>
     <div class="page-shell">
@@ -426,28 +426,51 @@
           </div>
 
           <div class="agenda-layout">
-            <article id="agendaGeneralPanel" class="panel-card agenda-calendar-panel">
-              <div class="panel-heading agenda-mini-header">
-                <div class="agenda-mini-title">
-                  <strong id="agendaMonthLabel"></strong>
+            <div class="agenda-sidebar-stack">
+              <article id="agendaGeneralPanel" class="panel-card agenda-calendar-panel">
+                <div class="panel-heading agenda-mini-header">
+                  <div class="agenda-mini-title">
+                    <strong id="agendaMonthLabel"></strong>
+                  </div>
+                  <div class="form-actions">
+                    <button id="agendaPrevMonthButton" class="ghost-button" type="button">&lsaquo;</button>
+                    <button id="agendaTodayButton" class="secondary-button" type="button">Hoy</button>
+                    <button id="agendaNextMonthButton" class="ghost-button" type="button">&rsaquo;</button>
+                  </div>
                 </div>
-                <div class="form-actions">
-                  <button id="agendaPrevMonthButton" class="ghost-button" type="button">&lsaquo;</button>
-                  <button id="agendaTodayButton" class="secondary-button" type="button">Hoy</button>
-                  <button id="agendaNextMonthButton" class="ghost-button" type="button">&rsaquo;</button>
+                <div class="agenda-weekdays">
+                  <span>Lu</span>
+                  <span>Ma</span>
+                  <span>Mi</span>
+                  <span>Ju</span>
+                  <span>Vi</span>
+                  <span>Sa</span>
+                  <span>Do</span>
                 </div>
-              </div>
-              <div class="agenda-weekdays">
-                <span>Lu</span>
-                <span>Ma</span>
-                <span>Mi</span>
-                <span>Ju</span>
-                <span>Vi</span>
-                <span>Sa</span>
-                <span>Do</span>
-              </div>
-              <div id="agendaMonthGrid" class="agenda-month-grid"></div>
-            </article>
+                <div id="agendaMonthGrid" class="agenda-month-grid"></div>
+              </article>
+
+              <article class="panel-card agenda-quick-panel">
+                <div class="panel-heading agenda-quick-heading">
+                  <div>
+                    <p class="eyebrow">Resumen</p>
+                    <h3>Vista rapida</h3>
+                  </div>
+                  <p id="agendaQuickDateLabel" class="meta-copy"></p>
+                </div>
+                <div id="agendaQuickStats" class="agenda-quick-stats"></div>
+              </article>
+
+              <article class="panel-card agenda-next-panel">
+                <div class="panel-heading agenda-next-heading">
+                  <div>
+                    <p class="eyebrow">Agenda</p>
+                    <h3>Proxima cita</h3>
+                  </div>
+                </div>
+                <div id="agendaNextAppointment" class="agenda-next-appointment"></div>
+              </article>
+            </div>
 
             <article id="agendaDayPanel" class="panel-card agenda-detail-panel">
               <div class="panel-heading agenda-view-header">
@@ -2907,6 +2930,6 @@
     </div>
   </div>
 
-  <script src="/app.js?v=20260422-01"></script>
+  <script src="/app.js?v=20260422-02"></script>
 </body>
 </html>

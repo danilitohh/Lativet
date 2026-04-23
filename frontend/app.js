@@ -51,6 +51,30 @@ let agendaViewDate = new Date();
 let agendaSelectedDate = new Date().toISOString().slice(0, 10);
 const AGENDA_VIEW_MODES = ["month", "week", "day", "list", "programador"];
 const AGENDA_VIEW_STORAGE_KEY = "lativet_agenda_view";
+const AGENDA_APPOINTMENT_TYPE_META = {
+  consulta: { label: "Consulta", shortLabel: "Consultas" },
+  vacunacion: { label: "Vacunacion", shortLabel: "Vacunas" },
+  desparasitacion: { label: "Desparasitacion", shortLabel: "Desparasitaciones" },
+  cirugia: { label: "Cirugia", shortLabel: "Cirugias" },
+  laboratorio: { label: "Laboratorio", shortLabel: "Laboratorio" },
+  imagen: { label: "Imagen", shortLabel: "Imagenes" },
+  seguimiento: { label: "Seguimiento", shortLabel: "Seguimientos" },
+  peluqueria: { label: "Peluqueria", shortLabel: "Peluqueria" },
+  documento: { label: "Documento", shortLabel: "Documentos" },
+  default: { label: "Cita", shortLabel: "Citas" },
+};
+const AGENDA_QUICK_TYPE_ORDER = [
+  "consulta",
+  "vacunacion",
+  "cirugia",
+  "peluqueria",
+  "seguimiento",
+  "laboratorio",
+  "imagen",
+  "desparasitacion",
+  "documento",
+  "default",
+];
 const CONSULTORIO_DOCUMENT_FORMATS_STORAGE_KEY = "lativet_document_formats";
 const DEFAULT_CONSULTORIO_DOCUMENT_FORMATS = [
   "Documento general",
@@ -61,7 +85,7 @@ const DEFAULT_CONSULTORIO_DOCUMENT_FORMATS = [
   "Autorizacion especial",
   "Estancia / hospitalizacion",
 ];
-let agendaViewMode = "programador";
+let agendaViewMode = "day";
 try {
   const storedAgendaView = localStorage.getItem(AGENDA_VIEW_STORAGE_KEY);
   if (storedAgendaView && AGENDA_VIEW_MODES.includes(storedAgendaView)) {
@@ -1863,6 +1887,204 @@ function formatAgendaTimeShort(value) {
   return parsed.toLocaleTimeString("es-CO", { hour: "numeric", minute: "2-digit" });
 }
 
+function formatAgendaDurationLabel(value) {
+  const duration = Math.max(15, Number(value || 30));
+  return `${duration} min`;
+}
+
+function getAgendaAppointmentTypeMeta(typeKey) {
+  return AGENDA_APPOINTMENT_TYPE_META[typeKey] || AGENDA_APPOINTMENT_TYPE_META.default;
+}
+
+function detectAgendaAppointmentType(appointment) {
+  const source = slugifyConsultorioText(
+    [
+      appointment?.appointment_type,
+      appointment?.reason,
+      appointment?.notes,
+    ]
+      .filter(Boolean)
+      .join(" ")
+  );
+  if (!source) {
+    return "default";
+  }
+  if (/(vacunacion|vacuna|refuerzo)/.test(source)) {
+    return "vacunacion";
+  }
+  if (/(desparasitacion|antiparasitario|desparas)/.test(source)) {
+    return "desparasitacion";
+  }
+  if (
+    /(cirugia|quirurg|procedimiento|anestesia|castracion|esterilizacion|operatorio)/.test(source)
+  ) {
+    return "cirugia";
+  }
+  if (/(laboratorio|hemograma|perfil|coprologico|coprologia|prueba|examen)/.test(source)) {
+    return "laboratorio";
+  }
+  if (/(imagen|radiografia|ecografia|rayos-x|rayosx|diagnostica|diagnostico)/.test(source)) {
+    return "imagen";
+  }
+  if (/(seguimiento|control|revision|revaloracion|postoperatorio)/.test(source)) {
+    return "seguimiento";
+  }
+  if (/(peluqueria|grooming|spa|bano|bano-medicado|corte|cepillado|deslanado)/.test(source)) {
+    return "peluqueria";
+  }
+  if (/(documento|consentimiento|certificado|constancia)/.test(source)) {
+    return "documento";
+  }
+  if (/(consulta|valoracion|general)/.test(source)) {
+    return "consulta";
+  }
+  return "consulta";
+}
+
+function stripAgendaAppointmentTypePrefix(value) {
+  return String(value || "")
+    .trim()
+    .replace(
+      /^(consulta|vacunacion|vacunación|desparasitacion|desparasitación|cirugia\s*\/\s*procedimiento|cirugía\s*\/\s*procedimiento|cirugia|cirugía|laboratorio|imagen diagnostica|imagen diagnóstica|seguimiento|peluqueria|peluquería|documento)\s*[-:]\s*/i,
+      ""
+    )
+    .trim();
+}
+
+function buildAgendaAppointmentPresentation(appointment) {
+  const type = detectAgendaAppointmentType(appointment);
+  const meta = getAgendaAppointmentTypeMeta(type);
+  const title = String(appointment?.patient_name || "").trim() || meta.label;
+  const cleanReason = stripAgendaAppointmentTypePrefix(appointment?.reason || "");
+  const subtitle = cleanReason && cleanReason !== title ? cleanReason : meta.label;
+  return { type, meta, title, subtitle };
+}
+
+function getAgendaAppointmentTypeFormValue(typeKey) {
+  return (
+    {
+      consulta: "Consulta",
+      vacunacion: "Vacunacion",
+      desparasitacion: "Desparasitacion",
+      cirugia: "Cirugia / procedimiento",
+      laboratorio: "Laboratorio",
+      imagen: "Imagen diagnostica",
+      seguimiento: "Seguimiento",
+      peluqueria: "Peluquería",
+      documento: "Documento",
+    }[typeKey] || ""
+  );
+}
+
+function getAgendaEntityInitials(value, fallback = "CT") {
+  const initials = String(value || "")
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() || "")
+    .join("");
+  return initials || fallback;
+}
+
+function getAgendaAppointmentIconSvg(typeKey) {
+  switch (typeKey) {
+    case "consulta":
+      return `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="8"></circle>
+          <path d="M12 8.5v7"></path>
+          <path d="M8.5 12h7"></path>
+        </svg>
+      `;
+    case "vacunacion":
+      return `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 6l4 4"></path>
+          <path d="M4 20l6-6"></path>
+          <path d="M10 8l6 6"></path>
+          <path d="M13 5l2-2 6 6-2 2"></path>
+          <path d="M3 21l2-2"></path>
+        </svg>
+      `;
+    case "cirugia":
+      return `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 20s-6.5-4-6.5-9.5a3.5 3.5 0 0 1 6.5-2 3.5 3.5 0 0 1 6.5 2C18.5 16 12 20 12 20Z"></path>
+          <path d="M9.5 12h5"></path>
+          <path d="M12 9.5v5"></path>
+        </svg>
+      `;
+    case "laboratorio":
+      return `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M10 3h4"></path>
+          <path d="M10 3v5l-4.2 7a3 3 0 0 0 2.6 4.5h7.2a3 3 0 0 0 2.6-4.5L14 8V3"></path>
+          <path d="M8.5 14h7"></path>
+        </svg>
+      `;
+    case "imagen":
+      return `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="4" y="5" width="16" height="14" rx="3"></rect>
+          <circle cx="9" cy="10" r="1.4"></circle>
+          <path d="M6.5 16l3.5-3 2.5 2 3-4 1.5 2"></path>
+        </svg>
+      `;
+    case "seguimiento":
+      return `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="6" y="4" width="12" height="16" rx="2"></rect>
+          <path d="M9 4.5h6"></path>
+          <path d="M9.5 12l1.7 1.7 3.4-3.4"></path>
+        </svg>
+      `;
+    case "peluqueria":
+      return `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="6.5" cy="7" r="2.5"></circle>
+          <circle cx="6.5" cy="17" r="2.5"></circle>
+          <path d="M8.5 9l10 10"></path>
+          <path d="M8.5 15l10-10"></path>
+        </svg>
+      `;
+    case "documento":
+      return `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M8 3.5h6l4 4V19a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V5.5a2 2 0 0 1 2-2Z"></path>
+          <path d="M14 3.5V8h4"></path>
+          <path d="M9 12h6"></path>
+          <path d="M9 15h4"></path>
+        </svg>
+      `;
+    case "desparasitacion":
+      return `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 3l7 3v5c0 4.5-2.8 7.8-7 10-4.2-2.2-7-5.5-7-10V6l7-3Z"></path>
+          <path d="M9.5 12l1.7 1.7 3.4-3.4"></path>
+        </svg>
+      `;
+    default:
+      return `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="4" y="6" width="16" height="14" rx="3"></rect>
+          <path d="M8 3.5v4"></path>
+          <path d="M16 3.5v4"></path>
+          <path d="M4 10h16"></path>
+        </svg>
+      `;
+  }
+}
+
+function getAgendaAppointmentIconMarkup(typeKey) {
+  const safeType = AGENDA_APPOINTMENT_TYPE_META[typeKey] ? typeKey : "default";
+  return `
+    <span class="agenda-appointment-icon agenda-appointment-icon--${safeType}" aria-hidden="true">
+      ${getAgendaAppointmentIconSvg(safeType)}
+    </span>
+  `;
+}
+
 function formatAgendaHourLabel(hour) {
   const base = new Date();
   base.setHours(hour, 0, 0, 0);
@@ -1926,6 +2148,138 @@ function listCalendarAppointmentsForDate(dateValue) {
   return listAppointmentsForDate(dateValue).filter(
     (item) => !hiddenCalendarStatuses.has(item.status)
   );
+}
+
+function buildAgendaQuickSummaryItems(dateValue) {
+  const counts = {};
+  listCalendarAppointmentsForDate(dateValue).forEach((appointment) => {
+    const type = detectAgendaAppointmentType(appointment);
+    counts[type] = (counts[type] || 0) + 1;
+  });
+  const rankedTypes = Object.entries(counts)
+    .sort((left, right) => {
+      if (right[1] !== left[1]) {
+        return right[1] - left[1];
+      }
+      return AGENDA_QUICK_TYPE_ORDER.indexOf(left[0]) - AGENDA_QUICK_TYPE_ORDER.indexOf(right[0]);
+    })
+    .map(([type]) => type);
+  const types = [...rankedTypes, ...AGENDA_QUICK_TYPE_ORDER.filter((type) => !rankedTypes.includes(type))].slice(
+    0,
+    4
+  );
+  return types.map((type) => ({
+    type,
+    count: counts[type] || 0,
+    meta: getAgendaAppointmentTypeMeta(type),
+  }));
+}
+
+function findAgendaNextAppointment(dateValue) {
+  const selectedAppointments = listCalendarAppointmentsForDate(dateValue);
+  const todayIso = toIsoDate(new Date());
+  const now = new Date();
+  if (selectedAppointments.length) {
+    if (dateValue === todayIso) {
+      const upcomingToday = selectedAppointments.find((appointment) => {
+        const start = new Date(appointment.appointment_at);
+        const end = addMinutes(start, Number(appointment.duration_minutes || 30));
+        return end >= now;
+      });
+      if (upcomingToday) {
+        return upcomingToday;
+      }
+    }
+    if (dateValue > todayIso) {
+      return selectedAppointments[0];
+    }
+  }
+  return state.appointments
+    .filter((item) => !hiddenCalendarStatuses.has(item.status))
+    .sort((left, right) => String(left.appointment_at).localeCompare(String(right.appointment_at)))
+    .find((appointment) => {
+      const start = new Date(appointment.appointment_at);
+      return !Number.isNaN(start.getTime()) && start >= now;
+    }) || null;
+}
+
+function renderAgendaQuickView() {
+  if (elements.agendaQuickDateLabel) {
+    elements.agendaQuickDateLabel.textContent = parseIsoDate(agendaSelectedDate).toLocaleDateString("es-CO", {
+      day: "numeric",
+      month: "short",
+    });
+  }
+  if (elements.agendaQuickStats) {
+    const items = buildAgendaQuickSummaryItems(agendaSelectedDate);
+    elements.agendaQuickStats.innerHTML = items
+      .map(
+        ({ type, count, meta }) => `
+          <article class="agenda-quick-stat agenda-quick-stat--${type}">
+            <div class="agenda-quick-stat__icon">
+              ${getAgendaAppointmentIconMarkup(type)}
+            </div>
+            <strong>${escapeHtml(String(count))}</strong>
+            <span>${escapeHtml(meta.shortLabel)}</span>
+          </article>
+        `
+      )
+      .join("");
+  }
+  if (!elements.agendaNextAppointment) {
+    return;
+  }
+  const appointment = findAgendaNextAppointment(agendaSelectedDate);
+  if (!appointment) {
+    elements.agendaNextAppointment.innerHTML = `
+      <article class="agenda-next-card agenda-next-card--empty">
+        <strong>Sin citas programadas</strong>
+        <p>No hay eventos para esta fecha y tampoco una cita futura pendiente.</p>
+      </article>
+    `;
+    return;
+  }
+  const presentation = buildAgendaAppointmentPresentation(appointment);
+  const typeLabel = presentation.meta.label;
+  const appointmentDate = toIsoDate(appointment.appointment_at);
+  const subtitleParts = [];
+  if (appointmentDate !== agendaSelectedDate) {
+    subtitleParts.push(
+      parseIsoDate(appointmentDate).toLocaleDateString("es-CO", {
+        day: "numeric",
+        month: "long",
+      })
+    );
+  }
+  subtitleParts.push(presentation.subtitle);
+  elements.agendaNextAppointment.innerHTML = `
+    <button
+      type="button"
+      class="agenda-next-card agenda-next-card--${presentation.type}"
+      data-appointment-id="${escapeHtml(appointment.id)}"
+    >
+      <div class="agenda-next-card__top">
+        <span class="agenda-next-card__avatar">${escapeHtml(
+          getAgendaEntityInitials(appointment.patient_name, "CT")
+        )}</span>
+        <div class="agenda-next-card__copy">
+          <strong>${escapeHtml(truncate(presentation.title, 34))}</strong>
+          <span>${escapeHtml(truncate(subtitleParts.filter(Boolean).join(" · "), 64))}</span>
+        </div>
+        <div class="agenda-next-card__time">
+          <span>${escapeHtml(formatAgendaTimeShort(appointment.appointment_at))}</span>
+          <small>${escapeHtml(formatAgendaDurationLabel(appointment.duration_minutes))}</small>
+        </div>
+      </div>
+      <div class="agenda-next-card__footer">
+        <span class="agenda-next-card__tag">
+          ${getAgendaAppointmentIconMarkup(presentation.type)}
+          <span>${escapeHtml(typeLabel)}</span>
+        </span>
+        <span class="agenda-next-card__action">Ver detalle</span>
+      </div>
+    </button>
+  `;
 }
 
 function buildAgendaSlots(dateValue) {
@@ -3186,6 +3540,9 @@ function cacheElements() {
     "closeAgendaAppointmentsModalButton",
     "appointmentsList",
     "agendaMonthLabel",
+    "agendaQuickDateLabel",
+    "agendaQuickStats",
+    "agendaNextAppointment",
     "agendaMonthGrid",
     "agendaMonthGridLarge",
     "agendaViewTabs",
@@ -9442,6 +9799,7 @@ function renderAvailability() {
   }
   renderAgendaMonth();
   renderAgendaView();
+  renderAgendaQuickView();
   renderGoogleCalendarStatus();
   saveAppViewState();
 }
@@ -9603,16 +9961,32 @@ function buildAgendaTimelineEventMarkup(appointment, { dayStart, dayEnd, minuteH
   const minutesFromStart = (clampedStart.getTime() - dayStart.getTime()) / 60000;
   const minutesDuration = Math.max(15, (clampedEnd.getTime() - clampedStart.getTime()) / 60000);
   const top = minutesFromStart * minuteHeight;
-  const height = Math.max(18, minutesDuration * minuteHeight);
-  const timeLabel = `${formatAgendaTimeShort(start)} - ${formatAgendaTimeShort(end)}`;
-  const label = truncate(appointment.reason || appointment.patient_name || "Cita", 32);
-  const tone = normalizeAgendaTone(appointment.status);
+  const height = Math.max(52, minutesDuration * minuteHeight);
+  const presentation = buildAgendaAppointmentPresentation(appointment);
+  const tone = presentation.type;
   return `
     <div class="agenda-timeline-event agenda-timeline-event--${tone}" data-appointment-id="${escapeHtml(
       appointment.id
     )}" role="button" tabindex="0" style="top:${top}px;height:${height}px">
-      <span class="agenda-timeline-event__time">${escapeHtml(timeLabel)}</span>
-      <span class="agenda-timeline-event__text">${escapeHtml(label)}</span>
+      <div class="agenda-timeline-event__row">
+        <div class="agenda-timeline-event__identity">
+          ${getAgendaAppointmentIconMarkup(presentation.type)}
+          <div class="agenda-timeline-event__copy">
+            <strong class="agenda-timeline-event__patient">${escapeHtml(
+              truncate(presentation.title, 24)
+            )}</strong>
+            <span class="agenda-timeline-event__text">${escapeHtml(
+              truncate(presentation.subtitle, 34)
+            )}</span>
+          </div>
+        </div>
+        <div class="agenda-timeline-event__meta">
+          <span class="agenda-timeline-event__time">${escapeHtml(formatAgendaTimeShort(start))}</span>
+          <span class="agenda-timeline-event__duration">${escapeHtml(
+            formatAgendaDurationLabel(duration)
+          )}</span>
+        </div>
+      </div>
     </div>
   `;
 }
@@ -9750,18 +10124,23 @@ function renderAgendaListView() {
             const start = new Date(appointment.appointment_at);
             const end = addMinutes(start, Number(appointment.duration_minutes || 30));
             const timeLabel = `${formatAgendaTimeShort(start)} - ${formatAgendaTimeShort(end)}`;
-            const title = truncate(
-              `${appointment.reason || appointment.patient_name || "Cita"}`,
-              48
-            );
+            const presentation = buildAgendaAppointmentPresentation(appointment);
             return `
               <div class="agenda-list-item" data-appointment-id="${escapeHtml(
                 appointment.id
               )}" role="button" tabindex="0">
                 <div class="agenda-list-time">${escapeHtml(timeLabel)}</div>
-                <div class="agenda-list-title">
-                  <strong>${escapeHtml(title)}</strong>
-                  <span>${escapeHtml(appointment.owner_name || "")}</span>
+                <div class="agenda-list-title agenda-list-title--${presentation.type}">
+                  <div class="agenda-list-title__main">
+                    ${getAgendaAppointmentIconMarkup(presentation.type)}
+                    <strong>${escapeHtml(truncate(presentation.title, 40))}</strong>
+                  </div>
+                  <span>${escapeHtml(
+                    truncate(
+                      [presentation.subtitle, appointment.owner_name || ""].filter(Boolean).join(" · "),
+                      68
+                    )
+                  )}</span>
                 </div>
               </div>
             `;
@@ -9807,16 +10186,14 @@ function renderAgendaLargeMonth() {
     const events = visible
       .map((appointment) => {
         const timeLabel = formatAgendaTimeShort(appointment.appointment_at);
-        const label = truncate(
-          appointment.reason || appointment.patient_name || "Cita",
-          26
-        );
-        const tone = normalizeAgendaTone(appointment.status);
+        const presentation = buildAgendaAppointmentPresentation(appointment);
+        const label = truncate(presentation.title, 24);
+        const tone = presentation.type;
         return `
           <div class="agenda-event-chip agenda-event-chip--${tone}" data-appointment-id="${escapeHtml(
             appointment.id
           )}" role="button" tabindex="0">
-            <span class="agenda-event-dot"></span>
+            ${getAgendaAppointmentIconMarkup(presentation.type)}
             <span class="agenda-event-time">${escapeHtml(timeLabel)}</span>
             <span class="agenda-event-text">${escapeHtml(label)}</span>
           </div>
@@ -11338,10 +11715,13 @@ function openAppointmentModalForEdit(appointment) {
       appointment.professional_name || "Agenda general";
   }
   if (elements.appointmentTypeSelect) {
-    elements.appointmentTypeSelect.value = "";
+    elements.appointmentTypeSelect.value = getAgendaAppointmentTypeFormValue(
+      detectAgendaAppointmentType(appointment)
+    );
   }
   if (elements.appointmentForm?.elements?.reason) {
-    elements.appointmentForm.elements.reason.value = appointment.reason || "";
+    elements.appointmentForm.elements.reason.value =
+      stripAgendaAppointmentTypePrefix(appointment.reason) || appointment.reason || "";
   }
   if (elements.appointmentForm?.elements?.notes) {
     elements.appointmentForm.elements.notes.value = appointment.notes || "";
@@ -18860,6 +19240,9 @@ function bindForms() {
   }
   if (elements.agendaListItems) {
     elements.agendaListItems.addEventListener("click", handleAgendaMonthClick);
+  }
+  if (elements.agendaNextAppointment) {
+    elements.agendaNextAppointment.addEventListener("click", handleAgendaMonthClick);
   }
   elements.recordsList.addEventListener("click", handleRecordsClick);
   elements.openAppointmentModalButton.addEventListener("click", () =>
