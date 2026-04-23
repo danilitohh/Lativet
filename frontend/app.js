@@ -35,6 +35,7 @@ const inventoryUiState = {
   search: "",
   category: "",
   providerId: "",
+  providerDraftId: "",
   status: "all",
   lowStockOnly: false,
   selectedItemId: "",
@@ -573,7 +574,7 @@ const SUBSECTION_DATA_REQUIREMENTS = {
     grooming: ["owners", "patients", "grooming_documents"],
   },
 };
-const SALES_PROVIDER_REFRESH_SECTIONS = ["providers"];
+const SALES_PROVIDER_REFRESH_SECTIONS = ["providers", "catalog_items"];
 const SALES_INVENTORY_REFRESH_SECTIONS = [
   "providers",
   "catalog_items",
@@ -2442,6 +2443,8 @@ const api = {
     apiRequest(`/api/owners/${ownerId}/delete`, { method: "POST", body: "{}" }),
   saveProvider: (payload) =>
     apiRequest("/api/providers", { method: "POST", body: JSON.stringify(payload) }),
+  deleteProvider: (providerId) =>
+    apiRequest(`/api/providers/${providerId}`, { method: "DELETE" }),
   savePatient: (payload) =>
     apiRequest("/api/patients", { method: "POST", body: JSON.stringify(payload) }),
   deletePatient: (patientId) =>
@@ -4443,6 +4446,42 @@ function upsertProviderInState(provider) {
     currentProviders.push(nextProvider);
   }
   state.providers = sortProvidersByName(currentProviders);
+  state.catalog_items = (state.catalog_items || []).map((item) =>
+    String(item?.provider_id || "") === String(provider.id || "")
+      ? { ...item, provider_name: nextProvider.name || "" }
+      : item
+  );
+}
+
+function removeProviderFromState(providerId) {
+  if (!providerId) {
+    return;
+  }
+  state.providers = sortProvidersByName(
+    (state.providers || []).filter(
+      (provider) => String(provider?.id || "") !== String(providerId || "")
+    )
+  );
+  state.catalog_items = (state.catalog_items || []).map((item) =>
+    String(item?.provider_id || "") === String(providerId || "")
+      ? { ...item, provider_id: "", provider_name: "" }
+      : item
+  );
+  if (String(inventoryUiState.providerId || "") === String(providerId || "")) {
+    inventoryUiState.providerId = "";
+  }
+  if (String(inventoryUiState.providerDraftId || "") === String(providerId || "")) {
+    inventoryUiState.providerDraftId = "";
+  }
+}
+
+function getInventoryProviderDraft() {
+  return (
+    state.providers.find(
+      (provider) =>
+        String(provider?.id || "") === String(inventoryUiState.providerDraftId || "")
+    ) || null
+  );
 }
 
 function ensureInventorySelection(filteredItems) {
@@ -4613,43 +4652,115 @@ function buildInventoryDetailPanel(item) {
 }
 
 function buildInventoryProviderQuickForm() {
+  const provider = getInventoryProviderDraft();
+  const isEditing = Boolean(provider);
   return `
     <article id="salesInventoryProviderCard" class="sales-inventory-form-card">
       <div class="sales-inventory-form-card__header">
         <div>
           <p class="eyebrow">Proveedor</p>
-          <h4>Nuevo proveedor</h4>
+          <h4>${isEditing ? "Editar proveedor" : "Nuevo proveedor"}</h4>
         </div>
         <button class="ghost-button" data-inventory-toggle-panel="provider" type="button">Cerrar</button>
       </div>
       <form class="sales-inventory-inline-form" data-inventory-inline-form="provider">
+        <input type="hidden" name="id" value="${escapeHtml(String(provider?.id || ""))}" />
         <div class="sales-inventory-inline-form__grid">
           <label>
             <span>Nombre</span>
-            <input name="name" required />
+            <input name="name" value="${escapeHtml(provider?.name || "")}" required />
           </label>
           <label>
             <span>Contacto</span>
-            <input name="contact_name" />
+            <input name="contact_name" value="${escapeHtml(provider?.contact_name || "")}" />
           </label>
           <label>
             <span>Telefono</span>
-            <input name="phone" />
+            <input name="phone" value="${escapeHtml(provider?.phone || "")}" />
           </label>
           <label>
             <span>Correo</span>
-            <input name="email" type="email" />
+            <input name="email" type="email" value="${escapeHtml(provider?.email || "")}" />
           </label>
         </div>
         <label>
           <span>Notas</span>
-          <textarea name="notes" rows="3" placeholder="Observaciones internas del proveedor."></textarea>
+          <textarea name="notes" rows="3" placeholder="Observaciones internas del proveedor.">${escapeHtml(
+            provider?.notes || ""
+          )}</textarea>
         </label>
         <div class="sales-inventory-inline-form__actions">
+          ${
+            isEditing
+              ? `<button class="ghost-button ghost-button--danger" data-inventory-delete-provider="${escapeHtml(
+                  String(provider?.id || "")
+                )}" type="button">Eliminar</button>`
+              : ""
+          }
           <button class="ghost-button" data-inventory-toggle-panel="provider" type="button">Cancelar</button>
-          <button class="primary-button" data-inventory-inline-submit="provider" type="submit">Guardar proveedor</button>
+          <button class="primary-button" data-inventory-inline-submit="provider" type="submit">${
+            isEditing ? "Guardar cambios" : "Guardar proveedor"
+          }</button>
         </div>
       </form>
+    </article>
+  `;
+}
+
+function buildInventoryProviderRoster() {
+  const providers = sortProvidersByName(state.providers || []);
+  const providerItems = providers.length
+    ? providers
+        .map((provider) => {
+          const providerId = String(provider.id || "");
+          const isEditing =
+            inventoryUiState.showProviderForm &&
+            providerId === String(inventoryUiState.providerDraftId || "");
+          const contactLine = [
+            provider.contact_name || "",
+            provider.phone || "",
+            provider.email || "",
+          ]
+            .filter(Boolean)
+            .join(" / ");
+          const itemsCount = Number(provider.items_count || 0);
+          return `
+            <article class="sales-inventory-provider-item${isEditing ? " is-active" : ""}">
+              <div class="sales-inventory-provider-item__header">
+                <div class="sales-inventory-provider-item__copy">
+                  <strong>${escapeHtml(provider.name || "Proveedor")}</strong>
+                  <small>${escapeHtml(contactLine || "Sin contacto registrado")}</small>
+                </div>
+                <span class="sales-stock-badge sales-stock-badge--neutral">${escapeHtml(
+                  `${itemsCount} ${itemsCount === 1 ? "item" : "items"}`
+                )}</span>
+              </div>
+              <p>${escapeHtml(provider.notes || "Sin notas internas.")}</p>
+              <div class="sales-inventory-provider-item__actions">
+                <button class="ghost-button" data-inventory-edit-provider="${escapeHtml(
+                  providerId
+                )}" type="button">Editar</button>
+                <button class="ghost-button ghost-button--danger" data-inventory-delete-provider="${escapeHtml(
+                  providerId
+                )}" type="button">Eliminar</button>
+              </div>
+            </article>
+          `;
+        })
+        .join("")
+    : '<div class="sales-inventory-support__empty">Aun no hay proveedores registrados.</div>';
+  return `
+    <article class="sales-inventory-form-card sales-inventory-provider-roster">
+      <div class="sales-inventory-form-card__header">
+        <div>
+          <p class="eyebrow">Directorio</p>
+          <h4>Proveedores registrados</h4>
+        </div>
+        <span class="sales-section-note">${escapeHtml(
+          `${providers.length} ${providers.length === 1 ? "proveedor" : "proveedores"}`
+        )}</span>
+      </div>
+      <div class="sales-inventory-provider-list">${providerItems}</div>
     </article>
   `;
 }
@@ -4976,6 +5087,8 @@ function buildInventoryTable(items) {
             type="button"
           >${inventoryUiState.showProviderForm ? "Ocultar formulario" : "Agregar proveedor"}</button>
         </article>
+
+        ${buildInventoryProviderRoster()}
 
         <article class="sales-inventory-quick-card">
           <div class="sales-inventory-quick-card__icon">+</div>
@@ -5323,14 +5436,17 @@ async function submitInventoryInlineForm(form) {
   }
   try {
     if (formType === "provider") {
+      const isProviderUpdate = Boolean(String(form.elements.id?.value || "").trim());
       const savedProvider = await api.saveProvider(serializeForm(form));
       upsertProviderInState(savedProvider);
       inventoryUiState.showProviderForm = false;
+      inventoryUiState.providerDraftId = "";
+      salesReportState.loaded = false;
       setActiveSection("sales");
       setSectionSubsection("sales", "inventario");
       await refreshData({
         sections: SALES_PROVIDER_REFRESH_SECTIONS,
-        message: "Proveedor guardado.",
+        message: isProviderUpdate ? "Proveedor actualizado." : "Proveedor guardado.",
       });
       return;
     }
@@ -5476,6 +5592,55 @@ async function handleInventoryItemDelete(itemId) {
   }
 }
 
+async function handleInventoryProviderDelete(providerId) {
+  if (!providerId || !elements.catalogItemsList) {
+    return;
+  }
+  const provider = state.providers.find((entry) => String(entry.id || "") === String(providerId));
+  if (!provider) {
+    throw new Error("No se encontro el proveedor seleccionado para eliminar.");
+  }
+  const itemsCount = Number(provider.items_count || 0);
+  const confirmed = window.confirm(
+    `Eliminar "${provider.name || "este proveedor"}"?${
+      itemsCount
+        ? ` ${itemsCount} ${itemsCount === 1 ? "producto quedara" : "productos quedaran"} sin proveedor.`
+        : ""
+    } Esta accion no se puede deshacer.`
+  );
+  if (!confirmed) {
+    return;
+  }
+  const deleteButtons = Array.from(
+    elements.catalogItemsList.querySelectorAll(`[data-inventory-delete-provider="${providerId}"]`)
+  );
+  deleteButtons.forEach((button) => {
+    button.disabled = true;
+  });
+  try {
+    const deleted = await api.deleteProvider(providerId);
+    removeProviderFromState(providerId);
+    inventoryUiState.showProviderForm = false;
+    inventoryUiState.providerDraftId = "";
+    salesReportState.loaded = false;
+    setActiveSection("sales");
+    setSectionSubsection("sales", "inventario");
+    const detachedItems = Number(deleted?.detached_items_count || 0);
+    await refreshData({
+      sections: SALES_PROVIDER_REFRESH_SECTIONS,
+      message: detachedItems
+        ? `Proveedor eliminado. ${detachedItems} ${
+            detachedItems === 1 ? "producto quedo" : "productos quedaron"
+          } sin proveedor.`
+        : "Proveedor eliminado.",
+    });
+  } finally {
+    deleteButtons.forEach((button) => {
+      button.disabled = false;
+    });
+  }
+}
+
 async function handleCatalogPricingSave(itemId) {
   if (!itemId || !elements.catalogItemsList) {
     return;
@@ -5591,6 +5756,7 @@ async function handleCatalogItemsClick(event) {
     const targetPanel = togglePanelButton.dataset.inventoryTogglePanel || "";
     let scrollTarget = "salesCatalogPanel";
     if (targetPanel === "provider") {
+      inventoryUiState.providerDraftId = "";
       inventoryUiState.showProviderForm = !inventoryUiState.showProviderForm;
       scrollTarget = inventoryUiState.showProviderForm ? "salesInventoryProviderCard" : "salesCatalogPanel";
     }
@@ -5600,6 +5766,19 @@ async function handleCatalogItemsClick(event) {
     }
     renderSales();
     scrollToDashboardTarget(scrollTarget);
+    return;
+  }
+  const editProviderButton = event.target.closest("[data-inventory-edit-provider]");
+  if (editProviderButton) {
+    inventoryUiState.providerDraftId = editProviderButton.dataset.inventoryEditProvider || "";
+    inventoryUiState.showProviderForm = true;
+    renderSales();
+    scrollToDashboardTarget("salesInventoryProviderCard");
+    return;
+  }
+  const deleteProviderButton = event.target.closest("[data-inventory-delete-provider]");
+  if (deleteProviderButton) {
+    await handleInventoryProviderDelete(deleteProviderButton.dataset.inventoryDeleteProvider || "");
     return;
   }
   const openSupportButton = event.target.closest("[data-inventory-open-support]");
@@ -18446,17 +18625,23 @@ async function handleOwnerSubmit(event) {
 async function handleProviderSubmit(event) {
   event.preventDefault();
   const isInventoryView = getActiveSalesSubsectionValue() === "inventario";
+  const isProviderUpdate = Boolean(String(event.currentTarget.elements.id?.value || "").trim());
   const savedProvider = await api.saveProvider(serializeForm(event.currentTarget));
   upsertProviderInState(savedProvider);
   resetForm(event.currentTarget);
   if (isInventoryView) {
     inventoryUiState.showProviderForm = false;
   }
+  inventoryUiState.providerDraftId = "";
+  salesReportState.loaded = false;
   setActiveSection("sales");
   if (isInventoryView) {
     setSectionSubsection("sales", "inventario");
   }
-  await refreshData({ sections: SALES_PROVIDER_REFRESH_SECTIONS, message: "Proveedor guardado." });
+  await refreshData({
+    sections: SALES_PROVIDER_REFRESH_SECTIONS,
+    message: isProviderUpdate ? "Proveedor actualizado." : "Proveedor guardado.",
+  });
 }
 
 async function handlePatientSubmit(event) {

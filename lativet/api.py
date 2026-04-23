@@ -158,6 +158,10 @@ class LativetService:
         return self._db.save_provider(payload)
 
     @safe_api_call
+    def delete_provider(self, provider_id: str) -> dict:
+        return self._db.delete_provider(provider_id)
+
+    @safe_api_call
     def save_user(self, payload: dict) -> dict:
         return self._db.save_user(payload)
 

@@ -248,6 +248,51 @@ class WebSmokeTests(unittest.TestCase):
         )
         self.assertTrue(deleted_patient["deleted"])
 
+    def test_http_supports_provider_delete_and_detaches_catalog_items(self) -> None:
+        provider = self.assert_ok(
+            self.client.post(
+                "/api/providers",
+                json={
+                    "name": "Proveedor HTTP",
+                    "contact_name": "Dario",
+                    "phone": "3004455667",
+                    "email": "proveedor.http@example.com",
+                },
+            )
+        )
+        item = self.assert_ok(
+            self.client.post(
+                "/api/catalog-items",
+                json={
+                    "provider_id": provider["id"],
+                    "name": "Desinfectante",
+                    "category": "Insumos",
+                    "purchase_cost": "10000",
+                    "margin_percent": "30",
+                    "presentation_total": "1",
+                    "stock_quantity": "4",
+                    "min_stock": "1",
+                    "track_inventory": True,
+                },
+            )
+        )
+
+        deleted_provider = self.assert_ok(
+            self.client.delete(f"/api/providers/{provider['id']}")
+        )
+        self.assertTrue(deleted_provider["deleted"])
+        self.assertEqual(deleted_provider["detached_items_count"], 1)
+
+        snapshot = self.assert_ok(
+            self.client.get("/api/bootstrap?sections=providers,catalog_items")
+        )
+        self.assertEqual(snapshot["providers"], [])
+        updated_item = next(
+            row for row in snapshot["catalog_items"] if row["id"] == item["id"]
+        )
+        self.assertIsNone(updated_item["provider_id"])
+        self.assertIsNone(updated_item["provider_name"])
+
     def test_http_supports_consultations_availability_and_grooming(self) -> None:
         owner = self.assert_ok(
             self.client.post(

@@ -8021,6 +8021,58 @@ body.auth-locked .page-shell > :not(#loginModal) {
   flex-wrap: wrap;
 }
 
+.sales-inventory-provider-roster {
+  display: grid;
+  gap: 12px;
+}
+
+.sales-inventory-provider-list {
+  display: grid;
+  gap: 10px;
+}
+
+.sales-inventory-provider-item {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 18px;
+  border: 1px solid rgba(42, 126, 138, 0.1);
+  background:
+    radial-gradient(circle at top right, rgba(244, 162, 97, 0.08), transparent 34%),
+    rgba(255, 255, 255, 0.86);
+}
+
+.sales-inventory-provider-item.is-active {
+  border-color: rgba(255, 122, 26, 0.36);
+  box-shadow: 0 10px 24px rgba(255, 122, 26, 0.12);
+}
+
+.sales-inventory-provider-item__header,
+.sales-inventory-provider-item__actions {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.sales-inventory-provider-item__copy {
+  display: grid;
+  gap: 4px;
+}
+
+.sales-inventory-provider-item__copy strong {
+  font-size: 0.84rem;
+}
+
+.sales-inventory-provider-item__copy small,
+.sales-inventory-provider-item p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.74rem;
+  line-height: 1.5;
+}
+
 .sales-inventory-stats {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));

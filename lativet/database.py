@@ -2626,6 +2626,47 @@ class Database:
         ).fetchone()
         return self._row_to_dict(row)
 
+    def delete_provider(self, provider_id: str) -> dict:
+        row = self.connection.execute(
+            "SELECT * FROM billing_providers WHERE id = ?",
+            (provider_id,),
+        ).fetchone()
+        provider = self._row_to_dict(row)
+        if provider is None:
+            raise ValidationError("El proveedor seleccionado no existe.")
+        timestamp = now_iso()
+        detached_items_count = self._scalar(
+            "SELECT COUNT(*) AS total FROM billing_catalog_items WHERE provider_id = ?",
+            (provider_id,),
+        )
+        with self._tx():
+            self.connection.execute(
+                """
+                UPDATE billing_catalog_items
+                SET provider_id = NULL, updated_at = ?
+                WHERE provider_id = ?
+                """,
+                (timestamp, provider_id),
+            )
+            deleted = self.connection.execute(
+                "DELETE FROM billing_providers WHERE id = ?",
+                (provider_id,),
+            )
+            if not deleted.rowcount:
+                raise ValidationError("El proveedor seleccionado no existe.")
+            self._record_audit(
+                "billing_provider",
+                provider_id,
+                "delete",
+                "ventas",
+                {**provider, "detached_items_count": detached_items_count},
+            )
+        return {
+            "id": provider_id,
+            "deleted": True,
+            "detached_items_count": detached_items_count,
+        }
+
     def list_providers(self) -> list[dict]:
         active_items_clause = (
             " AND COALESCE(c.is_deleted, 0) = 0"

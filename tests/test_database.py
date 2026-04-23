@@ -285,6 +285,39 @@ class DatabaseSmokeTests(unittest.TestCase):
             self.db.get_catalog_item(item["id"])
         self.assertEqual(self.db.list_catalog_items(), [])
 
+    def test_can_delete_provider_and_detach_catalog_items(self) -> None:
+        provider = self.db.save_provider(
+            {
+                "name": "Proveedor Borrable",
+                "contact_name": "Nora",
+                "phone": "3001002003",
+                "email": "nora@example.com",
+            }
+        )
+        item = self.db.save_catalog_item(
+            {
+                "provider_id": provider["id"],
+                "name": "Vitaminas",
+                "category": "Medicamentos",
+                "purchase_cost": "15",
+                "margin_percent": "20",
+                "presentation_type": "frasco",
+                "presentation_total": "1",
+                "stock_quantity": "2",
+                "min_stock": "1",
+                "track_inventory": True,
+            }
+        )
+
+        deleted = self.db.delete_provider(provider["id"])
+
+        self.assertTrue(deleted["deleted"])
+        self.assertEqual(deleted["detached_items_count"], 1)
+        self.assertEqual(self.db.list_providers(), [])
+        updated_item = self.db.get_catalog_item(item["id"])
+        self.assertIsNone(updated_item["provider_id"])
+        self.assertIsNone(updated_item["provider_name"])
+
     def test_can_hide_catalog_item_with_related_documents_or_movements(self) -> None:
         owner = self.db.save_owner(
             {

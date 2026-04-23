@@ -275,6 +275,14 @@ def create_app(base_dir: Path | None = None, data_dir: Path | None = None) -> Fl
     def save_provider():
         return respond(service.save_provider(payload()))
 
+    @app.delete("/api/providers/<provider_id>")
+    def delete_provider(provider_id: str):
+        return respond(service.delete_provider(provider_id))
+
+    @app.post("/api/providers/<provider_id>/delete")
+    def delete_provider_post(provider_id: str):
+        return respond(service.delete_provider(provider_id))
+
     @app.post("/api/users")
     def save_user():
         if not is_admin():
