@@ -583,6 +583,17 @@ const SALES_INVENTORY_REFRESH_SECTIONS = [
   "billing_summary",
 ];
 const SALES_PRICING_REFRESH_SECTIONS = ["catalog_items", "billing_summary"];
+
+function getActiveSalesCatalogSubsection() {
+  return getActiveSalesSubsectionValue() === "precios" ? "precios" : "inventario";
+}
+
+function getSalesCatalogRefreshSections(subsection = getActiveSalesCatalogSubsection()) {
+  return subsection === "precios"
+    ? SALES_PRICING_REFRESH_SECTIONS
+    : SALES_INVENTORY_REFRESH_SECTIONS;
+}
+
 const ALL_BOOTSTRAP_SECTIONS = Array.from(
   new Set([
     ...BOOTSTRAP_CORE_SECTIONS,
@@ -4519,7 +4530,7 @@ function buildInventoryDetailPanel(item) {
     return `
       <div class="sales-inventory-detail__empty">
         <strong>Sin producto seleccionado</strong>
-        <p>Elige un producto de la tabla para revisar y actualizar su informacion.</p>
+        <p>Elige un producto de la tabla para revisar su configuracion comercial.</p>
       </div>
     `;
   }
@@ -4616,29 +4627,6 @@ function buildInventoryDetailPanel(item) {
           ${presentationOptions}
         </select>
       </label>
-      <div class="sales-inventory-detail__grid">
-        <label>
-          <span>Stock actual</span>
-          <input
-            data-inventory-detail-field="stock_quantity"
-            name="stock_quantity"
-            type="number"
-            step="0.01"
-            value="${escapeHtml(formatEditableNumber(Number(item.stock_quantity || 0)))}"
-          />
-        </label>
-        <label>
-          <span>Stock minimo</span>
-          <input
-            data-inventory-detail-field="min_stock"
-            name="min_stock"
-            type="number"
-            step="0.01"
-            min="0"
-            value="${escapeHtml(formatEditableNumber(Number(item.min_stock || 0)))}"
-          />
-        </label>
-      </div>
       <label class="checkbox-row sales-inventory-detail__checkbox">
         <input
           data-inventory-detail-field="track_inventory"
@@ -4648,6 +4636,20 @@ function buildInventoryDetailPanel(item) {
         />
         <span>Controlar inventario</span>
       </label>
+      <div class="sales-inventory-detail__grid">
+        <div class="sales-inventory-detail__readonly-group">
+          <span>Stock actual</span>
+          <div class="sales-inventory-detail__readonly">${escapeHtml(
+            formatEditableNumber(Number(item.stock_quantity || 0))
+          )}</div>
+        </div>
+        <div class="sales-inventory-detail__readonly-group">
+          <span>Stock minimo</span>
+          <div class="sales-inventory-detail__readonly">${escapeHtml(
+            formatEditableNumber(Number(item.min_stock || 0))
+          )}</div>
+        </div>
+      </div>
       <label>
         <span>Notas</span>
         <textarea data-inventory-detail-field="notes" name="notes" rows="5">${escapeHtml(
@@ -4802,8 +4804,8 @@ function buildInventoryProductQuickForm() {
     <article id="salesInventoryProductCard" class="sales-inventory-form-card">
       <div class="sales-inventory-form-card__header">
         <div>
-          <p class="eyebrow">Producto</p>
-          <h4>Nuevo producto</h4>
+          <p class="eyebrow">Precios</p>
+          <h4>Nuevo producto comercial</h4>
         </div>
         <button class="ghost-button" data-inventory-toggle-panel="product" type="button">Cerrar</button>
       </div>
@@ -4841,14 +4843,6 @@ function buildInventoryProductQuickForm() {
           <label>
             <span>Contenido</span>
             <input name="presentation_total" type="number" step="0.01" min="0.01" value="1" />
-          </label>
-          <label>
-            <span>Stock actual</span>
-            <input name="stock_quantity" type="number" step="0.01" value="0" />
-          </label>
-          <label>
-            <span>Stock minimo</span>
-            <input name="min_stock" type="number" step="0.01" min="0" value="0" />
           </label>
         </div>
         <label class="checkbox-row sales-inventory-inline-form__checkbox">
@@ -5100,52 +5094,34 @@ function buildInventoryTable(items) {
       `
     )
     .join("");
-  const managementPanels = [
-    inventoryUiState.showProviderForm ? buildInventoryProviderQuickForm() : "",
-    inventoryUiState.showProductForm ? buildInventoryProductQuickForm() : "",
-    inventoryUiState.showStockForm ? buildInventoryStockQuickForm() : "",
-  ]
-    .filter(Boolean)
-    .join("");
   const table = buildSalesHtmlTable(
     [
       { label: "Producto", align: "left" },
       { label: "Categoria", align: "left" },
       { label: "Proveedor", align: "left" },
-      { label: "Stock" },
+      { label: "Stock actual" },
       { label: "Minimo" },
+      { label: "Por pedir" },
       { label: "Estado" },
-      { label: "Precio final" },
       { label: "Accion" },
     ],
     paginatedItems.map((item) => {
-      const itemId = String(item.id || "");
       const itemStatus = getInventoryItemStatusMeta(item);
       const stockQuantity = Number(item.stock_quantity || 0);
       const minStock = Number(item.min_stock || 0);
-      const previewPrice = computeCatalogSalePrice(
-        Number(item.purchase_cost || 0),
-        Number(item.presentation_total || 1) || 1,
-        Number(item.margin_percent || 0)
-      );
+      const reorderQuantity = item.track_inventory ? Math.max(0, minStock - stockQuantity) : 0;
       return [
         {
           value: `
-            <button class="sales-inventory-table-item" data-open-inventory-item="${escapeHtml(
-              itemId
-            )}" type="button">
+            <div class="sales-inventory-table-item sales-inventory-table-item--static">
               <span class="sales-inventory-product__avatar">${escapeHtml(
                 getInventoryItemInitials(item.name)
               )}</span>
               <span class="sales-pricing-product">
                 <strong>${escapeHtml(item.name || "Producto")}</strong>
-                <small>${escapeHtml(
-                  `${getCatalogPresentationLabel(item.presentation_type)} x ${formatEditableNumber(
-                    Number(item.presentation_total || 1) || 1
-                  )}`
-                )}</small>
+                <small>${escapeHtml(item.track_inventory ? "Conteo operativo" : "Sin control de inventario")}</small>
               </span>
-            </button>
+            </div>
           `,
           html: true,
           align: "left",
@@ -5164,23 +5140,24 @@ function buildInventoryTable(items) {
           value: item.track_inventory ? formatEditableNumber(minStock) : "-",
         },
         {
+          value: item.track_inventory
+            ? `<span class="${reorderQuantity > 0 ? "sales-stock-alert" : "sales-stock-neutral"}">${escapeHtml(
+                formatEditableNumber(reorderQuantity)
+              )}</span>`
+            : '<span class="sales-stock-neutral">-</span>',
+          html: true,
+        },
+        {
           value: `<span class="sales-stock-badge ${itemStatus.badgeClass}">${escapeHtml(
             itemStatus.label
           )}</span>`,
           html: true,
         },
         {
-          value: `<strong class="sales-price-final">${escapeHtml(formatMoney(previewPrice))}</strong>`,
-          html: true,
-        },
-        {
           value: `
             <div class="sales-inventory-table-actions">
-              <button class="ghost-button" data-open-inventory-item="${escapeHtml(
-                itemId
-              )}" type="button">Editar</button>
               <button class="secondary-button" data-inventory-adjust-item="${escapeHtml(
-                itemId
+                String(item.id || "")
               )}" type="button">Ajustar</button>
             </div>
           `,
@@ -5193,32 +5170,15 @@ function buildInventoryTable(items) {
 
   return `
     <div class="sales-inventory-shell sales-inventory-shell--catalog">
-      <p class="sales-section-note sales-pricing-note">Administra stock, alertas y productos con la misma vista compacta de precios.</p>
+      <p class="sales-section-note sales-pricing-note">Aqui llevas el conteo operativo: lo que hay, lo minimo requerido y lo que falta por pedir.</p>
 
       <div class="sales-inventory-shell__actions">
-        <button
-          class="secondary-button"
-          data-inventory-toggle-panel="provider"
-          type="button"
-        >${inventoryUiState.showProviderForm ? "Ocultar proveedor" : "Agregar proveedor"}</button>
-        <button
-          class="ghost-button"
-          data-open-provider-directory="true"
-          type="button"
-        >Ver directorio</button>
-        <button
-          class="primary-button"
-          data-inventory-toggle-panel="product"
-          type="button"
-        >${inventoryUiState.showProductForm ? "Ocultar producto" : "Agregar producto"}</button>
         ${
           inventoryUiState.showStockForm
             ? '<button class="ghost-button" data-inventory-close-support="stock" type="button">Ocultar ajuste</button>'
-            : '<button class="ghost-button" data-inventory-open-support="stock" type="button">Registrar ajuste</button>'
+            : '<button class="primary-button" data-inventory-open-support="stock" type="button">Registrar ajuste</button>'
         }
       </div>
-
-      ${managementPanels ? `<div class="sales-inventory-management">${managementPanels}</div>` : ""}
 
       <div class="sales-inventory-toolbar">
         <label class="sales-inventory-toolbar__search">
@@ -5338,26 +5298,55 @@ function buildInventoryTable(items) {
           </label>
         </div>
       </div>
+
+      ${buildInventorySupportSection(null)}
     </div>
   `;
 }
 
 function buildPricingTable(items) {
-  if (!items.length) {
-    return '<div class="sales-report-empty">Aun no hay productos para configurar precios.</div>';
-  }
+  const filterOptions = getInventoryFilterOptions(items);
+  const filteredItems = getFilteredInventoryItems(items);
+  const pageSize = Math.max(1, Number(inventoryUiState.pageSize || 10));
+  const totalPages = Math.max(1, Math.ceil(filteredItems.length / pageSize));
+  const currentPage = Math.min(Math.max(1, Number(inventoryUiState.page || 1)), totalPages);
+  inventoryUiState.page = currentPage;
+  const pageStart = (currentPage - 1) * pageSize;
+  const paginatedItems = filteredItems.slice(pageStart, pageStart + pageSize);
+  const pageButtons = Array.from({ length: totalPages }, (_, index) => index + 1)
+    .filter(
+      (page) =>
+        totalPages <= 5 ||
+        Math.abs(page - currentPage) <= 1 ||
+        page === 1 ||
+        page === totalPages
+    )
+    .map(
+      (page) => `
+        <button class="sales-inventory-pagination__button${
+          page === currentPage ? " is-active" : ""
+        }" data-inventory-page="${page}" type="button">${page}</button>
+      `
+    )
+    .join("");
+  const managementPanels = [
+    inventoryUiState.showProviderForm ? buildInventoryProviderQuickForm() : "",
+    inventoryUiState.showProductForm ? buildInventoryProductQuickForm() : "",
+  ]
+    .filter(Boolean)
+    .join("");
   const table = buildSalesHtmlTable(
     [
       { label: "Producto", align: "left" },
       { label: "Categoria", align: "left" },
       { label: "Proveedor", align: "left" },
-      { label: "Stock" },
+      { label: "Inventario" },
       { label: "Costo base" },
       { label: "Margen %" },
       { label: "Precio final" },
       { label: "Accion" },
     ],
-    items.map((item) => {
+    paginatedItems.map((item) => {
       const itemId = String(item.id || "");
       const stockQuantity = Number(item.stock_quantity || 0);
       const minStock = Number(item.min_stock || 0);
@@ -5371,18 +5360,36 @@ function buildPricingTable(items) {
       );
       return [
         {
-          value: `<div class="sales-pricing-product"><strong>${escapeHtml(
-            item.name || "-"
-          )}</strong></div>`,
+          value: `
+            <button class="sales-inventory-table-item" data-open-inventory-item="${escapeHtml(
+              itemId
+            )}" type="button">
+              <span class="sales-inventory-product__avatar">${escapeHtml(
+                getInventoryItemInitials(item.name)
+              )}</span>
+              <span class="sales-pricing-product">
+                <strong>${escapeHtml(item.name || "-")}</strong>
+                <small>${escapeHtml(
+                  `${getCatalogPresentationLabel(item.presentation_type)} x ${formatEditableNumber(
+                    Number(item.presentation_total || 1) || 1
+                  )}`
+                )}</small>
+              </span>
+            </button>
+          `,
           html: true,
           align: "left",
         },
         { value: item.category || "-", align: "left" },
         { value: item.provider_name || "Sin proveedor", align: "left" },
         {
-          value: `<span class="${isLowStock ? "sales-stock-alert" : "sales-stock-ok"}">${escapeHtml(
-            stockQuantity.toString()
-          )}</span>`,
+          value: item.track_inventory
+            ? `<div class="sales-pricing-product"><strong class="${
+                isLowStock ? "sales-stock-alert" : "sales-stock-ok"
+              }">${escapeHtml(formatEditableNumber(stockQuantity))}</strong><small>Min ${escapeHtml(
+                formatEditableNumber(minStock)
+              )}</small></div>`
+            : '<span class="sales-stock-neutral">Sin control</span>',
           html: true,
         },
         {
@@ -5408,9 +5415,16 @@ function buildPricingTable(items) {
           html: true,
         },
         {
-          value: `<button class="secondary-button sales-pricing-save" data-save-pricing="${escapeHtml(
-            itemId
-          )}" type="button">Guardar</button>`,
+          value: `
+            <div class="sales-inventory-table-actions">
+              <button class="ghost-button" data-open-inventory-item="${escapeHtml(
+                itemId
+              )}" type="button">Configurar</button>
+              <button class="secondary-button sales-pricing-save" data-save-pricing="${escapeHtml(
+                itemId
+              )}" type="button">Guardar</button>
+            </div>
+          `,
           html: true,
         },
       ];
@@ -5418,9 +5432,124 @@ function buildPricingTable(items) {
     "Aun no hay productos para configurar precios."
   );
   return `
-    <div class="sales-inventory-shell">
-      <p class="sales-section-note sales-pricing-note">Aqui ajustas costo y margen. El precio final guardado es el que se usa en la factura.</p>
+    <div class="sales-inventory-shell sales-inventory-shell--catalog">
+      <p class="sales-section-note sales-pricing-note">Aqui defines costo, margen, presentacion y control comercial. El precio final guardado es el que se usa en la factura.</p>
+
+      <div class="sales-inventory-shell__actions">
+        <button
+          class="secondary-button"
+          data-inventory-toggle-panel="provider"
+          type="button"
+        >${inventoryUiState.showProviderForm ? "Ocultar proveedor" : "Agregar proveedor"}</button>
+        <button
+          class="ghost-button"
+          data-open-provider-directory="true"
+          type="button"
+        >Ver directorio</button>
+        <button
+          class="primary-button"
+          data-inventory-toggle-panel="product"
+          type="button"
+        >${inventoryUiState.showProductForm ? "Ocultar producto" : "Agregar producto"}</button>
+      </div>
+
+      ${managementPanels ? `<div class="sales-inventory-management">${managementPanels}</div>` : ""}
+
+      <div class="sales-inventory-toolbar">
+        <label class="sales-inventory-toolbar__search">
+          <span>Buscar</span>
+          <input
+            data-inventory-filter="search"
+            type="search"
+            placeholder="Buscar por producto, categoria o proveedor..."
+            value="${escapeHtml(inventoryUiState.search)}"
+          />
+        </label>
+        <label>
+          <span>Categoria</span>
+          <select data-inventory-filter="category">
+            <option value="">Todas</option>
+            ${filterOptions.categories
+              .map(
+                (category) =>
+                  `<option value="${escapeHtml(category)}"${
+                    category === inventoryUiState.category ? " selected" : ""
+                  }>${escapeHtml(category)}</option>`
+              )
+              .join("")}
+          </select>
+        </label>
+        <label>
+          <span>Proveedor</span>
+          <select data-inventory-filter="providerId">
+            <option value="">Todos</option>
+            ${filterOptions.providers
+              .map(
+                (provider) =>
+                  `<option value="${escapeHtml(provider.id)}"${
+                    provider.id === inventoryUiState.providerId ? " selected" : ""
+                  }>${escapeHtml(provider.name)}</option>`
+              )
+              .join("")}
+          </select>
+        </label>
+        <label>
+          <span>Estado</span>
+          <select data-inventory-filter="status">
+            <option value="all"${inventoryUiState.status === "all" ? " selected" : ""}>Todos</option>
+            <option value="in_stock"${inventoryUiState.status === "in_stock" ? " selected" : ""}>En stock</option>
+            <option value="low_stock"${inventoryUiState.status === "low_stock" ? " selected" : ""}>Bajo stock</option>
+            <option value="no_stock"${inventoryUiState.status === "no_stock" ? " selected" : ""}>Sin stock</option>
+            <option value="no_control"${inventoryUiState.status === "no_control" ? " selected" : ""}>Sin control</option>
+          </select>
+        </label>
+        <label class="checkbox-row sales-inventory-toolbar__toggle">
+          <input
+            data-inventory-filter="lowStockOnly"
+            type="checkbox"
+            ${inventoryUiState.lowStockOnly ? "checked" : ""}
+          />
+          <span>Solo bajo stock</span>
+        </label>
+        <button class="ghost-button" data-inventory-clear-filters type="button">Limpiar</button>
+      </div>
+
       <div class="sales-table-scroll">${table}</div>
+
+      <div class="sales-inventory-footer">
+        <p>Mostrando ${filteredItems.length ? pageStart + 1 : 0} a ${Math.min(
+          pageStart + pageSize,
+          filteredItems.length
+        )} de ${filteredItems.length} productos</p>
+        <div class="sales-inventory-footer__controls">
+          <div class="sales-inventory-pagination">
+            <button
+              class="sales-inventory-pagination__button"
+              data-inventory-page="${Math.max(1, currentPage - 1)}"
+              type="button"
+              ${currentPage <= 1 ? "disabled" : ""}
+            >&lsaquo;</button>
+            ${pageButtons}
+            <button
+              class="sales-inventory-pagination__button"
+              data-inventory-page="${Math.min(totalPages, currentPage + 1)}"
+              type="button"
+              ${currentPage >= totalPages ? "disabled" : ""}
+            >&rsaquo;</button>
+          </div>
+          <label class="sales-inventory-footer__page-size">
+            <span>Por pagina</span>
+            <select data-inventory-page-size>
+              ${[10, 20, 50]
+                .map(
+                  (size) =>
+                    `<option value="${size}"${size === pageSize ? " selected" : ""}>${size}</option>`
+                )
+                .join("")}
+            </select>
+          </label>
+        </div>
+      </div>
     </div>
   `;
 }
@@ -5507,6 +5636,7 @@ async function submitInventoryInlineForm(form) {
   if (!form) {
     return;
   }
+  const targetSubsection = getActiveSalesCatalogSubsection();
   const formType = form.dataset.inventoryInlineForm || "";
   const submitButton =
     form.querySelector(`[data-inventory-inline-submit="${formType}"]`) ||
@@ -5523,7 +5653,7 @@ async function submitInventoryInlineForm(form) {
       inventoryUiState.providerDraftId = "";
       salesReportState.loaded = false;
       setActiveSection("sales");
-      setSectionSubsection("sales", "inventario");
+      setSectionSubsection("sales", targetSubsection);
       await refreshData({
         sections: SALES_PROVIDER_REFRESH_SECTIONS,
         message: isProviderUpdate ? "Proveedor actualizado." : "Proveedor guardado.",
@@ -5537,10 +5667,10 @@ async function submitInventoryInlineForm(form) {
       inventoryUiState.selectedItemId = savedItem?.id || inventoryUiState.selectedItemId;
       salesReportState.loaded = false;
       setActiveSection("sales");
-      setSectionSubsection("sales", "inventario");
+      setSectionSubsection("sales", targetSubsection);
       await refreshData({
-        sections: SALES_INVENTORY_REFRESH_SECTIONS,
-        message: "Item de catalogo guardado.",
+        sections: getSalesCatalogRefreshSections(targetSubsection),
+        message: "Producto guardado.",
       });
       return;
     }
@@ -5576,6 +5706,7 @@ async function handleInventoryDetailSave(itemId) {
   if (!itemId) {
     return;
   }
+  const targetSubsection = getActiveSalesCatalogSubsection();
   const item = state.catalog_items.find((entry) => String(entry.id) === String(itemId));
   const detailForm = getInventoryDetailForm(itemId);
   if (!item || !detailForm) {
@@ -5595,8 +5726,8 @@ async function handleInventoryDetailSave(itemId) {
       0.01,
       Number(detailForm.elements.presentation_total?.value || item.presentation_total || 1)
     ),
-    stock_quantity: Number(detailForm.elements.stock_quantity?.value || 0),
-    min_stock: Math.max(0, Number(detailForm.elements.min_stock?.value || 0)),
+    stock_quantity: Number(item.stock_quantity || 0),
+    min_stock: Math.max(0, Number(item.min_stock || 0)),
     track_inventory: Boolean(detailForm.elements.track_inventory?.checked),
     notes: detailForm.elements.notes?.value || "",
   };
@@ -5614,10 +5745,13 @@ async function handleInventoryDetailSave(itemId) {
     inventoryUiState.detailItemId = savedItem?.id || item.id;
     salesReportState.loaded = false;
     setActiveSection("sales");
-    setSectionSubsection("sales", "inventario");
+    setSectionSubsection("sales", targetSubsection);
     await refreshData({
-      sections: SALES_INVENTORY_REFRESH_SECTIONS,
-      message: "Producto de inventario actualizado.",
+      sections: getSalesCatalogRefreshSections(targetSubsection),
+      message:
+        targetSubsection === "precios"
+          ? "Configuracion comercial actualizada."
+          : "Producto de inventario actualizado.",
     });
   } finally {
     if (saveButton) {
@@ -5630,12 +5764,13 @@ async function handleInventoryItemDelete(itemId) {
   if (!itemId) {
     return;
   }
+  const targetSubsection = getActiveSalesCatalogSubsection();
   const item = state.catalog_items.find((entry) => String(entry.id) === String(itemId));
   if (!item) {
     throw new Error("No se encontro el producto seleccionado para eliminar.");
   }
   const confirmed = window.confirm(
-    `Eliminar "${item.name || "este producto"}" del inventario? Esta accion no se puede deshacer.`
+    `Eliminar "${item.name || "este producto"}" del catalogo? Esta accion no se puede deshacer.`
   );
   if (!confirmed) {
     return;
@@ -5660,10 +5795,13 @@ async function handleInventoryItemDelete(itemId) {
     inventoryUiState.showStockForm = false;
     salesReportState.loaded = false;
     setActiveSection("sales");
-    setSectionSubsection("sales", "inventario");
+    setSectionSubsection("sales", targetSubsection);
     await refreshData({
-      sections: SALES_INVENTORY_REFRESH_SECTIONS,
-      message: "Producto eliminado del inventario.",
+      sections: getSalesCatalogRefreshSections(targetSubsection),
+      message:
+        targetSubsection === "precios"
+          ? "Producto eliminado del catalogo."
+          : "Producto eliminado del inventario.",
     });
   } finally {
     if (deleteButton) {
@@ -5676,6 +5814,7 @@ async function handleInventoryProviderDelete(providerId) {
   if (!providerId) {
     return;
   }
+  const targetSubsection = getActiveSalesCatalogSubsection();
   const provider = state.providers.find((entry) => String(entry.id || "") === String(providerId));
   if (!provider) {
     throw new Error("No se encontro el proveedor seleccionado para eliminar.");
@@ -5702,7 +5841,7 @@ async function handleInventoryProviderDelete(providerId) {
     inventoryUiState.providerDraftId = "";
     salesReportState.loaded = false;
     setActiveSection("sales");
-    setSectionSubsection("sales", "inventario");
+    setSectionSubsection("sales", targetSubsection);
     const detachedItems = Number(deleted?.detached_items_count || 0);
     await refreshData({
       sections: SALES_PROVIDER_REFRESH_SECTIONS,
@@ -13887,7 +14026,7 @@ function renderInventoryItemModal() {
     elements.inventoryItemModalBody.innerHTML = "";
     if (elements.inventoryItemModalSummary) {
       elements.inventoryItemModalSummary.textContent =
-        "Selecciona un producto para revisar su inventario.";
+        "Selecciona un producto para revisar su configuracion comercial.";
     }
     return;
   }
@@ -13896,15 +14035,19 @@ function renderInventoryItemModal() {
     closeInventoryItemModal();
     return;
   }
-  const itemStatus = getInventoryItemStatusMeta(item);
+  const previewPrice = computeCatalogSalePrice(
+    Number(item.purchase_cost || 0),
+    Number(item.presentation_total || 1) || 1,
+    Number(item.margin_percent || 0)
+  );
   elements.inventoryItemModalBody.innerHTML = buildInventoryDetailPanel(item);
   if (elements.inventoryItemModalTitle) {
-    elements.inventoryItemModalTitle.textContent = item.name || "Detalle del producto";
+    elements.inventoryItemModalTitle.textContent = item.name || "Configuracion comercial";
   }
   if (elements.inventoryItemModalSummary) {
     elements.inventoryItemModalSummary.textContent = `${
       item.category || "Sin categoria"
-    } · ${item.provider_name || "Sin proveedor"} · ${itemStatus.label}`;
+    } · ${item.provider_name || "Sin proveedor"} · ${formatMoney(previewPrice)}`;
   }
 }
 

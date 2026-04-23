@@ -7876,6 +7876,10 @@ body.auth-locked .page-shell > :not(#loginModal) {
   color: inherit;
 }
 
+.sales-inventory-table-item--static {
+  cursor: default;
+}
+
 .sales-inventory-table-item:hover .sales-pricing-product strong {
   color: #f46b2c;
 }
@@ -8606,6 +8610,19 @@ body.auth-locked .page-shell > :not(#loginModal) {
   background: rgba(244, 248, 252, 0.96);
   color: #0f766e;
   font-weight: 800;
+}
+
+.sales-inventory-detail__readonly-group {
+  display: grid;
+  gap: 6px;
+}
+
+.sales-inventory-detail__readonly-group span {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #7f8ba5;
 }
 
 .sales-inventory-detail__checkbox {
