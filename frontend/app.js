@@ -3714,6 +3714,8 @@ function cacheElements() {
     "billingDocumentTypeSelect",
     "billingPaymentMethodSelect",
     "billingCashAccountSelect",
+    "billingLineItemSearch",
+    "billingLineItemDropdown",
     "billingLineItemSelect",
     "billingLineQuantity",
     "addBillingLineButton",
@@ -6909,7 +6911,7 @@ function validateBillingWizardStep(step) {
     }
   }
   if (step === 2 && !billingDraft.lines.length) {
-    elements.billingLineItemSelect?.focus();
+    elements.billingLineItemSearch?.focus();
     throw new Error("Agrega al menos un item al documento antes de continuar.");
   }
   if (step === 3 && snapshot.documentType === "factura") {
@@ -13125,6 +13127,152 @@ function renderAppointmentPatientDropdown() {
   }
 }
 
+function normalizeBillingCatalogSearchText(value) {
+  const normalized =
+    typeof String(value || "").normalize === "function"
+      ? String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+      : String(value || "");
+  return normalized.toLowerCase().trim();
+}
+
+function tokenizeBillingCatalogSearch(value) {
+  return normalizeBillingCatalogSearchText(value)
+    .split(/[\s/]+/)
+    .filter(Boolean);
+}
+
+function getBillingCatalogItemById(itemId) {
+  const normalizedId = String(itemId || "").trim();
+  if (!normalizedId) {
+    return null;
+  }
+  return (
+    (state.catalog_items || []).find((item) => String(item.id || "").trim() === normalizedId) || null
+  );
+}
+
+function buildBillingCatalogItemLabel(item) {
+  return `${item.name || "Item"} / ${formatMoney(item.unit_price || 0)}`;
+}
+
+function buildBillingCatalogItemMeta(item) {
+  return [item.category || "Sin categoria", item.provider_name || "Sin proveedor"].join(" · ");
+}
+
+function matchesBillingCatalogItem(item, query) {
+  const tokens = tokenizeBillingCatalogSearch(query);
+  if (!tokens.length) {
+    return true;
+  }
+  const haystack = normalizeBillingCatalogSearchText(
+    [
+      item.name,
+      item.category,
+      item.provider_name,
+      getCatalogPresentationLabel(item.presentation_type),
+      item.id,
+    ]
+      .filter(Boolean)
+      .join(" ")
+  );
+  return tokens.every((token) => haystack.includes(token));
+}
+
+function syncBillingLineItemSearch({ preserveQuery = false } = {}) {
+  if (!elements.billingLineItemSearch || !elements.billingLineItemSelect) {
+    return;
+  }
+  const selectedItem = getBillingCatalogItemById(elements.billingLineItemSelect.value);
+  if (selectedItem) {
+    elements.billingLineItemSearch.value = buildBillingCatalogItemLabel(selectedItem);
+    return;
+  }
+  if (!preserveQuery) {
+    elements.billingLineItemSearch.value = "";
+  }
+}
+
+function selectBillingLineItem(itemId) {
+  if (!elements.billingLineItemSearch || !elements.billingLineItemSelect) {
+    return;
+  }
+  const selectedItem = getBillingCatalogItemById(itemId);
+  elements.billingLineItemSelect.value = selectedItem ? String(selectedItem.id || "") : "";
+  elements.billingLineItemSearch.value = selectedItem ? buildBillingCatalogItemLabel(selectedItem) : "";
+  elements.billingLineItemDropdown?.classList.add("is-hidden");
+  elements.billingLineItemSelect.dispatchEvent(new Event("change", { bubbles: true }));
+}
+
+function renderBillingLineItemDropdown({ showAll = false } = {}) {
+  const input = elements.billingLineItemSearch;
+  const dropdown = elements.billingLineItemDropdown;
+  if (!input || !dropdown) {
+    return;
+  }
+  const query = showAll ? "" : String(input.value || "").trim();
+  const catalogItems = state.catalog_items || [];
+  const filteredItems = query
+    ? catalogItems.filter((item) => matchesBillingCatalogItem(item, query))
+    : catalogItems;
+  const visibleItems = filteredItems.slice(0, 8);
+  const selectedItemId = String(elements.billingLineItemSelect?.value || "").trim();
+  if (!catalogItems.length) {
+    dropdown.innerHTML =
+      '<div class="sales-autocomplete__item is-muted">Aun no hay productos o servicios registrados.</div>';
+  } else if (!visibleItems.length) {
+    dropdown.innerHTML = '<div class="sales-autocomplete__item is-muted">Sin resultados</div>';
+  } else {
+    dropdown.innerHTML = [
+      ...visibleItems.map((item) => {
+        const normalizedItemId = String(item.id || "");
+        return `
+          <button
+            type="button"
+            class="sales-autocomplete__item${
+              normalizedItemId === selectedItemId ? " is-selected" : ""
+            }"
+            data-billing-line-item-id="${escapeHtml(normalizedItemId)}"
+          >
+            <strong>${escapeHtml(buildBillingCatalogItemLabel(item))}</strong>
+            <small>${escapeHtml(buildBillingCatalogItemMeta(item))}</small>
+          </button>
+        `;
+      }),
+      filteredItems.length > visibleItems.length
+        ? '<div class="sales-autocomplete__item is-muted">Sigue escribiendo para ver menos coincidencias.</div>'
+        : "",
+    ].join("");
+  }
+  dropdown.classList.toggle("is-hidden", document.activeElement !== input);
+}
+
+function resolveBillingCatalogItemIdFromSearch() {
+  const selectedItemId = String(elements.billingLineItemSelect?.value || "").trim();
+  if (selectedItemId) {
+    return selectedItemId;
+  }
+  const query = String(elements.billingLineItemSearch?.value || "").trim();
+  if (!query) {
+    return "";
+  }
+  const exactMatches = (state.catalog_items || []).filter(
+    (item) => normalizeBillingCatalogSearchText(item.name) === normalizeBillingCatalogSearchText(query)
+  );
+  if (exactMatches.length === 1) {
+    selectBillingLineItem(exactMatches[0].id);
+    return String(exactMatches[0].id || "");
+  }
+  const matches = (state.catalog_items || []).filter((item) => matchesBillingCatalogItem(item, query));
+  if (matches.length === 1) {
+    selectBillingLineItem(matches[0].id);
+    return String(matches[0].id || "");
+  }
+  if (matches.length > 1) {
+    throw new Error("Hay varios items que coinciden. Elige uno de la lista.");
+  }
+  throw new Error("No encontramos ese item en el catalogo.");
+}
+
 function renderSelects() {
   const activeSection = getActiveSectionId();
   const consultorioSubsection = getSubsectionOption("consultorio")?.value || "";
@@ -13205,9 +13353,14 @@ function renderSelects() {
   populateSelect(
     elements.billingLineItemSelect,
     state.catalog_items,
-    (item) => `${item.name} / ${formatMoney(item.unit_price || 0)}`,
+    (item) => buildBillingCatalogItemLabel(item),
     "Selecciona item"
   );
+  syncBillingLineItemSearch({
+    preserveQuery:
+      document.activeElement === elements.billingLineItemSearch &&
+      !String(elements.billingLineItemSelect?.value || "").trim(),
+  });
   populateSelect(
     elements.stockAdjustmentItemSelect,
     state.catalog_items.filter((item) => item.track_inventory),
@@ -18918,7 +19071,7 @@ async function handleBillingSettingsSubmit(event) {
 }
 
 function addDraftBillingLine() {
-  const catalogItemId = elements.billingLineItemSelect.value;
+  const catalogItemId = resolveBillingCatalogItemIdFromSearch();
   const quantity = Number(elements.billingLineQuantity.value || 0);
   if (!catalogItemId) {
     throw new Error("Selecciona un item del catalogo.");
@@ -21737,6 +21890,53 @@ function bindForms() {
         elements.appointmentPatientInput.value = label;
       }
       elements.appointmentPatientDropdown.classList.add("is-hidden");
+    });
+  }
+  if (elements.billingLineItemSearch) {
+    elements.billingLineItemSearch.addEventListener("input", () => {
+      const selectedItem = getBillingCatalogItemById(elements.billingLineItemSelect?.value);
+      if (
+        selectedItem &&
+        String(elements.billingLineItemSearch.value || "").trim() !==
+          buildBillingCatalogItemLabel(selectedItem)
+      ) {
+        elements.billingLineItemSelect.value = "";
+      }
+      renderBillingLineItemDropdown();
+      elements.billingLineItemDropdown?.classList.remove("is-hidden");
+    });
+    elements.billingLineItemSearch.addEventListener("focus", () => {
+      const selectedItem = getBillingCatalogItemById(elements.billingLineItemSelect?.value);
+      const query = String(elements.billingLineItemSearch.value || "").trim();
+      renderBillingLineItemDropdown({
+        showAll: !query || (selectedItem && query === buildBillingCatalogItemLabel(selectedItem)),
+      });
+      elements.billingLineItemDropdown?.classList.remove("is-hidden");
+    });
+    elements.billingLineItemSearch.addEventListener("blur", () => {
+      setTimeout(() => {
+        elements.billingLineItemDropdown?.classList.add("is-hidden");
+      }, 120);
+    });
+    elements.billingLineItemSearch.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter") {
+        return;
+      }
+      const firstMatch = elements.billingLineItemDropdown?.querySelector("[data-billing-line-item-id]");
+      if (!firstMatch) {
+        return;
+      }
+      event.preventDefault();
+      selectBillingLineItem(firstMatch.dataset.billingLineItemId || "");
+    });
+  }
+  if (elements.billingLineItemDropdown) {
+    elements.billingLineItemDropdown.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-billing-line-item-id]");
+      if (!button) {
+        return;
+      }
+      selectBillingLineItem(button.dataset.billingLineItemId || "");
     });
   }
   if (elements.appointmentStartInput) {

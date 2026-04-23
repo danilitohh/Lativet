@@ -703,7 +703,19 @@
                           <h4>Items del documento</h4>
                           <p>Selecciona productos o servicios y arma el detalle de la factura.</p>
                         </div>
-                        <label class="full"><span>Item del documento</span><select id="billingLineItemSelect"></select></label>
+                        <label class="full sales-billing-item-field">
+                          <span>Item del documento</span>
+                          <div class="sales-autocomplete">
+                            <input
+                              id="billingLineItemSearch"
+                              type="search"
+                              placeholder="Escribe el nombre del producto o servicio"
+                              autocomplete="off"
+                            />
+                            <div id="billingLineItemDropdown" class="sales-autocomplete__dropdown is-hidden"></div>
+                            <select id="billingLineItemSelect" class="sales-autocomplete__native"></select>
+                          </div>
+                        </label>
                         <div class="sales-form-row sales-form-row--compact full">
                           <label class="sales-field--xs"><span>Cantidad</span><input id="billingLineQuantity" type="number" step="0.01" min="0.01" value="1" /></label>
                           <div class="form-actions align-end sales-form-actions-inline"><button id="addBillingLineButton" class="secondary-button" type="button">Agregar item</button></div>
