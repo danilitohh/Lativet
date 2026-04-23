@@ -9429,18 +9429,31 @@ textarea:focus {
 .agenda-appointment-icon {
   width: 34px;
   height: 34px;
+  min-width: 34px;
+  min-height: 34px;
+  max-width: 34px;
+  max-height: 34px;
   border-radius: 12px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  align-self: start;
+  overflow: hidden;
   color: var(--agenda-tone, var(--brand-strong));
   background: var(--agenda-bg-strong, rgba(93, 143, 242, 0.16));
 }
 
-.agenda-appointment-icon svg {
-  width: 18px;
-  height: 18px;
+.agenda-appointment-icon svg,
+.agenda-appointment-icon__svg {
+  width: 18px !important;
+  height: 18px !important;
+  min-width: 18px;
+  min-height: 18px;
+  max-width: 18px;
+  max-height: 18px;
+  display: block;
+  flex: 0 0 18px;
 }
 
 .agenda-quick-stat .agenda-appointment-icon {
@@ -9452,7 +9465,32 @@ textarea:focus {
 .agenda-event-chip .agenda-appointment-icon {
   width: 26px;
   height: 26px;
+  min-width: 26px;
+  min-height: 26px;
+  max-width: 26px;
+  max-height: 26px;
   border-radius: 10px;
+}
+
+.agenda-timeline-event .agenda-appointment-icon {
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  min-height: 20px;
+  max-width: 20px;
+  max-height: 20px;
+  border-radius: 7px;
+}
+
+.agenda-timeline-event .agenda-appointment-icon svg,
+.agenda-timeline-event .agenda-appointment-icon__svg {
+  width: 12px !important;
+  height: 12px !important;
+  min-width: 12px;
+  min-height: 12px;
+  max-width: 12px;
+  max-height: 12px;
+  flex-basis: 12px;
 }
 
 .agenda-list-title {

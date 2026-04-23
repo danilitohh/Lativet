@@ -1991,7 +1991,7 @@ function getAgendaAppointmentIconSvg(typeKey) {
   switch (typeKey) {
     case "consulta":
       return `
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+        <svg class="agenda-appointment-icon__svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="12" r="8"></circle>
           <path d="M12 8.5v7"></path>
           <path d="M8.5 12h7"></path>
@@ -1999,7 +1999,7 @@ function getAgendaAppointmentIconSvg(typeKey) {
       `;
     case "vacunacion":
       return `
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+        <svg class="agenda-appointment-icon__svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
           <path d="M14 6l4 4"></path>
           <path d="M4 20l6-6"></path>
           <path d="M10 8l6 6"></path>
@@ -2009,7 +2009,7 @@ function getAgendaAppointmentIconSvg(typeKey) {
       `;
     case "cirugia":
       return `
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+        <svg class="agenda-appointment-icon__svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
           <path d="M12 20s-6.5-4-6.5-9.5a3.5 3.5 0 0 1 6.5-2 3.5 3.5 0 0 1 6.5 2C18.5 16 12 20 12 20Z"></path>
           <path d="M9.5 12h5"></path>
           <path d="M12 9.5v5"></path>
@@ -2017,7 +2017,7 @@ function getAgendaAppointmentIconSvg(typeKey) {
       `;
     case "laboratorio":
       return `
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+        <svg class="agenda-appointment-icon__svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
           <path d="M10 3h4"></path>
           <path d="M10 3v5l-4.2 7a3 3 0 0 0 2.6 4.5h7.2a3 3 0 0 0 2.6-4.5L14 8V3"></path>
           <path d="M8.5 14h7"></path>
@@ -2025,7 +2025,7 @@ function getAgendaAppointmentIconSvg(typeKey) {
       `;
     case "imagen":
       return `
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+        <svg class="agenda-appointment-icon__svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
           <rect x="4" y="5" width="16" height="14" rx="3"></rect>
           <circle cx="9" cy="10" r="1.4"></circle>
           <path d="M6.5 16l3.5-3 2.5 2 3-4 1.5 2"></path>
@@ -2033,7 +2033,7 @@ function getAgendaAppointmentIconSvg(typeKey) {
       `;
     case "seguimiento":
       return `
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+        <svg class="agenda-appointment-icon__svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
           <rect x="6" y="4" width="12" height="16" rx="2"></rect>
           <path d="M9 4.5h6"></path>
           <path d="M9.5 12l1.7 1.7 3.4-3.4"></path>
@@ -2041,7 +2041,7 @@ function getAgendaAppointmentIconSvg(typeKey) {
       `;
     case "peluqueria":
       return `
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+        <svg class="agenda-appointment-icon__svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="6.5" cy="7" r="2.5"></circle>
           <circle cx="6.5" cy="17" r="2.5"></circle>
           <path d="M8.5 9l10 10"></path>
@@ -2050,7 +2050,7 @@ function getAgendaAppointmentIconSvg(typeKey) {
       `;
     case "documento":
       return `
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+        <svg class="agenda-appointment-icon__svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
           <path d="M8 3.5h6l4 4V19a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V5.5a2 2 0 0 1 2-2Z"></path>
           <path d="M14 3.5V8h4"></path>
           <path d="M9 12h6"></path>
@@ -2059,14 +2059,14 @@ function getAgendaAppointmentIconSvg(typeKey) {
       `;
     case "desparasitacion":
       return `
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+        <svg class="agenda-appointment-icon__svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
           <path d="M12 3l7 3v5c0 4.5-2.8 7.8-7 10-4.2-2.2-7-5.5-7-10V6l7-3Z"></path>
           <path d="M9.5 12l1.7 1.7 3.4-3.4"></path>
         </svg>
       `;
     default:
       return `
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+        <svg class="agenda-appointment-icon__svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
           <rect x="4" y="6" width="16" height="14" rx="3"></rect>
           <path d="M8 3.5v4"></path>
           <path d="M16 3.5v4"></path>
