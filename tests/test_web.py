@@ -390,6 +390,8 @@ class WebSmokeTests(unittest.TestCase):
 
     @patch("lativet.api.send_email_with_attachment")
     def test_sales_endpoints_export_document_report_inventory_and_email(self, mocked_send_email) -> None:
+        bootstrap = self.client.get("/api/bootstrap")
+        self.assertEqual(bootstrap.status_code, 200, bootstrap.get_data(as_text=True))
         service = self.app.extensions.get("lativet_service")
         self.assertIsNotNone(service)
         service._db.save_settings(
@@ -481,6 +483,10 @@ class WebSmokeTests(unittest.TestCase):
                 },
             )
         )
+        self.assertIn("pdf", document)
+        self.assertTrue(document["pdf"]["url"].startswith("/exports/"))
+        self.assertEqual(self.client.get(document["pdf"]["url"]).status_code, 200)
+        mocked_send_email.assert_not_called()
         payment = self.assert_ok(
             self.client.post(
                 "/api/billing-payments",
@@ -545,6 +551,109 @@ class WebSmokeTests(unittest.TestCase):
             )
         )
         self.assertTrue(email_result["sent"])
+        mocked_send_email.assert_called_once()
+
+    @patch("lativet.api.send_email_with_attachment")
+    def test_billing_document_save_generates_pdf_and_can_email_on_save(self, mocked_send_email) -> None:
+        bootstrap = self.client.get("/api/bootstrap")
+        self.assertEqual(bootstrap.status_code, 200, bootstrap.get_data(as_text=True))
+        service = self.app.extensions.get("lativet_service")
+        self.assertIsNotNone(service)
+        service._db.save_settings(
+            {
+                **service._db.get_settings(),
+                "clinic_name": "Lativet",
+                "clinic_address": "Calle 1",
+                "clinic_phone": "3000000000",
+                "clinic_email": "ventas@example.com",
+                "smtp_enabled": True,
+                "smtp_from": "ventas@example.com",
+                "smtp_host": "smtp.gmail.com",
+                "smtp_port": 587,
+                "smtp_app_password": "app-secret",
+            }
+        )
+
+        owner = self.assert_ok(
+            self.client.post(
+                "/api/owners",
+                json={
+                    "full_name": "Cliente Autoenvio",
+                    "identification_type": "CC",
+                    "identification_number": "889900",
+                    "phone": "3009990000",
+                    "email": "cliente.auto@example.com",
+                    "address": "Carrera 10",
+                },
+            )
+        )
+        patient = self.assert_ok(
+            self.client.post(
+                "/api/patients",
+                json={
+                    "owner_id": owner["id"],
+                    "name": "Lola",
+                    "species": "Canino",
+                    "breed": "Criollo",
+                    "sex": "Hembra",
+                    "age_years": "4",
+                    "weight_kg": "9.4",
+                    "reproductive_status": "Esterilizada",
+                    "notes": "Paciente para autoenvio.",
+                },
+            )
+        )
+        provider = self.assert_ok(
+            self.client.post(
+                "/api/providers",
+                json={
+                    "name": "Proveedor Auto",
+                    "contact_name": "Sara",
+                    "phone": "3010001122",
+                    "email": "proveedor.auto@example.com",
+                },
+            )
+        )
+        item = self.assert_ok(
+            self.client.post(
+                "/api/catalog-items",
+                json={
+                    "provider_id": provider["id"],
+                    "name": "Hemograma",
+                    "category": "Laboratorio",
+                    "purchase_cost": "25000",
+                    "margin_percent": "40",
+                    "presentation_total": "1",
+                    "stock_quantity": "0",
+                    "min_stock": "0",
+                    "track_inventory": False,
+                },
+            )
+        )
+
+        document = self.assert_ok(
+            self.client.post(
+                "/api/billing-documents",
+                json={
+                    "patient_id": patient["id"],
+                    "document_type": "factura",
+                    "issue_date": "2026-04-20",
+                    "due_date": "2026-04-25",
+                    "payment_method": "Efectivo",
+                    "cash_account": "caja_menor",
+                    "discount": "0",
+                    "recipient_email": "cliente.auto@example.com",
+                    "send_email_on_save": True,
+                    "lines": [{"catalog_item_id": item["id"], "quantity": "1"}],
+                },
+            )
+        )
+
+        self.assertTrue(document["pdf"]["url"].startswith("/exports/"))
+        self.assertEqual(self.client.get(document["pdf"]["url"]).status_code, 200)
+        self.assertTrue(document["email"]["sent"])
+        self.assertEqual(document["email"]["to"], "cliente.auto@example.com")
+        self.assertEqual(document["email"]["pdf_url"], document["pdf"]["url"])
         mocked_send_email.assert_called_once()
 
     @patch("lativet.api.send_email")

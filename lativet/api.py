@@ -131,6 +131,127 @@ class LativetService:
             return None
         return f"/exports/{relative.as_posix()}"
 
+    @staticmethod
+    def _is_truthy(value: object) -> bool:
+        if isinstance(value, bool):
+            return value
+        return str(value or "").strip().lower() in {"1", "true", "on", "yes", "si", "s"}
+
+    def _build_billing_document_pdf_export(self, document: dict) -> tuple[Path, dict]:
+        pdf_path = build_billing_document_pdf(
+            output_dir=self._billing_documents_dir,
+            settings=self._db.get_settings(),
+            document=document,
+            lines=document.get("lines") or [],
+            logo_path=self._logo_path if self._logo_path.exists() else None,
+        )
+        return pdf_path, {
+            "path": str(pdf_path),
+            "url": self._build_export_url(pdf_path),
+        }
+
+    def _send_billing_document_email_internal(
+        self,
+        document: dict,
+        payload: dict | None = None,
+        *,
+        strict: bool,
+        pdf_path: Path | None = None,
+    ) -> dict:
+        settings = self._db.get_settings()
+        email_payload = payload or {}
+        if not settings.get("smtp_enabled"):
+            if strict:
+                raise ValidationError("El correo SMTP esta deshabilitado en configuracion.")
+            return {"sent": False, "skipped": True, "reason": "smtp_disabled"}
+
+        sender = (settings.get("smtp_from") or "").strip()
+        if not sender:
+            if strict:
+                raise ValidationError("Debes configurar el correo remitente para enviar documentos.")
+            return {"sent": False, "skipped": True, "reason": "smtp_from_missing"}
+
+        password = self._db.get_secret_setting("smtp_app_password").strip()
+        if not password:
+            if strict:
+                raise ValidationError("Falta la app password del correo SMTP.")
+            return {"sent": False, "skipped": True, "reason": "smtp_password_missing"}
+
+        owner = self._db.get_owner(document["owner_id"])
+        context = build_billing_email_context(settings, document)
+        context["recipient_email"] = (
+            str(document.get("recipient_email") or "").strip()
+            or str(owner.get("email") or "").strip()
+        )
+        default_subject = "{document_label} {document_number} - {clinic_name}"
+        default_body = (
+            "Hola {owner_name},\n\n"
+            "Adjuntamos la {document_name} {document_number} correspondiente a la atencion de {pet_name}.\n"
+            "Fecha del documento: {issue_date}\n"
+            "Fecha de vencimiento: {due_date}\n"
+            "Total: {total}\n\n"
+            "Cualquier inquietud sera atendida por {clinic_name}."
+        )
+        to_address = (
+            str(email_payload.get("recipient_email") or "").strip()
+            or context.get("recipient_email", "")
+        )
+        if not to_address:
+            if strict:
+                raise ValidationError("El documento no tiene un correo destinatario configurado.")
+            return {"sent": False, "skipped": True, "reason": "recipient_missing"}
+
+        subject = render_billing_template(
+            str(email_payload.get("subject") or settings.get("email_subject_template") or ""),
+            context,
+            default_subject,
+        )
+        body = render_billing_template(
+            str(email_payload.get("body") or settings.get("email_body_template") or ""),
+            context,
+            default_body,
+        )
+        if not subject.strip():
+            if strict:
+                raise ValidationError("El asunto del correo no puede quedar vacio.")
+            return {"sent": False, "skipped": True, "reason": "subject_missing"}
+        if not body.strip():
+            if strict:
+                raise ValidationError("El cuerpo del correo no puede quedar vacio.")
+            return {"sent": False, "skipped": True, "reason": "body_missing"}
+
+        resolved_pdf_path = pdf_path
+        if resolved_pdf_path is None:
+            resolved_pdf_path, _ = self._build_billing_document_pdf_export(document)
+
+        config = SmtpConfig(
+            host=(settings.get("smtp_host") or "smtp.gmail.com").strip(),
+            port=int(settings.get("smtp_port") or 587),
+            username=sender,
+            password=password,
+            sender=sender,
+        )
+        try:
+            send_email_with_attachment(
+                config,
+                to_address=to_address,
+                subject=subject,
+                body=body,
+                attachment_path=str(resolved_pdf_path),
+                attachment_name=resolved_pdf_path.name,
+            )
+        except Exception as exc:
+            if strict:
+                raise
+            return {"sent": False, "to": to_address, "error": str(exc)}
+
+        return {
+            "sent": True,
+            "to": to_address,
+            "subject": subject,
+            "pdf_url": self._build_export_url(resolved_pdf_path),
+        }
+
     @safe_api_call
     def bootstrap(self, lite: bool = False, sections: set[str] | None = None) -> dict:
         payload = self._db.bootstrap(lite=lite, sections=sections)
@@ -316,7 +437,22 @@ class LativetService:
 
     @safe_api_call
     def save_billing_document(self, payload: dict) -> dict:
-        return self._db.save_billing_document(payload)
+        document = self._db.save_billing_document(payload)
+        pdf_path, pdf_export = self._build_billing_document_pdf_export(document)
+        response = {
+            **document,
+            "pdf": pdf_export,
+        }
+        if self._is_truthy(payload.get("send_email_on_save")):
+            response["email"] = self._send_billing_document_email_internal(
+                document,
+                payload,
+                strict=False,
+                pdf_path=pdf_path,
+            )
+        else:
+            response["email"] = {"sent": False, "skipped": True, "reason": "not_requested"}
+        return response
 
     @safe_api_call
     def register_billing_payment(self, payload: dict) -> dict:
@@ -366,17 +502,10 @@ class LativetService:
     @safe_api_call
     def generate_billing_document_pdf(self, document_id: str) -> dict:
         document = self._db.get_billing_document(document_id)
-        pdf_path = build_billing_document_pdf(
-            output_dir=self._billing_documents_dir,
-            settings=self._db.get_settings(),
-            document=document,
-            lines=document.get("lines") or [],
-            logo_path=self._logo_path if self._logo_path.exists() else None,
-        )
+        pdf_path, pdf_export = self._build_billing_document_pdf_export(document)
         return {
             "document": document,
-            "path": str(pdf_path),
-            "url": self._build_export_url(pdf_path),
+            **pdf_export,
         }
 
     @safe_api_call
@@ -442,83 +571,14 @@ class LativetService:
 
     @safe_api_call
     def send_billing_document_email(self, document_id: str, payload: dict | None = None) -> dict:
-        settings = self._db.get_settings()
-        if not settings.get("smtp_enabled"):
-            raise ValidationError("El correo SMTP esta deshabilitado en configuracion.")
-        sender = (settings.get("smtp_from") or "").strip()
-        if not sender:
-            raise ValidationError("Debes configurar el correo remitente para enviar documentos.")
-        password = self._db.get_secret_setting("smtp_app_password").strip()
-        if not password:
-            raise ValidationError("Falta la app password del correo SMTP.")
-
         document = self._db.get_billing_document(document_id)
-        owner = self._db.get_owner(document["owner_id"])
-        pdf_path = build_billing_document_pdf(
-            output_dir=self._billing_documents_dir,
-            settings=settings,
-            document=document,
-            lines=document.get("lines") or [],
-            logo_path=self._logo_path if self._logo_path.exists() else None,
+        pdf_path, _ = self._build_billing_document_pdf_export(document)
+        return self._send_billing_document_email_internal(
+            document,
+            payload,
+            strict=True,
+            pdf_path=pdf_path,
         )
-
-        email_payload = payload or {}
-        context = build_billing_email_context(settings, document)
-        context["recipient_email"] = (
-            str(document.get("recipient_email") or "").strip()
-            or str(owner.get("email") or "").strip()
-        )
-        default_subject = "{document_label} {document_number} - {clinic_name}"
-        default_body = (
-            "Hola {owner_name},\n\n"
-            "Adjuntamos la {document_name} {document_number} correspondiente a la atencion de {pet_name}.\n"
-            "Fecha del documento: {issue_date}\n"
-            "Fecha de vencimiento: {due_date}\n"
-            "Total: {total}\n\n"
-            "Cualquier inquietud sera atendida por {clinic_name}."
-        )
-        to_address = (
-            str(email_payload.get("recipient_email") or "").strip()
-            or context.get("recipient_email", "")
-        )
-        if not to_address:
-            raise ValidationError("El documento no tiene un correo destinatario configurado.")
-        subject = render_billing_template(
-            str(email_payload.get("subject") or settings.get("email_subject_template") or ""),
-            context,
-            default_subject,
-        )
-        body = render_billing_template(
-            str(email_payload.get("body") or settings.get("email_body_template") or ""),
-            context,
-            default_body,
-        )
-        if not subject.strip():
-            raise ValidationError("El asunto del correo no puede quedar vacio.")
-        if not body.strip():
-            raise ValidationError("El cuerpo del correo no puede quedar vacio.")
-
-        config = SmtpConfig(
-            host=(settings.get("smtp_host") or "smtp.gmail.com").strip(),
-            port=int(settings.get("smtp_port") or 587),
-            username=sender,
-            password=password,
-            sender=sender,
-        )
-        send_email_with_attachment(
-            config,
-            to_address=to_address,
-            subject=subject,
-            body=body,
-            attachment_path=str(pdf_path),
-            attachment_name=pdf_path.name,
-        )
-        return {
-            "sent": True,
-            "to": to_address,
-            "subject": subject,
-            "pdf_url": self._build_export_url(pdf_path),
-        }
 
     @safe_api_call
     def save_consent(self, payload: dict) -> dict:

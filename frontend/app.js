@@ -4234,7 +4234,11 @@ function openExportUrl(url) {
   if (!url) {
     throw new Error("El servidor no devolvio una URL de descarga.");
   }
-  window.open(url, "_blank", "noopener,noreferrer");
+  const exportWindow = window.open(url, "_blank", "noopener,noreferrer");
+  if (!exportWindow) {
+    throw new Error("El navegador bloqueo la apertura del archivo.");
+  }
+  return exportWindow;
 }
 
 function buildSalesHtmlTable(headers, rows, emptyMessage) {
@@ -19102,6 +19106,8 @@ function buildBillingDocumentPayload(form) {
   }));
   payload.payment_method = payload.payment_method || "Pendiente";
   payload.cash_account = payload.cash_account || state.settings.billing_default_cash_account || "caja_menor";
+  payload.send_email_on_save =
+    payload.document_type === "factura" && Boolean(String(payload.recipient_email || "").trim());
   if (payload.document_type === "cotizacion") {
     payload.payment_method = "Pendiente";
     payload.cash_account = "";
@@ -19109,6 +19115,7 @@ function buildBillingDocumentPayload(form) {
     payload.initial_payment_date = "";
     payload.initial_payment_method = "";
     payload.initial_payment_cash_account = "";
+    payload.send_email_on_save = false;
   } else {
     payload.initial_payment_amount = Number(payload.initial_payment_amount || 0);
     payload.initial_payment_method =
@@ -19117,6 +19124,38 @@ function buildBillingDocumentPayload(form) {
       payload.initial_payment_cash_account || payload.cash_account || "caja_menor";
   }
   return payload;
+}
+
+function describeBillingSaveResult(savedDocument = {}, payload = {}) {
+  const documentTypeLabel = savedDocument?.document_type === "cotizacion" ? "Cotizacion" : "Factura";
+  const parts = [`${documentTypeLabel} guardada`];
+  let tone = "success";
+  if (savedDocument?.pdf?.url) {
+    parts.push("PDF generado");
+  }
+  const emailResult = savedDocument?.email || null;
+  if (emailResult?.sent) {
+    parts.push(`correo enviado a ${emailResult.to}`);
+  } else if (emailResult?.error) {
+    tone = "warning";
+    parts.push("el PDF quedo listo, pero el correo no se pudo enviar");
+  } else if (payload?.send_email_on_save && emailResult?.reason === "smtp_disabled") {
+    tone = "warning";
+    parts.push("el PDF quedo listo, pero SMTP esta deshabilitado");
+  } else if (payload?.send_email_on_save && emailResult?.reason === "smtp_from_missing") {
+    tone = "warning";
+    parts.push("el PDF quedo listo, pero falta el correo remitente");
+  } else if (payload?.send_email_on_save && emailResult?.reason === "smtp_password_missing") {
+    tone = "warning";
+    parts.push("el PDF quedo listo, pero falta la app password SMTP");
+  } else if (payload?.send_email_on_save && emailResult?.reason === "recipient_missing") {
+    tone = "warning";
+    parts.push("el PDF quedo listo, pero no hay correo destinatario");
+  }
+  return {
+    tone,
+    message: `${parts.join(". ")}.`,
+  };
 }
 
 async function handleOwnerSubmit(event) {
@@ -19475,7 +19514,16 @@ async function handleBillingDocumentSubmit(event) {
   for (let step = 1; step < BILLING_WIZARD_STEPS.length; step += 1) {
     validateBillingWizardStep(step);
   }
-  const savedDocument = await api.saveBillingDocument(buildBillingDocumentPayload(event.currentTarget));
+  const payload = buildBillingDocumentPayload(event.currentTarget);
+  const savedDocument = await api.saveBillingDocument(payload);
+  let pdfOpenError = null;
+  if (savedDocument?.pdf?.url) {
+    try {
+      openExportUrl(savedDocument.pdf.url);
+    } catch (error) {
+      pdfOpenError = error;
+    }
+  }
   billingDraft.lines = [];
   billingWizardState.currentStep = 1;
   resetForm(event.currentTarget);
@@ -19483,13 +19531,22 @@ async function handleBillingDocumentSubmit(event) {
   syncBillingDocumentFormState();
   renderBillingDraftLines();
   salesReportState.loaded = false;
-  await refreshData("Documento de facturacion guardado.");
+  await refreshData();
   if (savedDocument?.id) {
     salesSelectedDocumentId = savedDocument.id;
     await loadSalesDocumentDetail(savedDocument.id, { silent: true });
   }
   setActiveSection("sales");
   setSectionSubsection("sales", resolveSalesSubsectionForDocument(savedDocument));
+  const saveStatus = describeBillingSaveResult(savedDocument, payload);
+  if (pdfOpenError) {
+    showStatus(
+      `${saveStatus.message} El navegador bloqueo la apertura automatica del PDF.`,
+      "warning"
+    );
+    return;
+  }
+  showStatus(saveStatus.message, saveStatus.tone);
 }
 
 async function handleBillingPaymentSubmit(event) {
