@@ -36,6 +36,7 @@ const inventoryUiState = {
   category: "",
   providerId: "",
   providerDraftId: "",
+  showProviderDirectory: false,
   status: "all",
   lowStockOnly: false,
   selectedItemId: "",
@@ -4709,6 +4710,7 @@ function buildInventoryProviderQuickForm() {
 
 function buildInventoryProviderRoster() {
   const providers = sortProvidersByName(state.providers || []);
+  const hasProviders = providers.length > 0;
   const providerItems = providers.length
     ? providers
         .map((provider) => {
@@ -4751,16 +4753,42 @@ function buildInventoryProviderRoster() {
     : '<div class="sales-inventory-support__empty">Aun no hay proveedores registrados.</div>';
   return `
     <article class="sales-inventory-form-card sales-inventory-provider-roster">
-      <div class="sales-inventory-form-card__header">
-        <div>
+      <div class="sales-inventory-form-card__header sales-inventory-provider-roster__header">
+        <div class="sales-inventory-provider-roster__header-main">
           <p class="eyebrow">Directorio</p>
           <h4>Proveedores registrados</h4>
+          <small class="sales-inventory-provider-roster__summary">${escapeHtml(
+            hasProviders
+              ? `Consulta y administra ${providers.length} ${
+                  providers.length === 1 ? "proveedor" : "proveedores"
+                }.`
+              : "Aun no hay proveedores registrados."
+          )}</small>
         </div>
-        <span class="sales-section-note">${escapeHtml(
-          `${providers.length} ${providers.length === 1 ? "proveedor" : "proveedores"}`
-        )}</span>
+        <div class="sales-inventory-provider-roster__header-actions">
+          <span class="sales-section-note">${escapeHtml(
+            `${providers.length} ${providers.length === 1 ? "proveedor" : "proveedores"}`
+          )}</span>
+          ${
+            hasProviders
+              ? `<button class="ghost-button" data-inventory-toggle-directory="provider" type="button">${
+                  inventoryUiState.showProviderDirectory ? "Ocultar" : "Ver directorio"
+                }</button>`
+              : ""
+          }
+        </div>
       </div>
-      <div class="sales-inventory-provider-list">${providerItems}</div>
+      ${
+        hasProviders
+          ? `
+            <div class="sales-inventory-provider-roster__body${
+              inventoryUiState.showProviderDirectory ? " is-open" : ""
+            }">
+              <div class="sales-inventory-provider-list">${providerItems}</div>
+            </div>
+          `
+          : `<div class="sales-inventory-provider-roster__body is-open"><div class="sales-inventory-provider-list">${providerItems}</div></div>`
+      }
     </article>
   `;
 }
@@ -5441,6 +5469,7 @@ async function submitInventoryInlineForm(form) {
       upsertProviderInState(savedProvider);
       inventoryUiState.showProviderForm = false;
       inventoryUiState.providerDraftId = "";
+      inventoryUiState.showProviderDirectory = true;
       salesReportState.loaded = false;
       setActiveSection("sales");
       setSectionSubsection("sales", "inventario");
@@ -5622,6 +5651,7 @@ async function handleInventoryProviderDelete(providerId) {
     removeProviderFromState(providerId);
     inventoryUiState.showProviderForm = false;
     inventoryUiState.providerDraftId = "";
+    inventoryUiState.showProviderDirectory = state.providers.length > 0;
     salesReportState.loaded = false;
     setActiveSection("sales");
     setSectionSubsection("sales", "inventario");
@@ -5768,10 +5798,20 @@ async function handleCatalogItemsClick(event) {
     scrollToDashboardTarget(scrollTarget);
     return;
   }
+  const toggleDirectoryButton = event.target.closest("[data-inventory-toggle-directory]");
+  if (toggleDirectoryButton) {
+    const targetDirectory = toggleDirectoryButton.dataset.inventoryToggleDirectory || "";
+    if (targetDirectory === "provider") {
+      inventoryUiState.showProviderDirectory = !inventoryUiState.showProviderDirectory;
+      renderSales();
+    }
+    return;
+  }
   const editProviderButton = event.target.closest("[data-inventory-edit-provider]");
   if (editProviderButton) {
     inventoryUiState.providerDraftId = editProviderButton.dataset.inventoryEditProvider || "";
     inventoryUiState.showProviderForm = true;
+    inventoryUiState.showProviderDirectory = true;
     renderSales();
     scrollToDashboardTarget("salesInventoryProviderCard");
     return;
@@ -18633,6 +18673,7 @@ async function handleProviderSubmit(event) {
     inventoryUiState.showProviderForm = false;
   }
   inventoryUiState.providerDraftId = "";
+  inventoryUiState.showProviderDirectory = true;
   salesReportState.loaded = false;
   setActiveSection("sales");
   if (isInventoryView) {

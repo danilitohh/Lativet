@@ -8026,6 +8026,37 @@ body.auth-locked .page-shell > :not(#loginModal) {
   gap: 12px;
 }
 
+.sales-inventory-provider-roster__header {
+  align-items: center;
+}
+
+.sales-inventory-provider-roster__header-main {
+  display: grid;
+  gap: 4px;
+}
+
+.sales-inventory-provider-roster__header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+
+.sales-inventory-provider-roster__summary {
+  color: var(--muted);
+  font-size: 0.74rem;
+  line-height: 1.5;
+}
+
+.sales-inventory-provider-roster__body {
+  display: none;
+}
+
+.sales-inventory-provider-roster__body.is-open {
+  display: block;
+}
+
 .sales-inventory-provider-list {
   display: grid;
   gap: 10px;
