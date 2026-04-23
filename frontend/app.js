@@ -5185,8 +5185,23 @@ function setBillingWizardStep(targetStep, { skipValidation = false, silent = fal
 function renderBillingPaymentFormAvailability() {
   const pendingDocuments = getPendingBillingDocuments();
   const hasPendingDocuments = pendingDocuments.length > 0;
-  elements.billingPaymentForm?.classList.toggle("is-hidden", !hasPendingDocuments);
-  elements.billingPaymentEmptyState?.classList.toggle("is-hidden", hasPendingDocuments);
+  const activeSalesView = getActiveSalesSubsectionValue();
+  const documentType = getBillingDocumentTypeValue();
+  const paymentMethod = elements.billingPaymentMethodSelect?.value || "Pendiente";
+  const selectedPaymentDocumentId = String(elements.billingPaymentDocumentSelect?.value || "").trim();
+  const shouldShowByWizard =
+    activeSalesView === "factura" &&
+    documentType === "factura" &&
+    billingWizardState.currentStep === 3 &&
+    paymentMethod === "Pendiente";
+  const shouldShowPanel =
+    activeSalesView === "factura" &&
+    (Boolean(selectedPaymentDocumentId) || (shouldShowByWizard && hasPendingDocuments));
+
+  elements.salesPaymentFormPanel?.classList.toggle("is-hidden", !shouldShowPanel);
+  elements.billingPaymentForm?.classList.toggle("is-hidden", !shouldShowPanel || !hasPendingDocuments);
+  elements.billingPaymentEmptyState?.classList.toggle("is-hidden", !shouldShowPanel || hasPendingDocuments);
+
   if (!hasPendingDocuments && elements.billingPaymentDocumentSelect) {
     elements.billingPaymentDocumentSelect.value = "";
     if (elements.billingPaymentForm?.elements?.amount) {
@@ -5194,11 +5209,16 @@ function renderBillingPaymentFormAvailability() {
     }
   }
   if (elements.billingPaymentPanelHint) {
-    elements.billingPaymentPanelHint.textContent = hasPendingDocuments
+    elements.billingPaymentPanelHint.textContent = !shouldShowPanel
+      ? "Selecciona pago pendiente en el paso 3 para mostrar el panel de abonos."
+      : hasPendingDocuments
       ? `${pendingDocuments.length} factura${pendingDocuments.length === 1 ? "" : "s"} pendiente${
           pendingDocuments.length === 1 ? "" : "s"
         } disponible${pendingDocuments.length === 1 ? "" : "s"} para registrar abonos.`
       : "Los abonos solo se habilitan para facturas pendientes.";
+  }
+  if (getActiveSectionId() === "sales") {
+    syncSectionContainers("sales");
   }
 }
 
@@ -5235,6 +5255,7 @@ function renderBillingWizard() {
   }
   renderBillingWizardSummary();
   renderBillingWizardReview();
+  renderBillingPaymentFormAvailability();
 }
 
 function syncBillingDocumentFormState() {
@@ -18328,6 +18349,11 @@ async function handleBillingDocumentsClick(event) {
   if (document) {
     elements.billingPaymentForm.elements.amount.value = Number(document.balance_due || 0);
   }
+  if (elements.billingPaymentMethodSelect) {
+    elements.billingPaymentMethodSelect.value = "Pendiente";
+  }
+  syncBillingDocumentFormState();
+  setBillingWizardStep(3, { skipValidation: true, silent: true });
   await loadSalesDocumentDetail(button.dataset.selectBillingDocument, { silent: true });
   showStatus("Factura pendiente seleccionada para registrar abono.", "info");
   setActiveSection("sales");
@@ -18520,7 +18546,12 @@ async function runDashboardShortcut(shortcut) {
     case "abono":
       setSectionSubsection("sales", "factura");
       setActiveSection("sales");
-      targetId = "salesPaymentFormPanel";
+      if (elements.billingPaymentMethodSelect) {
+        elements.billingPaymentMethodSelect.value = "Pendiente";
+      }
+      syncBillingDocumentFormState();
+      setBillingWizardStep(3, { skipValidation: true, silent: true });
+      targetId = getPendingBillingDocuments().length ? "salesPaymentFormPanel" : "salesDocumentFormPanel";
       break;
     case "caja":
       setSectionSubsection("sales", "caja");
