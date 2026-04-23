@@ -5139,12 +5139,28 @@ function syncInventoryPanelVisibility() {
   syncSectionContainers("sales");
 }
 
+function bindInventoryInlineForms() {
+  if (!elements.catalogItemsList) {
+    return;
+  }
+  elements.catalogItemsList
+    .querySelectorAll("[data-inventory-inline-form]")
+    .forEach((form) => {
+      if (form.dataset.inventoryInlineBound === "true") {
+        return;
+      }
+      form.addEventListener("submit", wrapAsync(handleInventoryInlineFormSubmit));
+      form.dataset.inventoryInlineBound = "true";
+    });
+}
+
 async function handleInventoryInlineFormSubmit(event) {
   const form = event.target.closest("[data-inventory-inline-form]");
   if (!form) {
     return;
   }
   event.preventDefault();
+  event.stopPropagation();
   const formType = form.dataset.inventoryInlineForm || "";
   const submitButton = form.querySelector('button[type="submit"]');
   if (submitButton) {
@@ -6379,6 +6395,7 @@ function renderSales() {
     elements.catalogItemsList.innerHTML = catalogPanelMeta.content;
   }
   if (getActiveSalesSubsectionValue() === "inventario") {
+    bindInventoryInlineForms();
     syncInventoryPanelVisibility();
   }
 
