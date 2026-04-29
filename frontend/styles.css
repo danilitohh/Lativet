@@ -5663,26 +5663,30 @@ textarea:focus {
 .pill--scheduled,
 .pill--completed,
 .pill--finalized {
-  color: var(--success);
-  background: rgba(47, 102, 201, 0.12);
+  color: #2f9b72;
+  background: rgba(47, 155, 114, 0.2);
 }
 
 .pill--pending_confirmation,
 .pill--draft {
-  color: var(--warning);
-  background: rgba(182, 106, 17, 0.12);
+  color: #bf8a2a;
+  background: rgba(191, 138, 42, 0.2);
 }
 
-.pill--waiting_room,
+.pill--waiting_room {
+  color: #4d8de8;
+  background: rgba(77, 141, 232, 0.2);
+}
+
 .pill--confirmed {
-  color: #2563eb;
-  background: rgba(37, 99, 235, 0.12);
+  color: #083B91;
+  background: rgba(8, 59, 145, 0.18);
 }
 
 .pill--cancelled,
 .pill--no_show {
-  color: var(--danger);
-  background: rgba(196, 70, 83, 0.12);
+  color: #c44653;
+  background: rgba(196, 70, 83, 0.18);
 }
 
 .item-actions button {
@@ -5996,28 +6000,32 @@ textarea:focus {
   text-overflow: ellipsis;
 }
 
-.agenda-timeline-event--scheduled,
+.agenda-timeline-event--scheduled {
+  background: rgba(47, 155, 114, 0.22);
+  color: #2f9b72;
+}
+
 .agenda-timeline-event--draft {
-  background: rgba(196, 202, 49, 0.22);
-  color: #6f7409;
+  background: rgba(191, 138, 42, 0.22);
+  color: #bf8a2a;
 }
 
 .agenda-timeline-event--confirmed,
 .agenda-timeline-event--in_progress {
-  background: rgba(47, 102, 201, 0.18);
+  background: rgba(8, 59, 145, 0.18);
   color: #083B91;
 }
 
 .agenda-timeline-event--completed,
 .agenda-timeline-event--finalized {
-  background: rgba(59, 130, 246, 0.18);
-  color: #1d4ed8;
+  background: rgba(47, 155, 114, 0.22);
+  color: #2f9b72;
 }
 
 .agenda-timeline-event--cancelled,
 .agenda-timeline-event--no_show {
-  background: rgba(220, 38, 38, 0.16);
-  color: #b91c1c;
+  background: rgba(196, 70, 83, 0.18);
+  color: #c44653;
 }
 
 .agenda-timeline-event--default {
@@ -6218,28 +6226,32 @@ textarea:focus {
   text-overflow: ellipsis;
 }
 
-.agenda-event-chip--scheduled,
+.agenda-event-chip--scheduled {
+  background: rgba(47, 155, 114, 0.22);
+  color: #2f9b72;
+}
+
 .agenda-event-chip--draft {
-  background: rgba(196, 202, 49, 0.24);
-  color: #6f7409;
+  background: rgba(191, 138, 42, 0.22);
+  color: #bf8a2a;
 }
 
 .agenda-event-chip--confirmed,
 .agenda-event-chip--in_progress {
-  background: rgba(47, 102, 201, 0.18);
+  background: rgba(8, 59, 145, 0.18);
   color: #083B91;
 }
 
 .agenda-event-chip--completed,
 .agenda-event-chip--finalized {
-  background: rgba(59, 130, 246, 0.18);
-  color: #1d4ed8;
+  background: rgba(47, 155, 114, 0.22);
+  color: #2f9b72;
 }
 
 .agenda-event-chip--cancelled,
 .agenda-event-chip--no_show {
-  background: rgba(220, 38, 38, 0.16);
-  color: #b91c1c;
+  background: rgba(196, 70, 83, 0.18);
+  color: #c44653;
 }
 
 .agenda-event-chip--default {
@@ -6438,40 +6450,40 @@ textarea:focus {
 }
 
 .agenda-status-pill--scheduled {
-  color: #2f66c9;
-  border-color: rgba(47, 102, 201, 0.2);
-  background: rgba(47, 102, 201, 0.12);
+  color: #2f9b72;
+  border-color: rgba(47, 155, 114, 0.34);
+  background: rgba(47, 155, 114, 0.2);
 }
 
 .agenda-status-pill--pending_confirmation {
-  color: #6f88bf;
-  border-color: rgba(111, 136, 191, 0.2);
-  background: rgba(111, 136, 191, 0.14);
+  color: #bf8a2a;
+  border-color: rgba(191, 138, 42, 0.34);
+  background: rgba(191, 138, 42, 0.22);
 }
 
 .agenda-status-pill--waiting_room {
   color: #4d8de8;
-  border-color: rgba(77, 141, 232, 0.2);
-  background: rgba(77, 141, 232, 0.13);
+  border-color: rgba(77, 141, 232, 0.34);
+  background: rgba(77, 141, 232, 0.2);
 }
 
 .agenda-status-pill--confirmed {
   color: #083b91;
-  border-color: rgba(8, 59, 145, 0.2);
-  background: rgba(8, 59, 145, 0.12);
+  border-color: rgba(8, 59, 145, 0.34);
+  background: rgba(8, 59, 145, 0.18);
 }
 
 .agenda-status-pill--completed {
-  color: #083b91;
-  border-color: rgba(8, 59, 145, 0.2);
-  background: rgba(8, 59, 145, 0.12);
+  color: #2f9b72;
+  border-color: rgba(47, 155, 114, 0.34);
+  background: rgba(47, 155, 114, 0.2);
 }
 
 .agenda-status-pill--cancelled,
 .agenda-status-pill--no_show {
   color: #c44653;
-  border-color: rgba(196, 70, 83, 0.2);
-  background: rgba(196, 70, 83, 0.12);
+  border-color: rgba(196, 70, 83, 0.32);
+  background: rgba(196, 70, 83, 0.18);
 }
 
 .agenda-month-header {
@@ -10664,26 +10676,30 @@ textarea:focus {
 .pill--scheduled,
 .pill--completed,
 .pill--finalized {
-  color: var(--success);
-  background: rgba(47, 102, 201, 0.14);
+  color: #2f9b72;
+  background: rgba(47, 155, 114, 0.2);
 }
 
 .pill--pending_confirmation,
 .pill--draft {
-  color: #6f88bf;
-  background: rgba(111, 136, 191, 0.14);
+  color: #bf8a2a;
+  background: rgba(191, 138, 42, 0.2);
 }
 
-.pill--waiting_room,
-.pill--confirmed {
+.pill--waiting_room {
   color: #4d8de8;
-  background: rgba(77, 141, 232, 0.14);
+  background: rgba(77, 141, 232, 0.2);
+}
+
+.pill--confirmed {
+  color: #083B91;
+  background: rgba(8, 59, 145, 0.18);
 }
 
 .pill--cancelled,
 .pill--no_show {
-  color: var(--danger);
-  background: rgba(212, 107, 120, 0.14);
+  color: #c44653;
+  background: rgba(196, 70, 83, 0.18);
 }
 
 .empty-state {
@@ -10817,35 +10833,39 @@ textarea:focus {
 }
 
 .agenda-event-chip--scheduled,
+.agenda-timeline-event--scheduled {
+  background: rgba(47, 155, 114, 0.22);
+  color: #2f9b72;
+}
+
 .agenda-event-chip--draft,
-.agenda-timeline-event--scheduled,
 .agenda-timeline-event--draft {
-  background: rgba(47, 102, 201, 0.14);
-  color: #2f66c9;
+  background: rgba(191, 138, 42, 0.22);
+  color: #bf8a2a;
 }
 
 .agenda-event-chip--confirmed,
 .agenda-event-chip--in_progress,
 .agenda-timeline-event--confirmed,
 .agenda-timeline-event--in_progress {
-  background: rgba(8, 59, 145, 0.12);
-  color: var(--success);
+  background: rgba(8, 59, 145, 0.18);
+  color: #083B91;
 }
 
 .agenda-event-chip--completed,
 .agenda-event-chip--finalized,
 .agenda-timeline-event--completed,
 .agenda-timeline-event--finalized {
-  background: rgba(93, 143, 242, 0.14);
-  color: var(--brand-strong);
+  background: rgba(47, 155, 114, 0.22);
+  color: #2f9b72;
 }
 
 .agenda-event-chip--cancelled,
 .agenda-event-chip--no_show,
 .agenda-timeline-event--cancelled,
 .agenda-timeline-event--no_show {
-  background: rgba(212, 107, 120, 0.14);
-  color: var(--danger);
+  background: rgba(196, 70, 83, 0.18);
+  color: #c44653;
 }
 
 .agenda-sidebar-stack {
@@ -11409,40 +11429,40 @@ textarea:focus {
 }
 
 .agenda-timeline-event--state-scheduled {
-  --agenda-status-tone: #2f66c9;
-  --agenda-status-soft: rgba(47, 102, 201, 0.08);
-  --agenda-status-border: rgba(47, 102, 201, 0.18);
+  --agenda-status-tone: #2f9b72;
+  --agenda-status-soft: rgba(47, 155, 114, 0.14);
+  --agenda-status-border: rgba(47, 155, 114, 0.28);
 }
 
 .agenda-timeline-event--state-pending_confirmation {
-  --agenda-status-tone: #6f88bf;
-  --agenda-status-soft: rgba(111, 136, 191, 0.1);
-  --agenda-status-border: rgba(111, 136, 191, 0.18);
+  --agenda-status-tone: #bf8a2a;
+  --agenda-status-soft: rgba(191, 138, 42, 0.16);
+  --agenda-status-border: rgba(191, 138, 42, 0.28);
 }
 
 .agenda-timeline-event--state-waiting_room {
   --agenda-status-tone: #4d8de8;
-  --agenda-status-soft: rgba(77, 141, 232, 0.1);
-  --agenda-status-border: rgba(77, 141, 232, 0.18);
+  --agenda-status-soft: rgba(77, 141, 232, 0.14);
+  --agenda-status-border: rgba(77, 141, 232, 0.28);
 }
 
 .agenda-timeline-event--state-confirmed {
   --agenda-status-tone: #083b91;
-  --agenda-status-soft: rgba(8, 59, 145, 0.1);
-  --agenda-status-border: rgba(8, 59, 145, 0.18);
+  --agenda-status-soft: rgba(8, 59, 145, 0.14);
+  --agenda-status-border: rgba(8, 59, 145, 0.28);
 }
 
 .agenda-timeline-event--state-completed {
-  --agenda-status-tone: #083b91;
-  --agenda-status-soft: rgba(8, 59, 145, 0.08);
-  --agenda-status-border: rgba(8, 59, 145, 0.18);
+  --agenda-status-tone: #2f9b72;
+  --agenda-status-soft: rgba(47, 155, 114, 0.14);
+  --agenda-status-border: rgba(47, 155, 114, 0.28);
 }
 
 .agenda-timeline-event--state-cancelled,
 .agenda-timeline-event--state-no_show {
-  --agenda-status-tone: #d46b78;
-  --agenda-status-soft: rgba(212, 107, 120, 0.1);
-  --agenda-status-border: rgba(212, 107, 120, 0.18);
+  --agenda-status-tone: #c44653;
+  --agenda-status-soft: rgba(196, 70, 83, 0.14);
+  --agenda-status-border: rgba(196, 70, 83, 0.26);
 }
 
 .agenda-timeline-event--state-default {
