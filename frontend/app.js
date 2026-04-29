@@ -186,6 +186,7 @@ let pendingConsentPatientId = "";
 let pendingGroomingPatientId = "";
 let agendaAutoSyncInFlight = false;
 let agendaAutoSyncTimerId = 0;
+const AGENDA_AUTO_SYNC_INTERVAL_MS = 10000;
 const GROOMING_DOCUMENT_TYPE_LABEL = "Registro de peluquería y spa";
 const GROOMING_SERVICE_TYPE_OPTIONS = [
   "Baño",
@@ -14290,11 +14291,25 @@ function getOpenAppointmentDetailId() {
   return String(elements.appointmentDetailModal?.dataset?.appointmentId || "").trim();
 }
 
-async function runAgendaAutoSync() {
+function buildAgendaAutoSyncSignature(appointments = []) {
+  return (appointments || [])
+    .map((appointment) =>
+      [
+        appointment.id || "",
+        appointment.status || "",
+        appointment.google_attendee_response_status || "",
+        appointment.google_sync_status || "",
+        appointment.google_sync_error || "",
+      ].join("|")
+    )
+    .join("~");
+}
+
+async function runAgendaAutoSync({ force = false } = {}) {
   if (agendaAutoSyncInFlight || !bootstrapReadyForSectionLoads) {
     return;
   }
-  if (document.hidden || getActiveSectionId() !== "agenda" || !state.google_calendar?.connected) {
+  if ((!force && document.hidden) || getActiveSectionId() !== "agenda" || !state.google_calendar?.connected) {
     return;
   }
   if (
@@ -14306,10 +14321,17 @@ async function runAgendaAutoSync() {
   }
   agendaAutoSyncInFlight = true;
   const openDetailId = getOpenAppointmentDetailId();
+  const previousSignature = buildAgendaAutoSyncSignature(state.appointments);
   try {
-    await refreshData({ sections: AGENDA_REFRESH_SECTIONS, render: true });
+    await refreshData({ sections: AGENDA_REFRESH_SECTIONS, render: false });
+    const nextSignature = buildAgendaAutoSyncSignature(state.appointments);
+    if (force || previousSignature !== nextSignature) {
+      renderActiveSection();
+    }
     if (openDetailId && getAppointmentById(openDetailId)) {
       openAppointmentDetailModal(openDetailId);
+    } else if (openDetailId) {
+      closeAppointmentDetailModal();
     }
   } catch (error) {
     console.warn("Sincronizacion automatica de agenda omitida:", error);
@@ -14324,7 +14346,15 @@ function startAgendaAutoSync() {
   }
   agendaAutoSyncTimerId = window.setInterval(() => {
     void runAgendaAutoSync();
-  }, 60000);
+  }, AGENDA_AUTO_SYNC_INTERVAL_MS);
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) {
+      void runAgendaAutoSync({ force: true });
+    }
+  });
+  window.addEventListener("focus", () => {
+    void runAgendaAutoSync({ force: true });
+  });
 }
 
 function setAgendaSelectedDate(value) {
