@@ -1652,7 +1652,18 @@
           </div>
           <button id="closeAppointmentDetailButton" class="ghost-button" type="button">Cerrar</button>
         </div>
-        <div id="appointmentDetailStatus" class="appointment-detail-status"></div>
+        <div class="appointment-detail-status-row">
+          <div id="appointmentDetailStatus" class="appointment-detail-status"></div>
+          <div class="appointment-detail-status-editor">
+            <label class="appointment-detail-status-editor__field">
+              <span>Cambiar estado</span>
+              <select id="appointmentDetailStatusSelect"></select>
+            </label>
+            <button id="appointmentDetailStatusButton" class="secondary-button" type="button">
+              Actualizar estado
+            </button>
+          </div>
+        </div>
         <div id="appointmentDetailQuickCard" class="appointment-detail-quick-card"></div>
         <div class="appointment-detail-actions">
           <button id="appointmentDetailReminderButton" class="primary-button" type="button">

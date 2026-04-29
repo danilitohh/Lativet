@@ -165,11 +165,17 @@ class GoogleCalendarBridge:
         calendar_id = settings.get("google_calendar_id") or "primary"
         body = self._build_event_body(appointment, settings)
         google_event_id = appointment.get("google_event_id") or ""
+        send_updates = "all" if body.get("attendees") else "none"
 
         if appointment.get("status") == "cancelled" and google_event_id:
             result = (
                 service.events()
-                .patch(calendarId=calendar_id, eventId=google_event_id, body={"status": "cancelled"})
+                .patch(
+                    calendarId=calendar_id,
+                    eventId=google_event_id,
+                    body={"status": "cancelled"},
+                    sendUpdates=send_updates,
+                )
                 .execute()
             )
             return {
@@ -177,22 +183,56 @@ class GoogleCalendarBridge:
                 "event_id": result.get("id", google_event_id),
                 "event_url": result.get("htmlLink", ""),
                 "status": result.get("status", "cancelled"),
+                "attendee_response_status": self._extract_attendee_response_status(
+                    result, appointment
+                ),
+                "invite_sent": bool(body.get("attendees")),
             }
 
         if google_event_id:
             result = (
                 service.events()
-                .patch(calendarId=calendar_id, eventId=google_event_id, body=body)
+                .patch(
+                    calendarId=calendar_id,
+                    eventId=google_event_id,
+                    body=body,
+                    sendUpdates=send_updates,
+                )
                 .execute()
             )
         else:
-            result = service.events().insert(calendarId=calendar_id, body=body).execute()
+            result = (
+                service.events()
+                .insert(calendarId=calendar_id, body=body, sendUpdates=send_updates)
+                .execute()
+            )
 
         return {
             "synced": True,
             "event_id": result.get("id", ""),
             "event_url": result.get("htmlLink", ""),
             "status": result.get("status", "confirmed"),
+            "attendee_response_status": self._extract_attendee_response_status(
+                result, appointment
+            ),
+            "invite_sent": bool(body.get("attendees")),
+        }
+
+    def get_appointment_attendee_response(self, appointment: dict, settings: dict) -> dict:
+        google_event_id = str(appointment.get("google_event_id") or "").strip()
+        if not google_event_id:
+            return {"synced": False, "skipped": True, "reason": "no_event"}
+        service = self._build_service()
+        calendar_id = settings.get("google_calendar_id") or "primary"
+        result = service.events().get(calendarId=calendar_id, eventId=google_event_id).execute()
+        return {
+            "synced": True,
+            "event_id": result.get("id", google_event_id),
+            "event_url": result.get("htmlLink", ""),
+            "status": result.get("status", "confirmed"),
+            "attendee_response_status": self._extract_attendee_response_status(
+                result, appointment
+            ),
         }
 
     def _build_event_body(self, appointment: dict, settings: dict) -> dict:
@@ -201,6 +241,7 @@ class GoogleCalendarBridge:
         end_at = start_at + timedelta(minutes=int(appointment.get("duration_minutes") or 30))
         patient_name = appointment.get("patient_name") or "Paciente"
         owner_name = appointment.get("owner_name") or "Sin propietario"
+        owner_email = self._get_owner_email(appointment)
         clinic_name = settings.get("clinic_name") or "Lativet"
         professional_name = appointment.get("professional_name") or "Agenda general"
         notes = (appointment.get("notes") or "").strip()
@@ -213,13 +254,36 @@ class GoogleCalendarBridge:
         ]
         if notes:
             description_lines.append(f"Notas: {notes}")
-        return {
+        event = {
             "summary": f"{clinic_name} - {patient_name}",
             "description": "\n".join(description_lines),
             "start": {"dateTime": start_at.isoformat(timespec='seconds'), "timeZone": timezone},
             "end": {"dateTime": end_at.isoformat(timespec='seconds'), "timeZone": timezone},
             "status": "cancelled" if appointment.get("status") == "cancelled" else "confirmed",
         }
+        if owner_email:
+            event["attendees"] = [
+                {
+                    "email": owner_email,
+                    "displayName": owner_name,
+                }
+            ]
+        return event
+
+    def _get_owner_email(self, appointment: dict) -> str:
+        return str(appointment.get("owner_email") or "").strip().lower()
+
+    def _extract_attendee_response_status(self, event: dict, appointment: dict) -> str:
+        attendees = event.get("attendees") or []
+        if not attendees:
+            return ""
+        owner_email = self._get_owner_email(appointment)
+        if owner_email:
+            for attendee in attendees:
+                attendee_email = str(attendee.get("email") or "").strip().lower()
+                if attendee_email == owner_email:
+                    return str(attendee.get("responseStatus") or "").strip()
+        return str((attendees[0] or {}).get("responseStatus") or "").strip()
 
     def _build_service(self):
         self._require_google_packages()

@@ -22,6 +22,9 @@ from .google_calendar import GoogleCalendarBridge
 from .mailer import SmtpConfig, send_email, send_email_with_attachment
 from .validators import ValidationError, parse_date, validate_google_calendar_config
 
+GOOGLE_APPOINTMENT_RESPONSE_SYNC_SECTIONS = {"appointments", "dashboard", "requests", "reports"}
+GOOGLE_APPOINTMENT_AUTO_CONFIRM_STATUSES = {"scheduled", "pending_confirmation"}
+
 
 def safe_api_call(fn):
     @wraps(fn)
@@ -314,6 +317,8 @@ class LativetService:
 
     @safe_api_call
     def bootstrap(self, lite: bool = False, sections: set[str] | None = None) -> dict:
+        if self._should_sync_google_appointment_attendance(lite=lite, sections=sections):
+            self._sync_google_appointment_attendance()
         payload = self._db.bootstrap(lite=lite, sections=sections)
         payload["compliance"] = get_compliance_context()
         refresh_google_connection = not lite and (sections is None or "settings" in sections)
@@ -948,6 +953,7 @@ class LativetService:
                 event_url=result.get("event_url") or appointment.get("google_event_url") or "",
                 sync_status=result.get("status") or "synced",
                 sync_error="",
+                attendee_response_status=result.get("attendee_response_status"),
             )
         elif result.get("skipped"):
             self._db.update_appointment_google_sync(
@@ -956,5 +962,73 @@ class LativetService:
                 event_url=appointment.get("google_event_url") or "",
                 sync_status=result.get("reason") or "skipped",
                 sync_error="",
+                attendee_response_status=appointment.get("google_attendee_response_status"),
             )
         return result
+
+    def _should_sync_google_appointment_attendance(
+        self, *, lite: bool = False, sections: set[str] | None = None
+    ) -> bool:
+        if lite:
+            return False
+        if not sections:
+            return True
+        return bool(GOOGLE_APPOINTMENT_RESPONSE_SYNC_SECTIONS.intersection(sections))
+
+    def _sync_google_appointment_attendance(self) -> None:
+        settings = self._db.get_settings()
+        if not settings.get("google_calendar_enabled"):
+            return
+        try:
+            appointments = self._db.list_appointments()
+        except Exception:
+            return
+        for appointment in appointments:
+            if not appointment.get("google_event_id"):
+                continue
+            if not str(appointment.get("owner_email") or "").strip():
+                continue
+            try:
+                response = self._google_calendar.get_appointment_attendee_response(
+                    appointment, settings
+                )
+            except Exception:
+                continue
+            attendee_response_status = str(
+                response.get("attendee_response_status") or ""
+            ).strip()
+            current_attendee_response = str(
+                appointment.get("google_attendee_response_status") or ""
+            ).strip()
+            mapped_status = self._map_google_attendee_response_to_appointment_status(
+                appointment, attendee_response_status
+            )
+            if (
+                attendee_response_status == current_attendee_response
+                and (not mapped_status or mapped_status == appointment.get("status"))
+            ):
+                continue
+            self._db.update_appointment_google_sync(
+                appointment["id"],
+                event_id=appointment.get("google_event_id") or "",
+                event_url=response.get("event_url") or appointment.get("google_event_url") or "",
+                sync_status=appointment.get("google_sync_status") or response.get("status") or "synced",
+                sync_error="",
+                attendee_response_status=attendee_response_status,
+            )
+            if mapped_status and mapped_status != appointment.get("status"):
+                self._db.update_appointment_google_attendance(
+                    appointment["id"],
+                    attendee_response_status=attendee_response_status,
+                    appointment_status=mapped_status,
+                )
+
+    def _map_google_attendee_response_to_appointment_status(
+        self, appointment: dict, attendee_response_status: str
+    ) -> str | None:
+        if attendee_response_status != "accepted":
+            return None
+        current_status = str(appointment.get("status") or "").strip()
+        if current_status in GOOGLE_APPOINTMENT_AUTO_CONFIRM_STATUSES:
+            return "confirmed"
+        return None

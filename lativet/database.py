@@ -339,6 +339,11 @@ class Database:
                 notes TEXT,
                 created_at TEXT NOT NULL,
                 updated_at TEXT NOT NULL,
+                google_event_id TEXT,
+                google_event_url TEXT,
+                google_sync_status TEXT,
+                google_sync_error TEXT,
+                google_attendee_response_status TEXT,
                 FOREIGN KEY (patient_id) REFERENCES patients(id),
                 FOREIGN KEY (owner_id) REFERENCES owners(id)
             );
@@ -701,6 +706,7 @@ class Database:
         self._ensure_column("appointments", "google_event_url", "TEXT")
         self._ensure_column("appointments", "google_sync_status", "TEXT")
         self._ensure_column("appointments", "google_sync_error", "TEXT")
+        self._ensure_column("appointments", "google_attendee_response_status", "TEXT")
         self._ensure_column("consents", "record_id", "TEXT")
         self._ensure_column("consents", "consultation_id", "TEXT")
         self._ensure_column("patients", "age_years", "REAL")
@@ -1804,7 +1810,8 @@ class Database:
             self._record_audit("appointment", appointment_id, action, "agenda", data)
         row = self.connection.execute(
             """
-            SELECT a.*, p.name AS patient_name, o.full_name AS owner_name
+            SELECT a.*, p.name AS patient_name, o.full_name AS owner_name,
+                   o.email AS owner_email
             FROM appointments a
             JOIN patients p ON p.id = a.patient_id
             JOIN owners o ON o.id = a.owner_id
@@ -1834,7 +1841,8 @@ class Database:
             )
         row = self.connection.execute(
             """
-            SELECT a.*, p.name AS patient_name, o.full_name AS owner_name
+            SELECT a.*, p.name AS patient_name, o.full_name AS owner_name,
+                   o.email AS owner_email
             FROM appointments a
             JOIN patients p ON p.id = a.patient_id
             JOIN owners o ON o.id = a.owner_id
@@ -1847,7 +1855,8 @@ class Database:
     def get_appointment(self, appointment_id: str) -> dict:
         row = self.connection.execute(
             """
-            SELECT a.*, p.name AS patient_name, o.full_name AS owner_name
+            SELECT a.*, p.name AS patient_name, o.full_name AS owner_name,
+                   o.email AS owner_email
             FROM appointments a
             JOIN patients p ON p.id = a.patient_id
             JOIN owners o ON o.id = a.owner_id
@@ -1863,7 +1872,8 @@ class Database:
         with self._tx():
             row = self.connection.execute(
                 """
-                SELECT a.*, p.name AS patient_name, o.full_name AS owner_name
+                SELECT a.*, p.name AS patient_name, o.full_name AS owner_name,
+                       o.email AS owner_email
                 FROM appointments a
                 JOIN patients p ON p.id = a.patient_id
                 JOIN owners o ON o.id = a.owner_id
@@ -1886,7 +1896,8 @@ class Database:
     def list_appointments(self) -> list[dict]:
         rows = self.connection.execute(
             """
-            SELECT a.*, p.name AS patient_name, o.full_name AS owner_name
+            SELECT a.*, p.name AS patient_name, o.full_name AS owner_name,
+                   o.email AS owner_email
             FROM appointments a
             JOIN patients p ON p.id = a.patient_id
             JOIN owners o ON o.id = a.owner_id
@@ -1904,23 +1915,82 @@ class Database:
         event_url: str = "",
         sync_status: str = "",
         sync_error: str = "",
+        attendee_response_status: str | None = None,
     ) -> dict:
         timestamp = now_iso()
+        assignments = [
+            "google_event_id = ?",
+            "google_event_url = ?",
+            "google_sync_status = ?",
+            "google_sync_error = ?",
+            "updated_at = ?",
+        ]
+        params: list[object] = [event_id, event_url, sync_status, sync_error, timestamp]
+        if attendee_response_status is not None:
+            assignments.insert(4, "google_attendee_response_status = ?")
+            params.insert(4, attendee_response_status)
         with self._tx():
             updated = self.connection.execute(
-                """
+                f"""
                 UPDATE appointments
-                SET google_event_id = ?, google_event_url = ?, google_sync_status = ?,
-                    google_sync_error = ?, updated_at = ?
+                SET {", ".join(assignments)}
                 WHERE id = ?
                 """,
-                (event_id, event_url, sync_status, sync_error, timestamp, appointment_id),
+                (*params, appointment_id),
             )
             if not updated.rowcount:
                 raise ValidationError("La cita seleccionada no existe.")
         row = self.connection.execute(
             """
-            SELECT a.*, p.name AS patient_name, o.full_name AS owner_name
+            SELECT a.*, p.name AS patient_name, o.full_name AS owner_name,
+                   o.email AS owner_email
+            FROM appointments a
+            JOIN patients p ON p.id = a.patient_id
+            JOIN owners o ON o.id = a.owner_id
+            WHERE a.id = ?
+            """,
+            (appointment_id,),
+        ).fetchone()
+        return self._row_to_dict(row)
+
+    def update_appointment_google_attendance(
+        self,
+        appointment_id: str,
+        *,
+        attendee_response_status: str = "",
+        appointment_status: str | None = None,
+    ) -> dict:
+        timestamp = now_iso()
+        assignments = ["google_attendee_response_status = ?", "updated_at = ?"]
+        params: list[object] = [attendee_response_status, timestamp]
+        if appointment_status:
+            assignments.insert(0, "status = ?")
+            params.insert(0, appointment_status)
+        with self._tx():
+            updated = self.connection.execute(
+                f"""
+                UPDATE appointments
+                SET {", ".join(assignments)}
+                WHERE id = ?
+                """,
+                (*params, appointment_id),
+            )
+            if not updated.rowcount:
+                raise ValidationError("La cita seleccionada no existe.")
+            audit_payload = {"google_attendee_response_status": attendee_response_status}
+            if appointment_status:
+                audit_payload["status"] = appointment_status
+            self._record_audit(
+                "appointment",
+                appointment_id,
+                "google_attendance_sync",
+                "agenda",
+                audit_payload,
+            )
+        row = self.connection.execute(
+            """
+            SELECT a.*, p.name AS patient_name, o.full_name AS owner_name,
+                   o.email AS owner_email
             FROM appointments a
             JOIN patients p ON p.id = a.patient_id
             JOIN owners o ON o.id = a.owner_id

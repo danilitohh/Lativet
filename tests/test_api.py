@@ -81,6 +81,185 @@ class ServiceBootstrapTests(unittest.TestCase):
         self.assertTrue(result["ok"])
         self.assertTrue(self.service._db.get_settings()["google_calendar_locked"])
 
+    def test_save_appointment_persists_google_invitation_metadata(self) -> None:
+        owner = self.service._db.save_owner(
+            {
+                "full_name": "Laura Torres",
+                "identification_type": "CC",
+                "identification_number": "998877",
+                "phone": "3001234567",
+                "email": "laura@example.com",
+                "address": "Calle 1",
+            }
+        )
+        patient = self.service._db.save_patient(
+            {
+                "owner_id": owner["id"],
+                "name": "Milo",
+                "species": "Felino",
+                "breed": "Criollo",
+                "sex": "Macho",
+                "age_years": 4,
+                "reproductive_status": "Castrado",
+                "weight_kg": 4.1,
+                "notes": "Paciente estable.",
+            }
+        )
+        self.service._google_calendar.sync_appointment = Mock(
+            return_value={
+                "synced": True,
+                "event_id": "evt-123",
+                "event_url": "https://calendar.google.com/event?eid=test",
+                "status": "confirmed",
+                "attendee_response_status": "needsAction",
+                "invite_sent": True,
+            }
+        )
+
+        result = self.service.save_appointment(
+            {
+                "patient_id": patient["id"],
+                "appointment_at": "2026-04-29T10:00",
+                "reason": "Vacunacion",
+                "status": "scheduled",
+            }
+        )
+
+        self.assertTrue(result["ok"])
+        appointment = result["data"]
+        self.assertTrue(appointment["google_calendar"]["invite_sent"])
+        stored = self.service._db.get_appointment(appointment["id"])
+        self.assertEqual(stored["google_event_id"], "evt-123")
+        self.assertEqual(stored["google_attendee_response_status"], "needsAction")
+
+    def test_bootstrap_syncs_accepted_google_invitation_to_confirmed(self) -> None:
+        owner = self.service._db.save_owner(
+            {
+                "full_name": "Andrea Ruiz",
+                "identification_type": "CC",
+                "identification_number": "112233",
+                "phone": "3000000000",
+                "email": "andrea@example.com",
+                "address": "Calle 2",
+            }
+        )
+        patient = self.service._db.save_patient(
+            {
+                "owner_id": owner["id"],
+                "name": "Luna",
+                "species": "Canino",
+                "breed": "Mestizo",
+                "sex": "Hembra",
+                "age_years": 3,
+                "reproductive_status": "Esterilizada",
+                "weight_kg": 15.2,
+                "notes": "Paciente estable.",
+            }
+        )
+        appointment = self.service._db.save_appointment(
+            {
+                "patient_id": patient["id"],
+                "appointment_at": "2026-04-30T09:00",
+                "reason": "Control general",
+                "status": "pending_confirmation",
+            }
+        )
+        self.service._db.update_appointment_google_sync(
+            appointment["id"],
+            event_id="evt-accepted",
+            event_url="https://calendar.google.com/event?eid=accepted",
+            sync_status="confirmed",
+            sync_error="",
+        )
+        self.service._db.save_settings(
+            {
+                **self.service._db.get_settings(),
+                "google_calendar_enabled": True,
+            }
+        )
+        self.service._google_calendar.get_appointment_attendee_response = Mock(
+            return_value={
+                "synced": True,
+                "event_id": "evt-accepted",
+                "event_url": "https://calendar.google.com/event?eid=accepted",
+                "status": "confirmed",
+                "attendee_response_status": "accepted",
+            }
+        )
+        self.service._google_calendar.status = Mock(return_value={"connected": True})
+
+        result = self.service.bootstrap(sections={"appointments"})
+
+        self.assertTrue(result["ok"])
+        appointments = result["data"]["appointments"]
+        updated = next(item for item in appointments if item["id"] == appointment["id"])
+        self.assertEqual(updated["status"], "confirmed")
+        self.assertEqual(updated["google_attendee_response_status"], "accepted")
+
+    def test_bootstrap_keeps_waiting_room_status_when_google_invitation_is_accepted(self) -> None:
+        owner = self.service._db.save_owner(
+            {
+                "full_name": "Camila Perez",
+                "identification_type": "CC",
+                "identification_number": "445566",
+                "phone": "3011111111",
+                "email": "camila@example.com",
+                "address": "Calle 3",
+            }
+        )
+        patient = self.service._db.save_patient(
+            {
+                "owner_id": owner["id"],
+                "name": "Nina",
+                "species": "Canino",
+                "breed": "Poodle",
+                "sex": "Hembra",
+                "age_years": 5,
+                "reproductive_status": "Esterilizada",
+                "weight_kg": 8.3,
+                "notes": "Paciente estable.",
+            }
+        )
+        appointment = self.service._db.save_appointment(
+            {
+                "patient_id": patient["id"],
+                "appointment_at": "2026-05-01T11:00",
+                "reason": "Revision",
+                "status": "waiting_room",
+            }
+        )
+        self.service._db.update_appointment_google_sync(
+            appointment["id"],
+            event_id="evt-waiting-room",
+            event_url="https://calendar.google.com/event?eid=waiting",
+            sync_status="confirmed",
+            sync_error="",
+        )
+        self.service._db.save_settings(
+            {
+                **self.service._db.get_settings(),
+                "google_calendar_enabled": True,
+            }
+        )
+        self.service._google_calendar.get_appointment_attendee_response = Mock(
+            return_value={
+                "synced": True,
+                "event_id": "evt-waiting-room",
+                "event_url": "https://calendar.google.com/event?eid=waiting",
+                "status": "confirmed",
+                "attendee_response_status": "accepted",
+            }
+        )
+        self.service._google_calendar.status = Mock(return_value={"connected": True})
+
+        result = self.service.bootstrap(sections={"appointments"})
+
+        self.assertTrue(result["ok"])
+        appointments = result["data"]["appointments"]
+        updated = next(item for item in appointments if item["id"] == appointment["id"])
+        self.assertEqual(updated["status"], "waiting_room")
+        self.assertEqual(updated["google_attendee_response_status"], "accepted")
+
 
 class GoogleCalendarBridgeTests(unittest.TestCase):
     def setUp(self) -> None:

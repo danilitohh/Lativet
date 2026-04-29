@@ -102,6 +102,21 @@ const APPOINTMENT_STATUS_META = {
   cancelled: { label: "Cancelada", tone: "cancelled" },
   no_show: { label: "No asistio", tone: "no_show" },
 };
+const APPOINTMENT_STATUS_ORDER = [
+  "scheduled",
+  "pending_confirmation",
+  "waiting_room",
+  "confirmed",
+  "completed",
+  "cancelled",
+  "no_show",
+];
+const GOOGLE_ATTENDEE_RESPONSE_META = {
+  accepted: "Invitacion aceptada",
+  tentative: "Respuesta tentativa",
+  needsAction: "Pendiente de respuesta",
+  declined: "Invitacion rechazada",
+};
 const activeSubsections = {};
 let openNavDropdownSection = "";
 let agendaViewDate = new Date();
@@ -169,6 +184,8 @@ let pendingAppointmentDraft = null;
 let returnToAppointmentModal = false;
 let pendingConsentPatientId = "";
 let pendingGroomingPatientId = "";
+let agendaAutoSyncInFlight = false;
+let agendaAutoSyncTimerId = 0;
 const GROOMING_DOCUMENT_TYPE_LABEL = "Registro de peluquería y spa";
 const GROOMING_SERVICE_TYPE_OPTIONS = [
   "Baño",
@@ -1994,6 +2011,22 @@ function getAppointmentStatusMeta(status) {
   return APPOINTMENT_STATUS_META[status] || null;
 }
 
+function getGoogleAttendeeResponseLabel(status) {
+  return GOOGLE_ATTENDEE_RESPONSE_META[status] || "";
+}
+
+function buildAppointmentStatusSelectOptions(selectedStatus = "") {
+  return APPOINTMENT_STATUS_ORDER.map((status) => {
+    const meta = getAppointmentStatusMeta(status);
+    if (!meta) {
+      return "";
+    }
+    return `<option value="${escapeHtml(status)}"${status === selectedStatus ? " selected" : ""}>${escapeHtml(
+      meta.label
+    )}</option>`;
+  }).join("");
+}
+
 function buildAppointmentStatusBadgeMarkup(status, { compact = false } = {}) {
   const meta = getAppointmentStatusMeta(status);
   if (!meta) {
@@ -3639,6 +3672,8 @@ function cacheElements() {
     "appointmentDetailTitle",
     "appointmentDetailSubtitle",
     "appointmentDetailStatus",
+    "appointmentDetailStatusSelect",
+    "appointmentDetailStatusButton",
     "appointmentDetailQuickCard",
     "appointmentDetailReminderButton",
     "appointmentDetailEditButton",
@@ -14211,6 +14246,54 @@ async function refreshData(options = {}) {
   }
 }
 
+function isElementVisible(element) {
+  return Boolean(element && !element.classList.contains("is-hidden"));
+}
+
+function getOpenAppointmentDetailId() {
+  if (!isElementVisible(elements.appointmentDetailModal)) {
+    return "";
+  }
+  return String(elements.appointmentDetailModal?.dataset?.appointmentId || "").trim();
+}
+
+async function runAgendaAutoSync() {
+  if (agendaAutoSyncInFlight || !bootstrapReadyForSectionLoads) {
+    return;
+  }
+  if (document.hidden || getActiveSectionId() !== "agenda" || !state.google_calendar?.connected) {
+    return;
+  }
+  if (
+    isElementVisible(elements.appointmentModal) ||
+    isElementVisible(elements.availabilityModal) ||
+    agendaDragState.appointmentId
+  ) {
+    return;
+  }
+  agendaAutoSyncInFlight = true;
+  const openDetailId = getOpenAppointmentDetailId();
+  try {
+    await refreshData({ sections: AGENDA_REFRESH_SECTIONS, render: true });
+    if (openDetailId && getAppointmentById(openDetailId)) {
+      openAppointmentDetailModal(openDetailId);
+    }
+  } catch (error) {
+    console.warn("Sincronizacion automatica de agenda omitida:", error);
+  } finally {
+    agendaAutoSyncInFlight = false;
+  }
+}
+
+function startAgendaAutoSync() {
+  if (agendaAutoSyncTimerId) {
+    window.clearInterval(agendaAutoSyncTimerId);
+  }
+  agendaAutoSyncTimerId = window.setInterval(() => {
+    void runAgendaAutoSync();
+  }, 60000);
+}
+
 function setAgendaSelectedDate(value) {
   agendaSelectedDate = value;
   const selected = parseIsoDate(value);
@@ -14315,7 +14398,12 @@ function renderAppointmentSlotsStrip() {
   const dateValue = toIsoDate(startValue) || agendaSelectedDate;
   const configuredSlots = buildAgendaSlots(dateValue);
   const slots = getAvailableSlotsForDate(dateValue);
-  if (!slots.length) {
+  const selectedValue = startValue ? toInputDateTime(startValue) : "";
+  const currentDuration = Number(elements.appointmentDurationInput?.value || 30);
+  const hasSelectedAvailableSlot = selectedValue
+    ? slots.some((slot) => toInputDateTime(slot.slot_at) === selectedValue)
+    : false;
+  if (!slots.length && !selectedValue) {
     const emptyMessage = configuredSlots.length
       ? "No hay horarios libres para este dia."
       : "No hay horarios configurados para este dia.";
@@ -14324,24 +14412,47 @@ function renderAppointmentSlotsStrip() {
     elements.appointmentSlotsStrip.classList.remove("is-hidden");
     return;
   }
-  const selectedValue = startValue ? toInputDateTime(startValue) : "";
-  const items = slots.map((slot) => {
+  const options = [
+    `<option value="" disabled${selectedValue ? "" : " selected"}>Selecciona una hora disponible</option>`,
+  ];
+  if (selectedValue && !hasSelectedAvailableSlot) {
+    options.push(
+      `<option value="${escapeHtml(selectedValue)}" data-slot-minutes="${escapeHtml(
+        String(currentDuration || 30)
+      )}" selected>${escapeHtml(
+        `${formatAgendaTimeShort(selectedValue)} - ${currentDuration || 30} min (hora actual)`
+      )}</option>`
+    );
+  }
+  slots.forEach((slot) => {
     const duration = Number(slot.duration_minutes || 30);
     const localValue = toInputDateTime(slot.slot_at);
     const isSelected = selectedValue && localValue === selectedValue;
-    const label = `${slot.label} · ${duration} min`;
-    return `
-      <button
-        type="button"
-        class="appointment-slot-pill${isSelected ? " is-selected" : ""}"
-        data-slot-at="${escapeHtml(slot.slot_at)}"
-        data-slot-minutes="${duration}"
-      >
-        ${escapeHtml(label)}
-      </button>
-    `;
+    const label = `${slot.label} - ${duration} min`;
+    options.push(
+      `<option value="${escapeHtml(localValue)}" data-slot-minutes="${escapeHtml(
+        String(duration)
+      )}"${isSelected ? " selected" : ""}>${escapeHtml(label)}</option>`
+    );
   });
-  elements.appointmentSlotsStrip.innerHTML = items.join("");
+  const helper =
+    !slots.length && selectedValue
+      ? `<div class="appointment-slots-empty">${escapeHtml(
+          configuredSlots.length
+            ? "No hay horarios libres para este dia. Conservas la hora actual hasta que elijas una nueva."
+            : "No hay horarios configurados para este dia. Conservas la hora actual hasta que elijas una nueva."
+        )}</div>`
+      : "";
+  elements.appointmentSlotsStrip.innerHTML = `
+    <select
+      class="appointment-slot-select"
+      data-appointment-slot-select="true"
+      aria-label="Horas disponibles"
+    >
+      ${options.join("")}
+    </select>
+    ${helper}
+  `;
   elements.appointmentSlotsStrip.classList.remove("is-hidden");
 }
 
@@ -14761,6 +14872,12 @@ function openAppointmentDetailModal(appointmentId) {
     ["Encargado", appointment.professional_name || "Agenda general"],
     ["Duracion", `${duration} min`],
   ];
+  const googleInvitationLabel = appointment.google_event_id
+    ? getGoogleAttendeeResponseLabel(appointment.google_attendee_response_status) || "Invitacion enviada"
+    : "";
+  if (googleInvitationLabel) {
+    summary.push(["Invitacion Google", googleInvitationLabel]);
+  }
   renderSummary(elements.appointmentDetailSummary, summary, "Sin informacion disponible.");
   if (elements.appointmentDetailPatientSnapshot) {
     elements.appointmentDetailPatientSnapshot.innerHTML = buildAppointmentDetailPatientSnapshotMarkup(
@@ -14789,15 +14906,25 @@ function openAppointmentDetailModal(appointmentId) {
     elements.appointmentDetailLinks.innerHTML = links.join("");
     elements.appointmentDetailLinks.classList.toggle("is-hidden", !links.length);
   }
+  if (elements.appointmentDetailStatusSelect) {
+    elements.appointmentDetailStatusSelect.innerHTML = buildAppointmentStatusSelectOptions(
+      appointment.status
+    );
+    elements.appointmentDetailStatusSelect.value = appointment.status || "scheduled";
+  }
+  if (elements.appointmentDetailStatusButton) {
+    elements.appointmentDetailStatusButton.dataset.appointmentId = appointment.id || "";
+  }
   if (elements.appointmentDetailReminderButton) {
-    const hasContact = Boolean(owner?.email || owner?.phone || owner?.alternate_phone);
+    const hasEmail = Boolean(owner?.email);
     elements.appointmentDetailReminderButton.dataset.appointmentId = appointment.id || "";
     elements.appointmentDetailReminderButton.disabled =
-      isTerminalAppointmentStatus(appointment.status) || !hasContact;
+      isTerminalAppointmentStatus(appointment.status) || !hasEmail;
   }
   if (elements.appointmentDetailEditButton) {
     elements.appointmentDetailEditButton.dataset.appointmentId = appointment.id || "";
   }
+  elements.appointmentDetailModal.dataset.appointmentId = appointment.id || "";
   elements.appointmentDetailModal.classList.remove("is-hidden");
   elements.appointmentDetailModal.setAttribute("aria-hidden", "false");
 }
@@ -14808,6 +14935,7 @@ function closeAppointmentDetailModal() {
   }
   elements.appointmentDetailModal.classList.add("is-hidden");
   elements.appointmentDetailModal.setAttribute("aria-hidden", "true");
+  delete elements.appointmentDetailModal.dataset.appointmentId;
 }
 
 function openAvailabilityModal() {
@@ -20000,7 +20128,9 @@ async function handleAppointmentSubmit(event) {
       : AGENDA_REFRESH_SECTIONS;
     await refreshData({
       sections: refreshSections,
-      message: savedAppointment?.google_calendar?.error ? "" : "Cita guardada.",
+      message: savedAppointment?.google_calendar?.error
+        ? ""
+        : buildAppointmentSaveMessage(savedAppointment),
     });
     if (savedAppointment?.google_calendar?.error) {
       showStatus(
@@ -21003,31 +21133,39 @@ function describeAppointmentReminderEmailResult(emailResult) {
   return "";
 }
 
+function buildAppointmentSaveMessage(savedAppointment) {
+  if (savedAppointment?.google_calendar?.invite_sent) {
+    return "Cita guardada e invitacion de Google Calendar enviada.";
+  }
+  return "Cita guardada.";
+}
+
 async function sendAppointmentReminder(appointmentId) {
   const appointment = getAppointmentById(appointmentId);
   if (!appointment) {
     throw new Error("No se encontro la cita seleccionada.");
   }
-  const whatsappUrl = buildAppointmentWhatsappUrl(appointment);
-  if (whatsappUrl) {
-    window.open(whatsappUrl, "_blank", "noopener,noreferrer");
-  }
   const reminder = await api.sendAppointmentReminder(appointmentId);
-  const parts = [];
-  if (whatsappUrl) {
-    parts.push("WhatsApp abierto con el recordatorio listo.");
-  }
   const emailMessage = describeAppointmentReminderEmailResult(reminder?.email);
-  if (emailMessage) {
-    parts.push(emailMessage);
-  }
-  if (!parts.length) {
-    parts.push("No hay canales de contacto configurados para esta cita.");
-  }
   showStatus(
-    parts.join(" "),
-    reminder?.email?.sent || whatsappUrl ? "success" : "warning"
+    emailMessage || "No fue posible enviar el recordatorio por correo.",
+    reminder?.email?.sent ? "success" : "warning"
   );
+}
+
+async function updateAppointmentDetailStatus(appointmentId, status) {
+  if (!appointmentId || !status) {
+    return;
+  }
+  await api.updateAppointmentStatus(appointmentId, status);
+  await refreshData({
+    sections: AGENDA_REFRESH_SECTIONS,
+    render: true,
+  });
+  if (getAppointmentById(appointmentId)) {
+    openAppointmentDetailModal(appointmentId);
+  }
+  showStatus("Estado de la cita actualizado.", "success");
 }
 
 async function handleAppointmentDetailClick(event) {
@@ -21044,6 +21182,15 @@ async function handleAppointmentDetailClick(event) {
     }
     closeAppointmentDetailModal();
     openAppointmentModalForEdit(appointment);
+    return;
+  }
+  const statusButton = event.target.closest("#appointmentDetailStatusButton");
+  if (statusButton?.dataset?.appointmentId) {
+    const nextStatus = elements.appointmentDetailStatusSelect?.value || "";
+    if (!nextStatus) {
+      throw new Error("Selecciona un estado para la cita.");
+    }
+    await updateAppointmentDetailStatus(statusButton.dataset.appointmentId, nextStatus);
   }
 }
 
@@ -22914,13 +23061,16 @@ function bindForms() {
     });
   }
   if (elements.appointmentSlotsStrip) {
-    elements.appointmentSlotsStrip.addEventListener("click", (event) => {
-      const button = event.target.closest("button[data-slot-at]");
-      if (!button) {
+    elements.appointmentSlotsStrip.addEventListener("change", (event) => {
+      const select = event.target.closest("select[data-appointment-slot-select]");
+      if (!select || !select.value) {
         return;
       }
-      const minutes = Number(button.dataset.slotMinutes || 30);
-      selectAppointmentSlot(button.dataset.slotAt, minutes);
+      const selectedOption = select.selectedOptions?.[0] || null;
+      const minutes = Number(
+        selectedOption?.dataset.slotMinutes || elements.appointmentDurationInput?.value || 30
+      );
+      selectAppointmentSlot(select.value, minutes);
     });
   }
   elements.appointmentModal.addEventListener("click", (event) => {
@@ -23111,6 +23261,7 @@ async function initApp() {
   }
   restoreOrDefaultAppView();
   await startDataLoad();
+  startAgendaAutoSync();
 }
 
 window.addEventListener("DOMContentLoaded", () => {

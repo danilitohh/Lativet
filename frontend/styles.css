@@ -7158,8 +7158,46 @@ body.auth-locked .page-shell > :not(#loginModal) {
   font-size: 0.9rem;
 }
 
-.appointment-detail-status {
+.appointment-detail-status-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  justify-content: space-between;
+  gap: 12px;
   margin-bottom: 12px;
+}
+
+.appointment-detail-status {
+  margin: 0;
+}
+
+.appointment-detail-status-editor {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 10px;
+}
+
+.appointment-detail-status-editor__field {
+  display: grid;
+  gap: 6px;
+  min-width: 220px;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.appointment-detail-status-editor__field span {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.appointment-detail-status-editor__field select {
+  min-height: 40px;
+  padding: 0 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(79, 91, 213, 0.22);
+  background: rgba(255, 255, 255, 0.98);
+  color: var(--text);
 }
 
 .appointment-detail-quick-card {
@@ -7358,39 +7396,38 @@ body.auth-locked .page-shell > :not(#loginModal) {
 }
 
 .appointment-slots-strip {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 4px 2px;
-  overflow-x: auto;
-  scrollbar-width: thin;
+  display: grid;
+  gap: 8px;
+  padding: 4px 0;
 }
 
 .appointment-slots-strip.is-hidden {
   display: none;
 }
 
-.appointment-slot-pill {
-  border-radius: 999px;
+.appointment-slot-select {
+  width: 100%;
+  min-height: 46px;
+  border-radius: 14px;
   border: 1px solid rgba(79, 91, 213, 0.28);
-  background: #fff;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(246, 248, 255, 0.96));
   color: #3f4bc8;
-  padding: 8px 14px;
+  padding: 0 14px;
   font-size: 0.85rem;
-  white-space: nowrap;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  font-weight: 600;
+  box-shadow: 0 10px 24px rgba(79, 91, 213, 0.08);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.appointment-slot-pill:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 14px rgba(79, 91, 213, 0.16);
+.appointment-slot-select:focus {
+  outline: none;
+  border-color: rgba(79, 91, 213, 0.48);
+  box-shadow: 0 0 0 4px rgba(79, 91, 213, 0.14);
 }
 
-.appointment-slot-pill.is-selected {
-  background: #4f5bd5;
-  border-color: #4f5bd5;
-  color: #fff;
-  box-shadow: 0 10px 20px rgba(79, 91, 213, 0.28);
+.appointment-slot-select:disabled {
+  color: var(--muted);
+  box-shadow: none;
 }
 
 .appointment-slots-empty {
