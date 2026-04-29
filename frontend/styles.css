@@ -5943,6 +5943,11 @@ textarea:focus {
   border-right: 0;
 }
 
+.agenda-timeline__day-column.is-drop-target {
+  box-shadow: inset 0 0 0 2px rgba(79, 91, 213, 0.22);
+  background-color: rgba(79, 91, 213, 0.06);
+}
+
 .agenda-timeline-event {
   position: absolute;
   left: 8px;
@@ -5953,7 +5958,12 @@ textarea:focus {
   display: grid;
   gap: 2px;
   overflow: hidden;
-  cursor: pointer;
+  cursor: grab;
+}
+
+.agenda-timeline-event.is-dragging {
+  opacity: 0.58;
+  cursor: grabbing;
 }
 
 .agenda-timeline-event__time {
@@ -6020,6 +6030,12 @@ textarea:focus {
   gap: 10px;
 }
 
+.agenda-list-day.is-drop-target {
+  border-color: rgba(79, 91, 213, 0.28);
+  background: linear-gradient(180deg, rgba(240, 247, 255, 0.98), rgba(255, 255, 255, 0.96));
+  box-shadow: 0 16px 28px rgba(79, 91, 213, 0.12);
+}
+
 .agenda-list-day__items {
   display: grid;
   gap: 6px;
@@ -6042,7 +6058,12 @@ textarea:focus {
   padding: 8px 0;
   border-top: 1px dashed rgba(11, 39, 49, 0.08);
   align-items: center;
-  cursor: pointer;
+  cursor: grab;
+}
+
+.agenda-list-item.is-dragging {
+  opacity: 0.58;
+  cursor: grabbing;
 }
 
 .agenda-list-item:hover {
@@ -6123,6 +6144,11 @@ textarea:focus {
   box-shadow: inset 0 0 0 2px rgba(69, 104, 255, 0.25);
 }
 
+.agenda-large-day.is-drop-target {
+  box-shadow: inset 0 0 0 2px rgba(79, 91, 213, 0.24);
+  background: linear-gradient(180deg, rgba(240, 247, 255, 0.98), rgba(255, 255, 255, 0.96));
+}
+
 .agenda-large-day__date {
   font-size: 0.78rem;
   font-weight: 700;
@@ -6149,7 +6175,12 @@ textarea:focus {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  cursor: pointer;
+  cursor: grab;
+}
+
+.agenda-event-chip.is-dragging {
+  opacity: 0.58;
+  cursor: grabbing;
 }
 
 .agenda-event-dot {
@@ -6241,6 +6272,12 @@ textarea:focus {
 .agenda-week-day.is-selected {
   border-color: rgba(79, 91, 213, 0.25);
   box-shadow: 0 10px 30px rgba(79, 91, 213, 0.08);
+}
+
+.agenda-week-day.is-drop-target {
+  border-color: rgba(79, 91, 213, 0.28);
+  background: linear-gradient(180deg, rgba(240, 247, 255, 0.98), rgba(255, 255, 255, 0.96));
+  box-shadow: 0 14px 26px rgba(79, 91, 213, 0.12);
 }
 
 .agenda-week-day__header {

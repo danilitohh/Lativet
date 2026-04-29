@@ -12616,7 +12616,7 @@ function buildAgendaTimelineEventMarkup(appointment, { dayStart, dayEnd, minuteH
   return `
     <div class="agenda-timeline-event agenda-timeline-event--${tone}" data-appointment-id="${escapeHtml(
       appointment.id
-    )}" role="button" tabindex="0" style="top:${top}px;height:${height}px">
+    )}" role="button" tabindex="0" draggable="true" style="top:${top}px;height:${height}px">
       <div class="agenda-timeline-event__row">
         <div class="agenda-timeline-event__identity">
           ${getAgendaAppointmentIconMarkup(presentation.type)}
@@ -12780,7 +12780,7 @@ function renderAgendaListView() {
             return `
               <div class="agenda-list-item" data-appointment-id="${escapeHtml(
                 appointment.id
-              )}" role="button" tabindex="0">
+              )}" role="button" tabindex="0" draggable="true">
                 <div class="agenda-list-time">${escapeHtml(timeLabel)}</div>
                 <div class="agenda-list-title agenda-list-title--${presentation.type}">
                   <div class="agenda-list-title__main">
@@ -12845,7 +12845,7 @@ function renderAgendaLargeMonth() {
         return `
           <div class="agenda-event-chip agenda-event-chip--${tone}" data-appointment-id="${escapeHtml(
             appointment.id
-          )}" role="button" tabindex="0">
+          )}" role="button" tabindex="0" draggable="true">
             ${getAgendaAppointmentIconMarkup(presentation.type)}
             <span class="agenda-event-time">${escapeHtml(timeLabel)}</span>
             ${buildAppointmentStatusBadgeMarkup(appointment.status, { compact: true })}
@@ -14521,6 +14521,23 @@ function openAppointmentModalForSlot(slotAt, durationMinutes) {
   openAppointmentModal(slotAt, durationMinutes);
 }
 
+function buildAppointmentRescheduleFeedback(targetDate) {
+  const normalizedDate = toIsoDate(targetDate);
+  if (!normalizedDate) {
+    return "Selecciona la nueva hora para reprogramar la cita.";
+  }
+  const availableSlots = getAvailableSlotsForDate(normalizedDate);
+  const configuredSlots = buildAgendaSlots(normalizedDate);
+  const dateLabel = formatAgendaDateLabel(normalizedDate);
+  if (availableSlots.length) {
+    return `Reprogramando para ${dateLabel}. Selecciona la nueva hora.`;
+  }
+  if (configuredSlots.length) {
+    return `Reprogramando para ${dateLabel}. No hay horarios libres; ajusta la hora o elige otro dia.`;
+  }
+  return `Reprogramando para ${dateLabel}. No hay horarios configurados; elige la hora manualmente o crea disponibilidad.`;
+}
+
 function openAppointmentModal(initialDateTime = "", durationMinutes = 30, options = {}) {
   const { allowBlankStart = false } = options;
   const hasInitialDateTime = Boolean(initialDateTime);
@@ -14584,13 +14601,22 @@ function openAppointmentModal(initialDateTime = "", durationMinutes = 30, option
   syncAppointmentSelectedDate();
 }
 
-function openAppointmentModalForEdit(appointment) {
+function openAppointmentModalForEdit(appointment, options = {}) {
   if (!appointment) {
     return;
   }
-  openAppointmentModal(appointment.appointment_at, Number(appointment.duration_minutes || 30));
+  const { targetDate = "", requireNewTime = false } = options;
+  const normalizedTargetDate = toIsoDate(targetDate);
+  if (normalizedTargetDate) {
+    setAgendaSelectedDate(normalizedTargetDate);
+  }
+  openAppointmentModal(
+    requireNewTime ? "" : appointment.appointment_at,
+    Number(appointment.duration_minutes || 30),
+    { allowBlankStart: requireNewTime }
+  );
   if (elements.appointmentModalTitle) {
-    elements.appointmentModalTitle.textContent = "Editar cita";
+    elements.appointmentModalTitle.textContent = requireNewTime ? "Reprogramar cita" : "Editar cita";
   }
   if (elements.appointmentIdInput) {
     elements.appointmentIdInput.value = appointment.id || "";
@@ -14632,6 +14658,22 @@ function openAppointmentModalForEdit(appointment) {
   }
   renderAppointmentPatientDropdown();
   syncAppointmentSelectedDate();
+  if (requireNewTime) {
+    setAppointmentFormFeedback(buildAppointmentRescheduleFeedback(normalizedTargetDate), "info");
+  }
+}
+
+function openAppointmentModalForRescheduleDate(appointmentId, targetDate) {
+  const appointment = getAppointmentById(appointmentId);
+  const normalizedTargetDate = toIsoDate(targetDate);
+  if (!appointment || !normalizedTargetDate) {
+    return;
+  }
+  closeAppointmentDetailModal();
+  openAppointmentModalForEdit(appointment, {
+    targetDate: normalizedTargetDate,
+    requireNewTime: true,
+  });
 }
 
 function closeAppointmentModal() {
@@ -21122,98 +21164,118 @@ function handleAgendaWeekClick(event) {
   }
 }
 
+function getAgendaDraggedAppointmentElement(target) {
+  return target.closest(
+    ".agenda-slot--occupied[data-appointment-id], .agenda-event-chip[data-appointment-id], .agenda-timeline-event[data-appointment-id], .agenda-list-item[data-appointment-id]"
+  );
+}
+
+function resolveAgendaDropTarget(event) {
+  const slot = event.target.closest(".agenda-slot[data-slot-at]");
+  if (slot) {
+    return {
+      dateValue: toIsoDate(slot.dataset.slotAt || ""),
+      highlightElement: slot,
+    };
+  }
+  const timelineColumn = event.target.closest(".agenda-timeline__day-column[data-agenda-date]");
+  if (timelineColumn) {
+    return {
+      dateValue: timelineColumn.dataset.agendaDate || "",
+      highlightElement: timelineColumn,
+    };
+  }
+  const listDay = event.target.closest(".agenda-list-day[data-agenda-date]");
+  if (listDay) {
+    return {
+      dateValue: listDay.dataset.agendaDate || "",
+      highlightElement: listDay,
+    };
+  }
+  const monthDay = event.target.closest(".agenda-large-day[data-agenda-date]");
+  if (monthDay) {
+    return {
+      dateValue: monthDay.dataset.agendaDate || "",
+      highlightElement: monthDay,
+    };
+  }
+  const programDay = event.target.closest(".agenda-week-day[data-agenda-date]");
+  if (programDay) {
+    return {
+      dateValue: programDay.dataset.agendaDate || "",
+      highlightElement: programDay,
+    };
+  }
+  const genericDateTarget = event.target.closest("[data-agenda-date]");
+  if (genericDateTarget) {
+    return {
+      dateValue: genericDateTarget.dataset.agendaDate || "",
+      highlightElement: genericDateTarget,
+    };
+  }
+  return null;
+}
+
 function clearAgendaDropTargets() {
-  elements.agendaWeekSlots
-    ?.querySelectorAll(".agenda-slot.is-drop-target, .agenda-slot.is-dragging")
-    .forEach((slot) => {
-      slot.classList.remove("is-drop-target", "is-dragging");
+  document
+    .querySelectorAll(
+      ".agenda-slot.is-drop-target, .agenda-slot.is-dragging, .agenda-event-chip.is-dragging, .agenda-list-item.is-dragging, .agenda-timeline-event.is-dragging, .agenda-large-day.is-drop-target, .agenda-list-day.is-drop-target, .agenda-timeline__day-column.is-drop-target, .agenda-week-day.is-drop-target"
+    )
+    .forEach((item) => {
+      item.classList.remove("is-drop-target", "is-dragging");
     });
 }
 
-function handleAgendaWeekDragStart(event) {
-  const slot = event.target.closest(".agenda-slot--occupied[data-appointment-id]");
-  if (!slot) {
+function handleAgendaAppointmentDragStart(event) {
+  const appointmentElement = getAgendaDraggedAppointmentElement(event.target);
+  if (!appointmentElement) {
     return;
   }
-  agendaDragState.appointmentId = slot.dataset.appointmentId || "";
-  agendaDragState.sourceSlotAt = slot.dataset.slotAt || "";
-  slot.classList.add("is-dragging");
+  agendaDragState.appointmentId = appointmentElement.dataset.appointmentId || "";
+  agendaDragState.sourceSlotAt = appointmentElement.dataset.slotAt || "";
+  appointmentElement.classList.add("is-dragging");
   if (event.dataTransfer) {
     event.dataTransfer.effectAllowed = "move";
     event.dataTransfer.setData("text/plain", agendaDragState.appointmentId);
   }
 }
 
-function handleAgendaWeekDragOver(event) {
-  const slot = event.target.closest(".agenda-slot[data-drop-slot]");
-  if (!slot || !agendaDragState.appointmentId) {
+function handleAgendaAppointmentDragOver(event) {
+  if (!agendaDragState.appointmentId) {
+    return;
+  }
+  const dropTarget = resolveAgendaDropTarget(event);
+  if (!dropTarget?.dateValue || !dropTarget.highlightElement) {
     return;
   }
   event.preventDefault();
   clearAgendaDropTargets();
-  slot.classList.add("is-drop-target");
+  dropTarget.highlightElement.classList.add("is-drop-target");
+  if (event.dataTransfer) {
+    event.dataTransfer.dropEffect = "move";
+  }
 }
 
-function handleAgendaWeekDragLeave(event) {
-  const slot = event.target.closest(".agenda-slot[data-drop-slot]");
-  if (!slot) {
-    return;
-  }
-  const relatedTarget = event.relatedTarget;
-  if (relatedTarget && slot.contains(relatedTarget)) {
-    return;
-  }
-  slot.classList.remove("is-drop-target");
-}
-
-function handleAgendaWeekDragEnd() {
+function handleAgendaAppointmentDragEnd() {
   clearAgendaDropTargets();
   agendaDragState.appointmentId = "";
   agendaDragState.sourceSlotAt = "";
 }
 
-async function moveAppointmentToAgendaSlot(appointmentId, slotAt) {
-  const appointment = getAppointmentById(appointmentId);
-  if (!appointment) {
-    throw new Error("No se encontro la cita seleccionada.");
-  }
-  const nextDateTime = toInputDateTime(slotAt);
-  if (!nextDateTime) {
-    throw new Error("No se encontro un horario valido para reprogramar.");
-  }
-  if (toInputDateTime(appointment.appointment_at) === nextDateTime) {
+async function handleAgendaAppointmentDrop(event) {
+  if (!agendaDragState.appointmentId) {
     return;
   }
-  await api.saveAppointment({
-    id: appointment.id,
-    patient_id: appointment.patient_id,
-    owner_id: appointment.owner_id,
-    appointment_at: nextDateTime,
-    reason: appointment.reason,
-    status: appointment.status,
-    professional_name: appointment.professional_name,
-    duration_minutes: appointment.duration_minutes,
-    notes: appointment.notes,
-  });
-  agendaSelectedDate = toIsoDate(slotAt) || agendaSelectedDate;
-  await refreshData({
-    sections: AGENDA_REFRESH_SECTIONS,
-    message: "Cita reprogramada.",
-  });
-}
-
-async function handleAgendaWeekDrop(event) {
-  const slot = event.target.closest(".agenda-slot[data-drop-slot]");
-  if (!slot || !agendaDragState.appointmentId) {
+  const dropTarget = resolveAgendaDropTarget(event);
+  if (!dropTarget?.dateValue) {
     return;
   }
   event.preventDefault();
   const appointmentId = agendaDragState.appointmentId;
-  const slotAt = slot.dataset.slotAt || "";
   clearAgendaDropTargets();
   agendaDragState.appointmentId = "";
   agendaDragState.sourceSlotAt = "";
-  await moveAppointmentToAgendaSlot(appointmentId, slotAt);
+  openAppointmentModalForRescheduleDate(appointmentId, dropTarget.dateValue);
 }
 
 function handleRecordsClick(event) {
@@ -22603,23 +22665,38 @@ function bindForms() {
   }
   if (elements.agendaMonthGridLarge) {
     elements.agendaMonthGridLarge.addEventListener("click", handleAgendaMonthClick);
+    elements.agendaMonthGridLarge.addEventListener("dragstart", handleAgendaAppointmentDragStart);
+    elements.agendaMonthGridLarge.addEventListener("dragover", handleAgendaAppointmentDragOver);
+    elements.agendaMonthGridLarge.addEventListener("dragend", handleAgendaAppointmentDragEnd);
+    elements.agendaMonthGridLarge.addEventListener("drop", wrapAsync(handleAgendaAppointmentDrop));
   }
   if (elements.agendaWeekSlots) {
     elements.agendaWeekSlots.addEventListener("click", handleAgendaWeekClick);
-    elements.agendaWeekSlots.addEventListener("dragstart", handleAgendaWeekDragStart);
-    elements.agendaWeekSlots.addEventListener("dragover", handleAgendaWeekDragOver);
-    elements.agendaWeekSlots.addEventListener("dragleave", handleAgendaWeekDragLeave);
-    elements.agendaWeekSlots.addEventListener("dragend", handleAgendaWeekDragEnd);
-    elements.agendaWeekSlots.addEventListener("drop", wrapAsync(handleAgendaWeekDrop));
+    elements.agendaWeekSlots.addEventListener("dragstart", handleAgendaAppointmentDragStart);
+    elements.agendaWeekSlots.addEventListener("dragover", handleAgendaAppointmentDragOver);
+    elements.agendaWeekSlots.addEventListener("dragend", handleAgendaAppointmentDragEnd);
+    elements.agendaWeekSlots.addEventListener("drop", wrapAsync(handleAgendaAppointmentDrop));
   }
   if (elements.agendaWeekTimeline) {
     elements.agendaWeekTimeline.addEventListener("click", handleAgendaTimelineClick);
+    elements.agendaWeekTimeline.addEventListener("dragstart", handleAgendaAppointmentDragStart);
+    elements.agendaWeekTimeline.addEventListener("dragover", handleAgendaAppointmentDragOver);
+    elements.agendaWeekTimeline.addEventListener("dragend", handleAgendaAppointmentDragEnd);
+    elements.agendaWeekTimeline.addEventListener("drop", wrapAsync(handleAgendaAppointmentDrop));
   }
   if (elements.agendaDayTimeline) {
     elements.agendaDayTimeline.addEventListener("click", handleAgendaTimelineClick);
+    elements.agendaDayTimeline.addEventListener("dragstart", handleAgendaAppointmentDragStart);
+    elements.agendaDayTimeline.addEventListener("dragover", handleAgendaAppointmentDragOver);
+    elements.agendaDayTimeline.addEventListener("dragend", handleAgendaAppointmentDragEnd);
+    elements.agendaDayTimeline.addEventListener("drop", wrapAsync(handleAgendaAppointmentDrop));
   }
   if (elements.agendaListItems) {
     elements.agendaListItems.addEventListener("click", handleAgendaMonthClick);
+    elements.agendaListItems.addEventListener("dragstart", handleAgendaAppointmentDragStart);
+    elements.agendaListItems.addEventListener("dragover", handleAgendaAppointmentDragOver);
+    elements.agendaListItems.addEventListener("dragend", handleAgendaAppointmentDragEnd);
+    elements.agendaListItems.addEventListener("drop", wrapAsync(handleAgendaAppointmentDrop));
   }
   if (elements.agendaNextAppointment) {
     elements.agendaNextAppointment.addEventListener("click", handleAgendaMonthClick);
