@@ -429,6 +429,10 @@ const BOOTSTRAP_BACKGROUND_GROUPS = [
 ];
 const OWNER_PATIENT_REFRESH_SECTIONS = ["owners", "patients"];
 const AGENDA_REFRESH_SECTIONS = ["appointments", "owners", "patients", "availability_rules"];
+const APPOINTMENT_MUTATION_REFRESH_SECTIONS = [
+  "dashboard",
+  ...AGENDA_REFRESH_SECTIONS,
+];
 const CONSULTORIO_PROFILE_VIEWS = [
   {
     value: "records",
@@ -2546,8 +2550,28 @@ const api = {
       method: "PATCH",
       body: JSON.stringify({ status }),
     }),
-  deleteAppointment: (appointmentId) =>
-    apiRequest(`/api/appointments/${appointmentId}`, { method: "DELETE" }),
+  deleteAppointment: async (appointmentId) => {
+    try {
+      return await apiRequest(`/api/appointments/${appointmentId}`, { method: "DELETE" });
+    } catch (error) {
+      const message = String(error?.message || "").toLowerCase();
+      const shouldFallback = [
+        "404",
+        "405",
+        "not found",
+        "method not allowed",
+        "cannot delete",
+        "respuesta no valida",
+      ].some((snippet) => message.includes(snippet));
+      if (!shouldFallback) {
+        throw error;
+      }
+      return apiRequest(`/api/appointments/${appointmentId}/delete`, {
+        method: "POST",
+        body: "{}",
+      });
+    }
+  },
   saveAvailability: (payload) =>
     apiRequest("/api/availability", { method: "POST", body: JSON.stringify(payload) }),
   deleteAvailability: (ruleId) =>
@@ -13465,6 +13489,14 @@ function getAppointmentById(appointmentId) {
   return (state.appointments || []).find((appointment) => appointment.id === appointmentId) || null;
 }
 
+function removeAppointmentFromState(appointmentId) {
+  const normalizedId = String(appointmentId || "").trim();
+  if (!normalizedId || !Array.isArray(state.appointments)) {
+    return;
+  }
+  state.appointments = state.appointments.filter((appointment) => appointment.id !== normalizedId);
+}
+
 function getAppointmentOwner(appointment) {
   if (!appointment) {
     return null;
@@ -20128,9 +20160,10 @@ async function handleAppointmentSubmit(event) {
     resetForm(event.currentTarget);
     closeAppointmentModal();
     setDateTimeDefaults();
+    clearBootstrapCache();
     const refreshSections = savedAppointment?.google_calendar?.error
-      ? [...new Set([...AGENDA_REFRESH_SECTIONS, "settings"])]
-      : AGENDA_REFRESH_SECTIONS;
+      ? [...new Set([...APPOINTMENT_MUTATION_REFRESH_SECTIONS, "settings"])]
+      : APPOINTMENT_MUTATION_REFRESH_SECTIONS;
     await refreshData({
       sections: refreshSections,
       message: savedAppointment?.google_calendar?.error
@@ -21090,8 +21123,11 @@ async function handleAppointmentsClick(event) {
         return;
       }
       await api.deleteAppointment(appointmentId);
+      removeAppointmentFromState(appointmentId);
+      clearBootstrapCache();
+      renderAll();
       await refreshData({
-        sections: AGENDA_REFRESH_SECTIONS,
+        sections: APPOINTMENT_MUTATION_REFRESH_SECTIONS,
         message: "Cita eliminada.",
       });
       return;
@@ -21101,8 +21137,9 @@ async function handleAppointmentsClick(event) {
         return;
       }
       await api.updateAppointmentStatus(appointmentId, "scheduled");
+      clearBootstrapCache();
       await refreshData({
-        sections: AGENDA_REFRESH_SECTIONS,
+        sections: APPOINTMENT_MUTATION_REFRESH_SECTIONS,
         message: "Cita reactivada.",
       });
       return;
@@ -21113,8 +21150,9 @@ async function handleAppointmentsClick(event) {
     return;
   }
   await api.updateAppointmentStatus(button.dataset.appointmentId, button.dataset.status);
+  clearBootstrapCache();
   await refreshData({
-    sections: AGENDA_REFRESH_SECTIONS,
+    sections: APPOINTMENT_MUTATION_REFRESH_SECTIONS,
     message: "Estado de cita actualizado.",
   });
 }
@@ -21165,8 +21203,9 @@ async function updateAppointmentDetailStatus(appointmentId, status) {
     return;
   }
   await api.updateAppointmentStatus(appointmentId, status);
+  clearBootstrapCache();
   await refreshData({
-    sections: AGENDA_REFRESH_SECTIONS,
+    sections: APPOINTMENT_MUTATION_REFRESH_SECTIONS,
     render: true,
   });
   if (getAppointmentById(appointmentId)) {
@@ -21189,8 +21228,11 @@ async function deleteAppointmentFromDetail(appointmentId) {
   }
   closeAppointmentDetailModal();
   await api.deleteAppointment(appointmentId);
+  removeAppointmentFromState(appointmentId);
+  clearBootstrapCache();
+  renderAll();
   await refreshData({
-    sections: AGENDA_REFRESH_SECTIONS,
+    sections: APPOINTMENT_MUTATION_REFRESH_SECTIONS,
     message: "Cita eliminada.",
   });
 }

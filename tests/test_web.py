@@ -264,6 +264,54 @@ class WebSmokeTests(unittest.TestCase):
         self.assertTrue(reminder["email"]["sent"])
         self.assertEqual(reminder["owner_email"], "laura@example.com")
 
+    def test_http_deletes_appointment_with_post_alias(self) -> None:
+        owner = self.assert_ok(
+            self.client.post(
+                "/api/owners",
+                json={
+                    "full_name": "Daniel Herrera",
+                    "identification_type": "CC",
+                    "identification_number": "554433",
+                    "phone": "3009876543",
+                    "email": "daniel@example.com",
+                },
+            )
+        )
+        patient = self.assert_ok(
+            self.client.post(
+                "/api/patients",
+                json={
+                    "owner_id": owner["id"],
+                    "name": "Mono",
+                    "species": "Canino",
+                    "breed": "Criollo",
+                    "sex": "Macho",
+                    "weight_kg": "8.6",
+                },
+            )
+        )
+        appointment = self.assert_ok(
+            self.client.post(
+                "/api/appointments",
+                json={
+                    "patient_id": patient["id"],
+                    "appointment_at": "2026-04-29T10:00",
+                    "reason": "Vacunacion",
+                    "status": "scheduled",
+                },
+            )
+        )
+
+        deleted = self.assert_ok(
+            self.client.post(f"/api/appointments/{appointment['id']}/delete", json={})
+        )
+        self.assertEqual(deleted["id"], appointment["id"])
+
+        snapshot = self.assert_ok(self.client.get("/api/bootstrap?sections=appointments,dashboard"))
+        self.assertFalse(
+            any(item["id"] == appointment["id"] for item in snapshot["appointments"])
+        )
+
     def test_http_supports_owner_and_patient_delete_via_post_fallback(self) -> None:
         owner = self.assert_ok(
             self.client.post(
