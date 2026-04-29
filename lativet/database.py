@@ -1927,7 +1927,15 @@ class Database:
             "updated_at = ?",
         ]
         params: list[object] = [event_id, event_url, sync_status, sync_error, timestamp]
+        attendee_response_enabled = False
         if attendee_response_status is not None:
+            attendee_response_enabled = self._table_column_enabled(
+                "appointments",
+                "google_attendee_response_status",
+                "TEXT",
+                ensure=True,
+            )
+        if attendee_response_enabled:
             assignments.insert(4, "google_attendee_response_status = ?")
             params.insert(4, attendee_response_status)
         with self._tx():
@@ -1962,8 +1970,17 @@ class Database:
         appointment_status: str | None = None,
     ) -> dict:
         timestamp = now_iso()
-        assignments = ["google_attendee_response_status = ?", "updated_at = ?"]
-        params: list[object] = [attendee_response_status, timestamp]
+        assignments = ["updated_at = ?"]
+        params: list[object] = [timestamp]
+        attendee_response_enabled = self._table_column_enabled(
+            "appointments",
+            "google_attendee_response_status",
+            "TEXT",
+            ensure=True,
+        )
+        if attendee_response_enabled:
+            assignments.insert(0, "google_attendee_response_status = ?")
+            params.insert(0, attendee_response_status)
         if appointment_status:
             assignments.insert(0, "status = ?")
             params.insert(0, appointment_status)

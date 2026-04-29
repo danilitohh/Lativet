@@ -418,9 +418,12 @@ class LativetService:
         appointment = self._db.get_appointment(appointment_id)
         google_calendar = {"synced": False, "skipped": True, "reason": "no_event"}
         if appointment.get("google_event_id"):
-            google_calendar = self._sync_google_calendar_for_appointment(
-                {**appointment, "status": "cancelled"}
-            )
+            try:
+                google_calendar = self._sync_google_calendar_for_appointment(
+                    {**appointment, "status": "cancelled"}
+                )
+            except Exception as exc:
+                google_calendar = {"synced": False, "error": str(exc)}
         deleted = self._db.delete_appointment(appointment_id)
         deleted["google_calendar"] = google_calendar
         return deleted

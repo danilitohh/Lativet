@@ -261,6 +261,86 @@ class DatabaseSmokeTests(unittest.TestCase):
         self.assertTrue(deleted["deleted"])
         self.assertEqual(len(self.db.list_patients()), 0)
 
+    def test_google_sync_update_ignores_missing_attendee_response_column(self) -> None:
+        owner = self.db.save_owner(
+            {
+                "full_name": "Laura Torres",
+                "identification_type": "CC",
+                "identification_number": "998877",
+                "phone": "3001234567",
+                "email": "laura@example.com",
+            }
+        )
+        patient = self.db.save_patient(
+            {
+                "owner_id": owner["id"],
+                "name": "Milo",
+                "species": "Felino",
+                "breed": "Criollo",
+                "sex": "Macho",
+            }
+        )
+        appointment = self.db.save_appointment(
+            {
+                "patient_id": patient["id"],
+                "appointment_at": "2026-04-29T10:00",
+                "reason": "Vacunacion",
+                "status": "scheduled",
+            }
+        )
+
+        with patch.object(self.db, "_table_column_enabled", return_value=False):
+            updated = self.db.update_appointment_google_sync(
+                appointment["id"],
+                event_id="evt-123",
+                event_url="https://calendar.google.com/event?eid=test",
+                sync_status="confirmed",
+                sync_error="",
+                attendee_response_status="accepted",
+            )
+
+        self.assertEqual(updated["google_event_id"], "evt-123")
+        self.assertEqual(updated["google_sync_status"], "confirmed")
+        self.assertNotEqual(updated.get("google_attendee_response_status"), "accepted")
+
+    def test_google_attendance_update_still_changes_status_without_attendee_column(self) -> None:
+        owner = self.db.save_owner(
+            {
+                "full_name": "Andrea Ruiz",
+                "identification_type": "CC",
+                "identification_number": "112233",
+                "phone": "3000000000",
+                "email": "andrea@example.com",
+            }
+        )
+        patient = self.db.save_patient(
+            {
+                "owner_id": owner["id"],
+                "name": "Luna",
+                "species": "Canino",
+                "breed": "Mestizo",
+                "sex": "Hembra",
+            }
+        )
+        appointment = self.db.save_appointment(
+            {
+                "patient_id": patient["id"],
+                "appointment_at": "2026-04-30T09:00",
+                "reason": "Control general",
+                "status": "pending_confirmation",
+            }
+        )
+
+        with patch.object(self.db, "_table_column_enabled", return_value=False):
+            updated = self.db.update_appointment_google_attendance(
+                appointment["id"],
+                attendee_response_status="accepted",
+                appointment_status="confirmed",
+            )
+
+        self.assertEqual(updated["status"], "confirmed")
+        self.assertNotEqual(updated.get("google_attendee_response_status"), "accepted")
+
     def test_can_delete_catalog_item_without_dependencies(self) -> None:
         item = self.db.save_catalog_item(
             {
