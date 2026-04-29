@@ -14174,6 +14174,11 @@ function renderAll() {
   saveAppViewState();
 }
 
+function renderActiveSection() {
+  renderSection(getActiveSectionId());
+  saveAppViewState();
+}
+
 function markBootstrapSectionsLoaded(sections) {
   (sections || []).forEach((section) => {
     loadedBootstrapSections.add(section);
@@ -21125,11 +21130,13 @@ async function handleAppointmentsClick(event) {
       await api.deleteAppointment(appointmentId);
       removeAppointmentFromState(appointmentId);
       clearBootstrapCache();
-      renderAll();
+      renderActiveSection();
       await refreshData({
         sections: APPOINTMENT_MUTATION_REFRESH_SECTIONS,
-        message: "Cita eliminada.",
+        render: false,
       });
+      renderActiveSection();
+      showStatus("Cita eliminada.", "success");
       return;
     }
     if (action === "reactivate") {
@@ -21230,11 +21237,13 @@ async function deleteAppointmentFromDetail(appointmentId) {
   await api.deleteAppointment(appointmentId);
   removeAppointmentFromState(appointmentId);
   clearBootstrapCache();
-  renderAll();
+  renderActiveSection();
   await refreshData({
     sections: APPOINTMENT_MUTATION_REFRESH_SECTIONS,
-    message: "Cita eliminada.",
+    render: false,
   });
+  renderActiveSection();
+  showStatus("Cita eliminada.", "success");
 }
 
 async function handleAppointmentDetailClick(event) {
