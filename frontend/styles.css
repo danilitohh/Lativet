@@ -7292,6 +7292,11 @@ body.auth-locked .page-shell > :not(#loginModal) {
   flex-wrap: wrap;
   gap: 10px;
   margin-top: 16px;
+  margin-bottom: 12px;
+}
+
+.appointment-detail-actions + .summary-list {
+  margin-top: 8px;
 }
 
 .appointment-detail-section {

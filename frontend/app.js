@@ -12115,7 +12115,7 @@ function renderConsultorioPatientProfile() {
     ["Genero", patient?.sex || "Sin dato"],
     ["Estado reproductivo", patient?.reproductive_status || "Sin dato"],
     ["Peso", patient?.weight_kg ? `${patient.weight_kg} kg` : "Sin dato"],
-    ["Edad", patient?.age_years ? `${patient.age_years} anos` : "Sin dato"],
+    ["Edad", patient?.age_years ? `${patient.age_years} años` : "Sin dato"],
     ["Microchip", patient?.microchip || "Sin dato"],
     ["Vacunacion", patient?.vaccination_status || "Sin dato"],
     ["Desparasitacion", patient?.deworming_status || "Sin dato"],
@@ -13510,7 +13510,7 @@ function formatPatientAgeLabel(patient) {
   const ageYears = Number(patient?.age_years);
   if (Number.isFinite(ageYears) && ageYears > 0) {
     const rounded = Math.round(ageYears * 10) / 10;
-    return `${String(rounded).replace(".0", "").replace(".", ",")} anos`;
+    return `${String(rounded).replace(".0", "").replace(".", ",")} años`;
   }
   const birthDate = String(patient?.birth_date || "").trim();
   if (!birthDate) {
@@ -15822,7 +15822,7 @@ function getConsultorioDocumentPatientSex(context) {
 
 function getConsultorioDocumentPatientAge(context) {
   return context?.patient?.age_years
-    ? `${context.patient.age_years} anos`
+    ? `${context.patient.age_years} años`
     : buildConsultorioDocumentPlaceholder("edad");
 }
 
