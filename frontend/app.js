@@ -3651,6 +3651,7 @@ function cacheElements() {
     "appointmentNoLocationCheckbox",
     "appointmentDurationInput",
     "appointmentStatusInput",
+    "appointmentStatusSelect",
     "appointmentSlotsStrip",
     "availabilityForm",
     "availabilityRulesList",
@@ -14693,9 +14694,7 @@ function openAppointmentModal(initialDateTime = "", durationMinutes = 30, option
   if (elements.appointmentIdInput) {
     elements.appointmentIdInput.value = "";
   }
-  if (elements.appointmentStatusInput) {
-    elements.appointmentStatusInput.value = "scheduled";
-  }
+  setAppointmentFormStatusValue("scheduled");
   if (elements.appointmentStartInput) {
     elements.appointmentStartInput.value =
       allowBlankStart && !hasInitialDateTime ? "" : toInputDateTime(dateTimeValue);
@@ -14764,9 +14763,7 @@ function openAppointmentModalForEdit(appointment, options = {}) {
   if (elements.appointmentIdInput) {
     elements.appointmentIdInput.value = appointment.id || "";
   }
-  if (elements.appointmentStatusInput) {
-    elements.appointmentStatusInput.value = appointment.status || "scheduled";
-  }
+  setAppointmentFormStatusValue(appointment.status || "scheduled");
   const patient = (state.patients || []).find((item) => item.id === appointment.patient_id);
   const owner = appointment.owner_id ? getOwnerById(appointment.owner_id) : null;
   const label = patient
@@ -14908,7 +14905,7 @@ function openAppointmentDetailModal(appointmentId) {
     ? getGoogleAttendeeResponseLabel(appointment.google_attendee_response_status) || "Invitacion enviada"
     : "";
   if (googleInvitationLabel) {
-    summary.push(["Invitacion Google", googleInvitationLabel]);
+    summary.push(["Respuesta cliente", googleInvitationLabel]);
   }
   renderSummary(elements.appointmentDetailSummary, summary, "Sin informacion disponible.");
   if (elements.appointmentDetailPatientSnapshot) {
@@ -19715,6 +19712,18 @@ function closeAgendaAppointmentsModal() {
   elements.agendaAppointmentsModal.setAttribute("aria-hidden", "true");
 }
 
+function setAppointmentFormStatusValue(status = "scheduled") {
+  const normalizedStatus = APPOINTMENT_STATUS_ORDER.includes(status) ? status : "scheduled";
+  if (elements.appointmentStatusInput) {
+    elements.appointmentStatusInput.value = normalizedStatus;
+  }
+  if (elements.appointmentStatusSelect) {
+    elements.appointmentStatusSelect.innerHTML =
+      buildAppointmentStatusSelectOptions(normalizedStatus);
+    elements.appointmentStatusSelect.value = normalizedStatus;
+  }
+}
+
 function openLoginModal(force = false) {
   if (!elements.loginModal) {
     return;
@@ -22796,6 +22805,14 @@ function bindForms() {
   elements.appointmentForm.addEventListener("submit", wrapAsync(handleAppointmentSubmit));
   elements.appointmentForm.addEventListener("input", clearAppointmentFormFeedback);
   elements.appointmentForm.addEventListener("change", clearAppointmentFormFeedback);
+  if (elements.appointmentStatusSelect) {
+    elements.appointmentStatusSelect.addEventListener("change", () => {
+      if (elements.appointmentStatusInput) {
+        elements.appointmentStatusInput.value =
+          elements.appointmentStatusSelect.value || "scheduled";
+      }
+    });
+  }
   if (elements.availabilityForm) {
     elements.availabilityForm.addEventListener("submit", wrapAsync(handleAvailabilitySubmit));
   }

@@ -1611,6 +1611,15 @@
             <textarea name="notes" rows="3" placeholder="Descripcion y detalles de la cita"></textarea>
           </label>
 
+          <label class="appointment-modal__field">
+            <span>Estado de la cita</span>
+            <select id="appointmentStatusSelect"></select>
+            <small class="appointment-modal__helper">
+              Puedes cambiarlo manualmente. Si el cliente responde la invitacion de Google Calendar,
+              la agenda tambien podra actualizar este estado automaticamente.
+            </small>
+          </label>
+
           <label class="appointment-modal__checkbox">
             <input id="appointmentNoLocationCheckbox" type="checkbox" name="appointment_no_location" checked />
             <span>Sin lugar</span>
