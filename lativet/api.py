@@ -404,13 +404,19 @@ class LativetService:
     @safe_api_call
     def save_appointment(self, payload: dict) -> dict:
         appointment = self._db.save_appointment(payload)
-        appointment["google_calendar"] = self._sync_google_calendar_for_appointment(appointment)
+        try:
+            appointment["google_calendar"] = self._sync_google_calendar_for_appointment(appointment)
+        except Exception as exc:
+            appointment["google_calendar"] = {"synced": False, "error": str(exc)}
         return appointment
 
     @safe_api_call
     def update_appointment_status(self, appointment_id: str, status: str) -> dict:
         appointment = self._db.update_appointment_status(appointment_id, status)
-        appointment["google_calendar"] = self._sync_google_calendar_for_appointment(appointment)
+        try:
+            appointment["google_calendar"] = self._sync_google_calendar_for_appointment(appointment)
+        except Exception as exc:
+            appointment["google_calendar"] = {"synced": False, "error": str(exc)}
         return appointment
 
     @safe_api_call
