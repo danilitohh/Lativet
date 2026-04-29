@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import smtplib
 from datetime import date, datetime
 from functools import wraps
 from pathlib import Path
@@ -85,9 +86,11 @@ class LativetService:
 
     def _apply_smtp_env_defaults(self) -> None:
         smtp_from = os.getenv("SMTP_FROM", "").strip()
+        smtp_username = os.getenv("SMTP_USERNAME", "").strip()
         smtp_password = os.getenv("SMTP_APP_PASSWORD", "").strip()
         if not smtp_from or not smtp_password:
             return
+        smtp_username = smtp_username or smtp_from
         smtp_host = os.getenv("SMTP_HOST", "").strip() or "smtp.gmail.com"
         smtp_port_raw = os.getenv("SMTP_PORT", "").strip()
         try:
@@ -105,6 +108,7 @@ class LativetService:
         if (
             bool(settings.get("smtp_enabled")) == smtp_enabled
             and str(settings.get("smtp_from") or "") == smtp_from
+            and str(settings.get("smtp_username") or "") == smtp_username
             and str(settings.get("smtp_host") or "") == smtp_host
             and int(settings.get("smtp_port") or 587) == smtp_port
             and current_password == smtp_password
@@ -114,6 +118,7 @@ class LativetService:
             **settings,
             "smtp_enabled": smtp_enabled,
             "smtp_from": smtp_from,
+            "smtp_username": smtp_username,
             "smtp_host": smtp_host,
             "smtp_port": smtp_port,
             "smtp_app_password": smtp_password,
@@ -123,6 +128,35 @@ class LativetService:
         except Exception:
             # Avoid breaking startup if SMTP env values are invalid.
             return
+
+    def _resolve_smtp_username(self, settings: dict, sender: str) -> str:
+        return (settings.get("smtp_username") or "").strip() or sender
+
+    def _build_smtp_config(self, settings: dict, sender: str, password: str) -> SmtpConfig:
+        return SmtpConfig(
+            host=(settings.get("smtp_host") or "smtp.gmail.com").strip(),
+            port=int(settings.get("smtp_port") or 587),
+            username=self._resolve_smtp_username(settings, sender),
+            password=password,
+            sender=sender,
+        )
+
+    def _describe_smtp_error(self, exc: Exception) -> tuple[str, str]:
+        message = str(exc or "").strip()
+        if isinstance(exc, smtplib.SMTPAuthenticationError):
+            return (
+                "smtp_auth_failed",
+                "El servidor SMTP rechazo el usuario o la app password. "
+                "Si usas Gmail, activa verificacion en dos pasos y usa una App Password valida.",
+            )
+        lowered = message.lower()
+        if "username and password not accepted" in lowered or "badcredentials" in lowered or " 535" in f" {lowered}":
+            return (
+                "smtp_auth_failed",
+                "El servidor SMTP rechazo el usuario o la app password. "
+                "Si usas Gmail, activa verificacion en dos pasos y usa una App Password valida.",
+            )
+        return ("send_failed", message or "No fue posible enviar el correo.")
 
     def close(self) -> None:
         self._db.close()
@@ -227,13 +261,7 @@ class LativetService:
         if resolved_pdf_path is None:
             resolved_pdf_path, _ = self._build_billing_document_pdf_export(document)
 
-        config = SmtpConfig(
-            host=(settings.get("smtp_host") or "smtp.gmail.com").strip(),
-            port=int(settings.get("smtp_port") or 587),
-            username=sender,
-            password=password,
-            sender=sender,
-        )
+        config = self._build_smtp_config(settings, sender, password)
         try:
             send_email_with_attachment(
                 config,
@@ -244,9 +272,10 @@ class LativetService:
                 attachment_name=resolved_pdf_path.name,
             )
         except Exception as exc:
+            reason, error_message = self._describe_smtp_error(exc)
             if strict:
-                raise
-            return {"sent": False, "to": to_address, "error": str(exc)}
+                raise ValidationError(error_message) from exc
+            return {"sent": False, "to": to_address, "reason": reason, "error": error_message}
 
         return {
             "sent": True,
@@ -297,13 +326,7 @@ class LativetService:
             "Si necesitas confirmar o reprogramar la cita, comunicate con la clinica.\n\n"
             "Este correo fue generado automaticamente por Lativet.\n"
         )
-        config = SmtpConfig(
-            host=(settings.get("smtp_host") or "smtp.gmail.com").strip(),
-            port=int(settings.get("smtp_port") or 587),
-            username=sender,
-            password=password,
-            sender=sender,
-        )
+        config = self._build_smtp_config(settings, sender, password)
         try:
             send_email(
                 config,
@@ -312,7 +335,8 @@ class LativetService:
                 body=body,
             )
         except Exception as exc:
-            return {"sent": False, "to": to_address, "error": str(exc)}
+            reason, error_message = self._describe_smtp_error(exc)
+            return {"sent": False, "to": to_address, "reason": reason, "error": error_message}
         return {"sent": True, "to": to_address, "subject": subject}
 
     @safe_api_call
@@ -707,8 +731,6 @@ class LativetService:
         if not to_address:
             return {"sent": False, "skipped": True, "reason": "owner_email_missing"}
 
-        host = (settings.get("smtp_host") or "smtp.gmail.com").strip()
-        port = int(settings.get("smtp_port") or 587)
         clinic_name = settings.get("clinic_name") or "Clinica veterinaria"
         consent_type = (bundle.consent or {}).get("consent_type") or "Consentimiento"
         patient_name = (bundle.patient or {}).get("name") or "Paciente"
@@ -719,13 +741,7 @@ class LativetService:
             "Este correo fue generado automaticamente por la aplicacion web.\n"
         )
 
-        config = SmtpConfig(
-            host=host,
-            port=port,
-            username=sender,
-            password=password,
-            sender=sender,
-        )
+        config = self._build_smtp_config(settings, sender, password)
         try:
             send_email_with_attachment(
                 config,
@@ -737,7 +753,8 @@ class LativetService:
             )
             return {"sent": True, "to": to_address}
         except Exception as exc:
-            return {"sent": False, "to": to_address, "error": str(exc)}
+            reason, error_message = self._describe_smtp_error(exc)
+            return {"sent": False, "to": to_address, "reason": reason, "error": error_message}
 
     @safe_api_call
     def save_clinical_record(self, payload: dict, finalize: bool = False) -> dict:
@@ -819,8 +836,6 @@ class LativetService:
         if not to_address:
             return {"sent": False, "skipped": True, "reason": "owner_email_missing"}
 
-        host = (settings.get("smtp_host") or "smtp.gmail.com").strip()
-        port = int(settings.get("smtp_port") or 587)
         clinic_name = settings.get("clinic_name") or "Lativet"
         patient_name = reminder.get("patient_name") or "tu mascota"
         owner_name = reminder.get("owner_name") or "propietario"
@@ -860,13 +875,7 @@ class LativetService:
                 "Este correo fue generado automaticamente por Lativet.\n"
             )
 
-        config = SmtpConfig(
-            host=host,
-            port=port,
-            username=sender,
-            password=password,
-            sender=sender,
-        )
+        config = self._build_smtp_config(settings, sender, password)
         try:
             send_email(
                 config,
@@ -876,7 +885,8 @@ class LativetService:
             )
             return {"sent": True, "to": to_address}
         except Exception as exc:
-            return {"sent": False, "to": to_address, "error": str(exc)}
+            reason, error_message = self._describe_smtp_error(exc)
+            return {"sent": False, "to": to_address, "reason": reason, "error": error_message}
 
     @safe_api_call
     def run_control_reminder_job(self, run_date: str | None = None, limit: int = 100) -> dict:

@@ -21122,6 +21122,8 @@ function describeAppointmentReminderEmailResult(emailResult) {
     smtp_disabled: "El correo SMTP esta deshabilitado.",
     smtp_from_missing: "Falta configurar el correo remitente.",
     smtp_password_missing: "Falta configurar la app password SMTP.",
+    smtp_auth_failed:
+      "El servidor SMTP rechazo el usuario o la app password. Si usas Gmail, activa verificacion en dos pasos y usa una App Password valida.",
     owner_email_missing: "El tutor no tiene correo registrado.",
   };
   if (emailResult?.reason && reasons[emailResult.reason]) {

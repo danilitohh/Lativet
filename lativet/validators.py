@@ -132,6 +132,7 @@ def validate_settings(payload: dict) -> dict:
         "retention_years": retention_years,
         "smtp_enabled": to_bool(payload.get("smtp_enabled")),
         "smtp_from": optional_text(payload, "smtp_from"),
+        "smtp_username": optional_text(payload, "smtp_username"),
         "smtp_host": optional_text(payload, "smtp_host") or "smtp.gmail.com",
         "smtp_port": smtp_port,
         "smtp_app_password": optional_text(payload, "smtp_app_password"),

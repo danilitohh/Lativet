@@ -46,6 +46,7 @@ DEFAULT_SETTINGS = {
     "retention_years": 15,
     "smtp_enabled": False,
     "smtp_from": "",
+    "smtp_username": "",
     "smtp_host": "smtp.gmail.com",
     "smtp_port": 587,
     "billing_footer": "",

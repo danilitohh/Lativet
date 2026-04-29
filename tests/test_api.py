@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import smtplib
 import tempfile
 import unittest
 from pathlib import Path
@@ -259,6 +260,61 @@ class ServiceBootstrapTests(unittest.TestCase):
         updated = next(item for item in appointments if item["id"] == appointment["id"])
         self.assertEqual(updated["status"], "waiting_room")
         self.assertEqual(updated["google_attendee_response_status"], "accepted")
+
+    @patch("lativet.api.send_email")
+    def test_appointment_reminder_reports_smtp_auth_failure(self, mocked_send_email) -> None:
+        owner = self.service._db.save_owner(
+            {
+                "full_name": "Laura Torres",
+                "identification_type": "CC",
+                "identification_number": "998877",
+                "phone": "3001234567",
+                "email": "laura@example.com",
+                "address": "Calle 1",
+            }
+        )
+        patient = self.service._db.save_patient(
+            {
+                "owner_id": owner["id"],
+                "name": "Milo",
+                "species": "Felino",
+                "breed": "Criollo",
+                "sex": "Macho",
+                "age_years": 4,
+                "reproductive_status": "Castrado",
+                "weight_kg": 4.1,
+                "notes": "Paciente estable.",
+            }
+        )
+        appointment = self.service._db.save_appointment(
+            {
+                "patient_id": patient["id"],
+                "appointment_at": "2026-04-29T10:00",
+                "reason": "Vacunacion",
+                "status": "scheduled",
+            }
+        )
+        self.service._db.save_settings(
+            {
+                **self.service._db.get_settings(),
+                "smtp_enabled": True,
+                "smtp_from": "clinic@example.com",
+                "smtp_username": "auth@example.com",
+                "smtp_host": "smtp.gmail.com",
+                "smtp_port": 587,
+            }
+        )
+        self.service._db.set_secret_setting("smtp_app_password", "secret")
+        mocked_send_email.side_effect = smtplib.SMTPAuthenticationError(
+            535, b"5.7.8 Username and Password not accepted"
+        )
+
+        result = self.service.send_appointment_reminder(appointment["id"])
+
+        self.assertTrue(result["ok"])
+        reminder = result["data"]
+        self.assertFalse(reminder["email"]["sent"])
+        self.assertEqual(reminder["email"]["reason"], "smtp_auth_failed")
 
 
 class GoogleCalendarBridgeTests(unittest.TestCase):
