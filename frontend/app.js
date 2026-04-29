@@ -3677,6 +3677,7 @@ function cacheElements() {
     "appointmentDetailQuickCard",
     "appointmentDetailReminderButton",
     "appointmentDetailEditButton",
+    "appointmentDetailDeleteButton",
     "appointmentDetailSummary",
     "appointmentDetailPatientSnapshot",
     "appointmentDetailNotes",
@@ -14924,6 +14925,10 @@ function openAppointmentDetailModal(appointmentId) {
   if (elements.appointmentDetailEditButton) {
     elements.appointmentDetailEditButton.dataset.appointmentId = appointment.id || "";
   }
+  if (elements.appointmentDetailDeleteButton) {
+    elements.appointmentDetailDeleteButton.dataset.appointmentId = appointment.id || "";
+    elements.appointmentDetailDeleteButton.disabled = false;
+  }
   elements.appointmentDetailModal.dataset.appointmentId = appointment.id || "";
   elements.appointmentDetailModal.classList.remove("is-hidden");
   elements.appointmentDetailModal.setAttribute("aria-hidden", "false");
@@ -21170,6 +21175,26 @@ async function updateAppointmentDetailStatus(appointmentId, status) {
   showStatus("Estado de la cita actualizado.", "success");
 }
 
+async function deleteAppointmentFromDetail(appointmentId) {
+  if (!appointmentId) {
+    return;
+  }
+  const appointment = getAppointmentById(appointmentId);
+  if (!appointment) {
+    throw new Error("No se encontro la cita seleccionada.");
+  }
+  const confirmed = window.confirm("¿Eliminar esta cita? Esta accion no se puede deshacer.");
+  if (!confirmed) {
+    return;
+  }
+  closeAppointmentDetailModal();
+  await api.deleteAppointment(appointmentId);
+  await refreshData({
+    sections: AGENDA_REFRESH_SECTIONS,
+    message: "Cita eliminada.",
+  });
+}
+
 async function handleAppointmentDetailClick(event) {
   const reminderButton = event.target.closest("#appointmentDetailReminderButton");
   if (reminderButton?.dataset?.appointmentId) {
@@ -21193,6 +21218,11 @@ async function handleAppointmentDetailClick(event) {
       throw new Error("Selecciona un estado para la cita.");
     }
     await updateAppointmentDetailStatus(statusButton.dataset.appointmentId, nextStatus);
+    return;
+  }
+  const deleteButton = event.target.closest("#appointmentDetailDeleteButton");
+  if (deleteButton?.dataset?.appointmentId) {
+    await deleteAppointmentFromDetail(deleteButton.dataset.appointmentId);
   }
 }
 
