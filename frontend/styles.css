@@ -11205,38 +11205,74 @@ textarea:focus {
 }
 
 .agenda-timeline-event {
-  padding: 8px 10px;
+  padding: 9px 10px 8px 16px;
   color: var(--text);
+  border-color: var(--agenda-status-border, rgba(119, 142, 173, 0.16));
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.98),
+    var(--agenda-status-soft, rgba(108, 122, 141, 0.08))
+  );
+  box-shadow: 0 12px 22px rgba(33, 49, 75, 0.08);
 }
 
-.agenda-timeline-event__row,
-.agenda-timeline-event__identity,
+.agenda-timeline-event::before {
+  content: "";
+  position: absolute;
+  left: 7px;
+  top: 7px;
+  bottom: 7px;
+  width: 4px;
+  border-radius: 999px;
+  background: var(--agenda-status-tone, var(--agenda-tone, var(--brand-strong)));
+}
+
 .agenda-timeline-event__copy {
   display: grid;
 }
 
-.agenda-timeline-event__row {
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 10px;
-  align-items: start;
-  height: 100%;
-}
-
-.agenda-timeline-event__identity {
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 10px;
-  align-items: start;
-  min-width: 0;
-}
-
 .agenda-timeline-event__copy {
-  gap: 3px;
+  gap: 2px;
+  min-width: 0;
+  align-content: start;
+}
+
+.agenda-timeline-event__schedule {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   min-width: 0;
 }
 
-.agenda-timeline-event__text {
+.agenda-timeline-event__patient {
+  display: block;
+  min-width: 0;
+  color: var(--text);
+  font-size: 0.8rem;
+  line-height: 1.2;
+}
+
+.agenda-timeline-event__service {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: rgba(15, 34, 48, 0.62);
   font-size: 0.68rem;
-  color: rgba(15, 34, 48, 0.68);
+  line-height: 1.15;
+}
+
+.agenda-timeline-event__time {
+  color: var(--agenda-status-tone, var(--agenda-tone, var(--brand-strong)));
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.agenda-timeline-event__duration {
+  color: rgba(15, 34, 48, 0.56);
+  font-size: 0.66rem;
+  white-space: nowrap;
 }
 
 .agenda-quick-stat--consulta,
@@ -11343,16 +11379,52 @@ textarea:focus {
   --agenda-border: rgba(108, 122, 141, 0.22);
 }
 
-@media (max-width: 1180px) {
-  .agenda-timeline-event__row {
-    grid-template-columns: 1fr;
-  }
+.agenda-timeline-event--state-scheduled {
+  --agenda-status-tone: #2f9b72;
+  --agenda-status-soft: rgba(47, 155, 114, 0.08);
+  --agenda-status-border: rgba(47, 155, 114, 0.18);
+}
 
-  .agenda-timeline-event__meta {
-    justify-items: start;
-    text-align: left;
-    grid-auto-flow: column;
-    gap: 8px;
+.agenda-timeline-event--state-pending_confirmation {
+  --agenda-status-tone: #bf8a2a;
+  --agenda-status-soft: rgba(191, 138, 42, 0.1);
+  --agenda-status-border: rgba(191, 138, 42, 0.18);
+}
+
+.agenda-timeline-event--state-waiting_room {
+  --agenda-status-tone: #4d8de8;
+  --agenda-status-soft: rgba(77, 141, 232, 0.1);
+  --agenda-status-border: rgba(77, 141, 232, 0.18);
+}
+
+.agenda-timeline-event--state-confirmed {
+  --agenda-status-tone: #1b8aa5;
+  --agenda-status-soft: rgba(27, 138, 165, 0.1);
+  --agenda-status-border: rgba(27, 138, 165, 0.18);
+}
+
+.agenda-timeline-event--state-completed {
+  --agenda-status-tone: #2f9b72;
+  --agenda-status-soft: rgba(47, 155, 114, 0.08);
+  --agenda-status-border: rgba(47, 155, 114, 0.18);
+}
+
+.agenda-timeline-event--state-cancelled,
+.agenda-timeline-event--state-no_show {
+  --agenda-status-tone: #d46b78;
+  --agenda-status-soft: rgba(212, 107, 120, 0.1);
+  --agenda-status-border: rgba(212, 107, 120, 0.18);
+}
+
+.agenda-timeline-event--state-default {
+  --agenda-status-tone: #6c7a8d;
+  --agenda-status-soft: rgba(108, 122, 141, 0.08);
+  --agenda-status-border: rgba(108, 122, 141, 0.18);
+}
+
+@media (max-width: 1180px) {
+  .agenda-timeline-event__schedule {
+    gap: 6px;
   }
 }
 

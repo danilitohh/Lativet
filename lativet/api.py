@@ -25,6 +25,11 @@ from .validators import ValidationError, parse_date, validate_google_calendar_co
 
 GOOGLE_APPOINTMENT_RESPONSE_SYNC_SECTIONS = {"appointments", "dashboard", "requests", "reports"}
 GOOGLE_APPOINTMENT_AUTO_CONFIRM_STATUSES = {"scheduled", "pending_confirmation"}
+GOOGLE_APPOINTMENT_RESPONSE_CONTROLLED_STATUSES = {
+    "scheduled",
+    "pending_confirmation",
+    "confirmed",
+}
 
 
 def safe_api_call(fn):
@@ -1045,9 +1050,13 @@ class LativetService:
     def _map_google_attendee_response_to_appointment_status(
         self, appointment: dict, attendee_response_status: str
     ) -> str | None:
-        if attendee_response_status != "accepted":
-            return None
         current_status = str(appointment.get("status") or "").strip()
-        if current_status in GOOGLE_APPOINTMENT_AUTO_CONFIRM_STATUSES:
+        if current_status not in GOOGLE_APPOINTMENT_RESPONSE_CONTROLLED_STATUSES:
+            return None
+        if attendee_response_status == "accepted":
             return "confirmed"
+        if attendee_response_status in {"needsAction", "tentative"}:
+            return "pending_confirmation"
+        if attendee_response_status == "declined":
+            return "cancelled"
         return None

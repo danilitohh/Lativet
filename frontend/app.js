@@ -12673,31 +12673,25 @@ function buildAgendaTimelineEventMarkup(appointment, { dayStart, dayEnd, minuteH
   const height = Math.max(52, minutesDuration * minuteHeight);
   const presentation = buildAgendaAppointmentPresentation(appointment);
   const tone = presentation.type;
+  const statusMeta = getAppointmentStatusMeta(appointment.status);
+  const statusTone = statusMeta?.tone || "default";
   return `
-    <div class="agenda-timeline-event agenda-timeline-event--${tone}" data-appointment-id="${escapeHtml(
+    <div class="agenda-timeline-event agenda-timeline-event--${tone} agenda-timeline-event--state-${statusTone}" data-appointment-id="${escapeHtml(
       appointment.id
     )}" role="button" tabindex="0" draggable="true" style="top:${top}px;height:${height}px">
-      <div class="agenda-timeline-event__row">
-        <div class="agenda-timeline-event__identity">
-          ${getAgendaAppointmentIconMarkup(presentation.type)}
-          <div class="agenda-timeline-event__copy">
-            <strong class="agenda-timeline-event__patient">${buildAppointmentStatusBadgeMarkup(
-              appointment.status,
-              { compact: true }
-            )}${escapeHtml(
-              truncate(presentation.title, 24)
-            )}</strong>
-            <span class="agenda-timeline-event__text">${escapeHtml(
-              truncate(presentation.subtitle, 34)
-            )}</span>
-          </div>
-        </div>
-        <div class="agenda-timeline-event__meta">
+      <div class="agenda-timeline-event__copy">
+        <div class="agenda-timeline-event__schedule">
           <span class="agenda-timeline-event__time">${escapeHtml(formatAgendaTimeShort(start))}</span>
           <span class="agenda-timeline-event__duration">${escapeHtml(
             formatAgendaDurationLabel(duration)
           )}</span>
         </div>
+        <strong class="agenda-timeline-event__patient">${escapeHtml(
+          truncate(presentation.title, 24)
+        )}</strong>
+        <span class="agenda-timeline-event__service">${escapeHtml(
+          truncate(presentation.subtitle, 32)
+        )}</span>
       </div>
     </div>
   `;
