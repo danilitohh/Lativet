@@ -86,12 +86,36 @@ const salesReportState = {
   loaded: false,
   requestedKey: "",
 };
-const activeAppointmentStatuses = new Set(["scheduled", "confirmed"]);
+const activeAppointmentStatuses = new Set([
+  "scheduled",
+  "pending_confirmation",
+  "waiting_room",
+  "confirmed",
+]);
 const hiddenCalendarStatuses = new Set(["cancelled", "no_show"]);
+const APPOINTMENT_STATUS_META = {
+  scheduled: { label: "Agendada", tone: "scheduled" },
+  pending_confirmation: { label: "Por confirmar", tone: "pending_confirmation" },
+  waiting_room: { label: "Sala de espera", tone: "waiting_room" },
+  confirmed: { label: "Confirmada", tone: "confirmed" },
+  completed: { label: "Completada", tone: "completed" },
+  cancelled: { label: "Cancelada", tone: "cancelled" },
+  no_show: { label: "No asistio", tone: "no_show" },
+};
+const APPOINTMENT_STATUS_ACTIONS = [
+  "scheduled",
+  "pending_confirmation",
+  "waiting_room",
+  "confirmed",
+  "completed",
+  "no_show",
+  "cancelled",
+];
 const activeSubsections = {};
 let openNavDropdownSection = "";
 let agendaViewDate = new Date();
 let agendaSelectedDate = new Date().toISOString().slice(0, 10);
+const agendaDragState = { appointmentId: "", sourceSlotAt: "" };
 const AGENDA_VIEW_MODES = ["month", "week", "day", "list", "programador"];
 const AGENDA_VIEW_STORAGE_KEY = "lativet_agenda_view";
 const AGENDA_APPOINTMENT_TYPE_META = {
@@ -531,14 +555,15 @@ const SALES_PANEL_IDS = [
   "salesCatalogFormPanel",
   "salesDocumentFormPanel",
   "salesPaymentFormPanel",
+  "salesCashPanel",
   "salesCashFormPanel",
   "salesCashSessionPanel",
+  "salesCashMovementsPanel",
   "salesStockFormPanel",
   "salesProvidersPanel",
   "salesClientsPanel",
   "salesDocumentsPanel",
   "salesCatalogPanel",
-  "salesCashPanel",
   "salesStockHistoryPanel",
   "salesDocumentDetailPanel",
 ];
@@ -568,7 +593,7 @@ const SUBSECTION_DATA_REQUIREMENTS = {
     cotizacion: ["patients", "catalog_items", "billing_documents"],
     inventario: ["providers", "catalog_items", "stock_movements", "billing_summary"],
     precios: ["providers", "catalog_items"],
-    caja: ["cash_movements", "cash_sessions"],
+    caja: ["cash_movements", "cash_sessions", "billing_summary"],
   },
   consultorio: {
     patients: ["owners", "patients"],
@@ -1596,9 +1621,10 @@ const sectionSubsections = {
         value: "caja",
         label: "Caja",
         panels: [
+          "salesCashPanel",
           "salesCashSessionPanel",
           "salesCashFormPanel",
-          "salesCashPanel",
+          "salesCashMovementsPanel",
         ],
       },
     ],
@@ -1973,6 +1999,23 @@ function formatAgendaDurationLabel(value) {
   return `${duration} min`;
 }
 
+function getAppointmentStatusMeta(status) {
+  return APPOINTMENT_STATUS_META[status] || null;
+}
+
+function buildAppointmentStatusBadgeMarkup(status, { compact = false } = {}) {
+  const meta = getAppointmentStatusMeta(status);
+  if (!meta) {
+    return `<span class="${statusClass(status)}">${escapeHtml(humanStatus(status))}</span>`;
+  }
+  return `
+    <span class="agenda-status-pill agenda-status-pill--${meta.tone}${compact ? " is-compact" : ""}">
+      <span class="agenda-status-dot agenda-status-dot--${meta.tone}" aria-hidden="true"></span>
+      <span>${escapeHtml(meta.label)}</span>
+    </span>
+  `;
+}
+
 function getAgendaAppointmentTypeMeta(typeKey) {
   return AGENDA_APPOINTMENT_TYPE_META[typeKey] || AGENDA_APPOINTMENT_TYPE_META.default;
 }
@@ -2291,6 +2334,7 @@ function renderAgendaQuickView() {
           ${getAgendaAppointmentIconMarkup(presentation.type)}
           <span>${escapeHtml(typeLabel)}</span>
         </span>
+        ${buildAppointmentStatusBadgeMarkup(appointment.status, { compact: true })}
         <span class="agenda-next-card__action">Ver detalle</span>
       </div>
     </button>
@@ -2362,12 +2406,11 @@ function serializeForm(form) {
 }
 
 function humanStatus(status) {
+  const appointmentMeta = getAppointmentStatusMeta(status);
+  if (appointmentMeta) {
+    return appointmentMeta.label;
+  }
   const labels = {
-    scheduled: "Programada",
-    confirmed: "Confirmada",
-    completed: "Completada",
-    cancelled: "Cancelada",
-    no_show: "No asistio",
     draft: "Borrador",
     finalized: "Finalizada",
     in_progress: "En proceso",
@@ -2385,6 +2428,7 @@ function humanStatus(status) {
 
 function statusClass(status) {
   const normalized =
+    getAppointmentStatusMeta(status)?.tone ||
     {
       Pendiente: "scheduled",
       Pagado: "confirmed",
@@ -2394,7 +2438,9 @@ function statusClass(status) {
       gasto: "cancelled",
       salida: "cancelled",
       invoice: "finalized",
-    }[status] || status || "draft";
+    }[status] ||
+    status ||
+    "draft";
   return `pill pill--${normalized}`;
 }
 
@@ -2466,6 +2512,11 @@ const api = {
   deleteCatalogItem: (itemId) => apiRequest(`/api/catalog-items/${itemId}`, { method: "DELETE" }),
   saveAppointment: (payload) =>
     apiRequest("/api/appointments", { method: "POST", body: JSON.stringify(payload) }),
+  sendAppointmentReminder: (appointmentId) =>
+    apiRequest(`/api/appointments/${appointmentId}/reminder`, {
+      method: "POST",
+      body: "{}",
+    }),
   updateAppointmentStatus: (appointmentId, status) =>
     apiRequest(`/api/appointments/${appointmentId}/status`, {
       method: "PATCH",
@@ -3597,7 +3648,12 @@ function cacheElements() {
     "appointmentDetailTitle",
     "appointmentDetailSubtitle",
     "appointmentDetailStatus",
+    "appointmentDetailStatusActions",
+    "appointmentDetailQuickCard",
+    "appointmentDetailReminderButton",
+    "appointmentDetailEditButton",
     "appointmentDetailSummary",
+    "appointmentDetailPatientSnapshot",
     "appointmentDetailNotes",
     "appointmentDetailLinks",
     "closeAppointmentDetailButton",
@@ -3643,6 +3699,8 @@ function cacheElements() {
     "salesCatalogPanelTitle",
     "billingClientsList",
     "billingDocumentsList",
+    "cashSummaryCards",
+    "cashAccountsSummary",
     "cashSessionsSummary",
     "salesDocumentDetail",
     "salesReportsContent",
@@ -6165,10 +6223,42 @@ function getSelectedCashSessionDate() {
   );
 }
 
-function getCashDayTotals(sessionDate, cashAccount) {
+function getSelectedCashAccount() {
+  return (
+    elements.cashMovementForm?.elements?.cash_account?.value ||
+    elements.cashSessionOpenForm?.elements?.cash_account?.value ||
+    elements.cashSessionCloseForm?.elements?.cash_account?.value ||
+    state.settings.billing_default_cash_account ||
+    "caja_menor"
+  );
+}
+
+function setCashAccountSelection(cashAccount, { render = true } = {}) {
+  if (!cashAccount || !billingCashAccounts.includes(cashAccount)) {
+    return;
+  }
+  [
+    elements.cashMovementForm?.elements?.cash_account,
+    elements.cashSessionOpenForm?.elements?.cash_account,
+    elements.cashSessionCloseForm?.elements?.cash_account,
+  ].forEach((field) => {
+    if (field) {
+      field.value = cashAccount;
+    }
+  });
+  if (render) {
+    renderCashAccountsSummary();
+    renderCashSessionsSummary();
+  }
+}
+
+function getCashDayTotals(sessionDate, cashAccount = "") {
   return state.cash_movements.reduce(
     (totals, movement) => {
-      if (movement.movement_date !== sessionDate || movement.cash_account !== cashAccount) {
+      if (movement.movement_date !== sessionDate) {
+        return totals;
+      }
+      if (cashAccount && movement.cash_account !== cashAccount) {
         return totals;
       }
       const amount = Number(movement.amount || 0);
@@ -6183,81 +6273,478 @@ function getCashDayTotals(sessionDate, cashAccount) {
   );
 }
 
+function getCashAccountTotals(cashAccount = "") {
+  return state.cash_movements.reduce(
+    (totals, movement) => {
+      if (cashAccount && movement.cash_account !== cashAccount) {
+        return totals;
+      }
+      const amount = Number(movement.amount || 0);
+      if (movement.movement_type === "ingreso") {
+        totals.income += amount;
+      } else if (movement.movement_type === "gasto") {
+        totals.expense += amount;
+      }
+      totals.count += 1;
+      return totals;
+    },
+    { income: 0, expense: 0, count: 0 }
+  );
+}
+
+function getLatestCashSessionForAccount(cashAccount) {
+  return (
+    state.cash_sessions.find((session) => session.cash_account === cashAccount) || null
+  );
+}
+
+function getCashSessionStatusMeta(session) {
+  if (!session) {
+    return {
+      label: "Sin apertura",
+      className: "sales-cash-status-badge sales-cash-status-badge--neutral",
+      detail: "Sin apertura registrada",
+    };
+  }
+  if (session.is_closed) {
+    return {
+      label: "Cerrada",
+      className: "sales-cash-status-badge sales-cash-status-badge--neutral",
+      detail: "Cierre registrado",
+    };
+  }
+  return {
+    label: "Abierta",
+    className: "sales-cash-status-badge sales-cash-status-badge--open",
+    detail: "Disponible",
+  };
+}
+
+function getCurrentCashAccountAmount(cashAccount) {
+  const session = getLatestCashSessionForAccount(cashAccount);
+  const totals = getCashAccountTotals(cashAccount);
+  if (!session) {
+    return totals.income - totals.expense;
+  }
+  if (!session.is_closed) {
+    return Number(session.expected_closing_amount ?? session.opening_amount ?? 0);
+  }
+  if (session.closing_amount !== null && session.closing_amount !== undefined && session.closing_amount !== "") {
+    return Number(session.closing_amount);
+  }
+  return totals.income - totals.expense;
+}
+
+function getCashPanelIconMarkup(kind) {
+  return (
+    {
+      income: `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 4.5v15"></path>
+          <path d="M6.5 13 12 18.5 17.5 13"></path>
+        </svg>
+      `,
+      expense: `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 19.5v-15"></path>
+          <path d="M6.5 11 12 5.5 17.5 11"></path>
+        </svg>
+      `,
+      balance: `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="3.5" y="6.5" width="17" height="11" rx="2.5"></rect>
+          <path d="M14 12h.01"></path>
+          <path d="M7.5 10.5h2"></path>
+        </svg>
+      `,
+      sessions: `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="5.5" y="4.5" width="13" height="15" rx="2.5"></rect>
+          <path d="M8.5 8h7"></path>
+          <path d="M8.5 12h7"></path>
+          <path d="M10 16h4"></path>
+        </svg>
+      `,
+      opening: `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 19.5v-15"></path>
+          <path d="M6.5 11 12 5.5 17.5 11"></path>
+        </svg>
+      `,
+      closing: `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 4.5v15"></path>
+          <path d="M6.5 13 12 18.5 17.5 13"></path>
+        </svg>
+      `,
+      arrow: `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="m9 6 6 6-6 6"></path>
+        </svg>
+      `,
+    }[kind] || ""
+  );
+}
+
+function getCashMovementTypeLabel(movementType) {
+  return (
+    {
+      ingreso: "Ingreso",
+      egreso: "Egreso",
+      apertura: "Apertura",
+      cierre: "Cierre",
+    }[movementType] || capitalizeLabel(movementType)
+  );
+}
+
+function getCashTrendMeta(currentAmount, previousAmount, { inverse = false } = {}) {
+  if (currentAmount === 0 && previousAmount === 0) {
+    return {
+      text: "Sin movimientos hoy",
+      className: "sales-cash-kpi-card__meta sales-cash-kpi-card__meta--neutral",
+    };
+  }
+  if (previousAmount <= 0) {
+    return {
+      text: currentAmount > 0 ? "Actividad nueva hoy" : "Sin movimientos hoy",
+      className: `sales-cash-kpi-card__meta ${
+        currentAmount > 0
+          ? inverse
+            ? "sales-cash-kpi-card__meta--negative"
+            : "sales-cash-kpi-card__meta--positive"
+          : "sales-cash-kpi-card__meta--neutral"
+      }`,
+    };
+  }
+  const delta = currentAmount - previousAmount;
+  const percent = Math.round((delta / previousAmount) * 100);
+  return {
+    text: `${percent > 0 ? "+" : ""}${percent}% vs. ayer`,
+    className: `sales-cash-kpi-card__meta ${
+      inverse
+        ? percent <= 0
+          ? "sales-cash-kpi-card__meta--positive"
+          : "sales-cash-kpi-card__meta--negative"
+        : percent >= 0
+        ? "sales-cash-kpi-card__meta--positive"
+        : "sales-cash-kpi-card__meta--negative"
+    }`,
+  };
+}
+
+function renderCashSummaryCards() {
+  if (!elements.cashSummaryCards) {
+    return;
+  }
+  const today = toIsoDate(new Date());
+  const yesterday = toIsoDate(addDays(parseIsoDate(today), -1));
+  const todayTotals = getCashDayTotals(today);
+  const yesterdayTotals = getCashDayTotals(yesterday);
+  const latestSessions = billingCashAccounts.map((cashAccount) => getLatestCashSessionForAccount(cashAccount));
+  const openCount = latestSessions.filter((session) => session && !session.is_closed).length;
+  const availableBalance = billingCashAccounts.reduce(
+    (total, cashAccount) => total + getCurrentCashAccountAmount(cashAccount),
+    0
+  );
+  const incomeTrend = getCashTrendMeta(todayTotals.income, yesterdayTotals.income);
+  const expenseTrend = getCashTrendMeta(todayTotals.expense, yesterdayTotals.expense, { inverse: true });
+  const cards = [
+    {
+      key: "income",
+      title: "Ingresos del dia",
+      value: formatMoney(todayTotals.income),
+      detail: incomeTrend.text,
+      metaClass: incomeTrend.className,
+      helper: todayTotals.income ? `${getCashAccountTotals().count} movimientos acumulados` : "Sin ingresos registrados",
+      icon: "income",
+    },
+    {
+      key: "expense",
+      title: "Egresos del dia",
+      value: formatMoney(todayTotals.expense),
+      detail: expenseTrend.text,
+      metaClass: expenseTrend.className,
+      helper: todayTotals.expense ? "Control de egresos del dia" : "Sin egresos registrados",
+      icon: "expense",
+    },
+    {
+      key: "balance",
+      title: "Saldo actual",
+      value: formatMoney(availableBalance),
+      detail: "Disponible en cajas",
+      metaClass: "sales-cash-kpi-card__meta sales-cash-kpi-card__meta--neutral",
+      helper: `${openCount} caja${openCount === 1 ? "" : "s"} abierta${openCount === 1 ? "" : "s"}`,
+      icon: "balance",
+    },
+    {
+      key: "sessions",
+      title: "Cajas abiertas",
+      value: String(openCount),
+      detail: `${openCount} de ${billingCashAccounts.length} cajas activas`,
+      metaClass: "sales-cash-kpi-card__meta sales-cash-kpi-card__meta--neutral",
+      helper: `Corte de ${formatDateTime(today)}`,
+      icon: "sessions",
+    },
+  ];
+  elements.cashSummaryCards.innerHTML = cards
+    .map(
+      (card) => `
+        <article class="sales-cash-kpi-card sales-cash-kpi-card--${escapeHtml(card.key)}">
+          <div class="sales-cash-kpi-card__icon">
+            ${getCashPanelIconMarkup(card.icon)}
+          </div>
+          <div class="sales-cash-kpi-card__body">
+            <span class="sales-cash-kpi-card__title">${escapeHtml(card.title)}</span>
+            <strong class="sales-cash-kpi-card__value">${escapeHtml(card.value)}</strong>
+            <span class="${card.metaClass}">${escapeHtml(card.detail)}</span>
+            <small class="sales-cash-kpi-card__helper">${escapeHtml(card.helper)}</small>
+          </div>
+        </article>
+      `
+    )
+    .join("");
+}
+
+function renderCashAccountsSummary() {
+  if (!elements.cashAccountsSummary) {
+    return;
+  }
+  const selectedCashAccount = getSelectedCashAccount();
+  elements.cashAccountsSummary.innerHTML = billingCashAccounts
+    .map((cashAccount) => {
+      const session = getLatestCashSessionForAccount(cashAccount);
+      const statusMeta = getCashSessionStatusMeta(session);
+      const accountTotals = getCashAccountTotals(cashAccount);
+      const amount = getCurrentCashAccountAmount(cashAccount);
+      const movementDetail = session
+        ? `${statusMeta.detail} · ${formatDateTime(session.session_date)}`
+        : accountTotals.count
+        ? `${accountTotals.count} movimiento${accountTotals.count === 1 ? "" : "s"} registrado${accountTotals.count === 1 ? "" : "s"}`
+        : "Sin movimientos";
+      return `
+        <button
+          class="sales-cash-account-row${selectedCashAccount === cashAccount ? " is-selected" : ""}"
+          type="button"
+          data-cash-account-select="${escapeHtml(cashAccount)}"
+        >
+          <span class="sales-cash-account-row__icon">
+            ${getCashPanelIconMarkup("balance")}
+          </span>
+          <span class="sales-cash-account-row__copy">
+            <strong>${escapeHtml(cashAccountLabel(cashAccount))}</strong>
+            <span>${escapeHtml(movementDetail)}</span>
+          </span>
+          <strong class="sales-cash-account-row__amount">${escapeHtml(formatMoney(amount))}</strong>
+          <span class="${statusMeta.className}">${escapeHtml(statusMeta.label)}</span>
+          <span class="sales-cash-account-row__arrow">
+            ${getCashPanelIconMarkup("arrow")}
+          </span>
+        </button>
+      `;
+    })
+    .join("");
+}
+
 function renderCashSessionsSummary() {
   if (!elements.cashSessionsSummary) {
     return;
   }
   const sessionDate = getSelectedCashSessionDate();
-  const cards = billingCashAccounts.map((cashAccount) => {
-    const session = state.cash_sessions.find(
-      (item) => item.session_date === sessionDate && item.cash_account === cashAccount
-    );
-    const dailyTotals = getCashDayTotals(sessionDate, cashAccount);
-    const openingAmount = Number(session?.opening_amount || 0);
-    const incomeTotal = Number(session?.income_total ?? dailyTotals.income);
-    const expenseTotal = Number(session?.expense_total ?? dailyTotals.expense);
-    const expectedClosingAmount = Number(
-      session?.expected_closing_amount ?? openingAmount + incomeTotal - expenseTotal
-    );
-    const closingAmountRaw = session?.closing_amount;
-    const closingAmount =
-      closingAmountRaw === null || closingAmountRaw === undefined || closingAmountRaw === ""
-        ? null
-        : Number(closingAmountRaw);
-    const differenceAmountRaw = session?.difference_amount;
-    const differenceAmount =
-      differenceAmountRaw === null ||
-      differenceAmountRaw === undefined ||
-      differenceAmountRaw === ""
-        ? null
-        : Number(differenceAmountRaw);
-    const statusLabel = !session ? "Sin apertura" : session.is_closed ? "Cerrada" : "Abierta";
-    const statusClassName = !session
-      ? "sales-stock-badge sales-stock-badge--neutral"
-      : session.is_closed
-      ? "sales-stock-badge sales-stock-badge--ok"
-      : "sales-stock-badge sales-stock-badge--info";
-    const differenceClass =
-      differenceAmount === null
-        ? ""
-        : differenceAmount === 0
-        ? "sales-cash-session-difference--balanced"
-        : differenceAmount > 0
-        ? "sales-cash-session-difference--positive"
-        : "sales-cash-session-difference--negative";
-    return `
-      <article class="sales-cash-session-card">
-        <header>
-          <h4>${escapeHtml(cashAccountLabel(cashAccount))}</h4>
-          <span class="${statusClassName}">${escapeHtml(statusLabel)}</span>
-        </header>
-        <div class="sales-detail-kv">
+  const selectedCashAccount = getSelectedCashAccount();
+  const session = state.cash_sessions.find(
+    (item) => item.session_date === sessionDate && item.cash_account === selectedCashAccount
+  );
+  const totals = getCashDayTotals(sessionDate, selectedCashAccount);
+  const openingAmount = Number(session?.opening_amount || 0);
+  const expectedClosingAmount = Number(
+    session?.expected_closing_amount ?? openingAmount + totals.income - totals.expense
+  );
+  const differenceAmount =
+    session?.difference_amount === null ||
+    session?.difference_amount === undefined ||
+    session?.difference_amount === ""
+      ? null
+      : Number(session.difference_amount);
+  const dateLabel = formatLongDateLabel(parseIsoDate(sessionDate)) || formatDateTime(sessionDate);
+  elements.cashSessionsSummary.innerHTML = `
+    <div class="sales-cash-session-summary">
+      <div class="sales-cash-session-summary__copy">
+        <strong>${escapeHtml(dateLabel)}</strong>
+        <span>${escapeHtml(cashAccountLabel(selectedCashAccount))} seleccionada para el control diario.</span>
+      </div>
+      <div class="sales-cash-session-summary__chips">
+        <div class="sales-cash-chip">
           <span>Apertura</span>
           <strong>${escapeHtml(formatMoney(openingAmount))}</strong>
-          <span>Ingresos del dia</span>
-          <strong>${escapeHtml(formatMoney(incomeTotal))}</strong>
-          <span>Gastos del dia</span>
-          <strong>${escapeHtml(formatMoney(expenseTotal))}</strong>
-          <span>Cierre esperado</span>
-          <strong>${escapeHtml(formatMoney(expectedClosingAmount))}</strong>
-          <span>Cierre registrado</span>
-          <strong>${escapeHtml(closingAmount === null ? "Pendiente" : formatMoney(closingAmount))}</strong>
-          <span>Diferencia</span>
-          <strong class="${differenceClass}">${escapeHtml(
-            differenceAmount === null ? "Pendiente" : formatMoney(differenceAmount)
+        </div>
+        <div class="sales-cash-chip">
+          <span>Ingresos</span>
+          <strong>${escapeHtml(formatMoney(totals.income))}</strong>
+        </div>
+        <div class="sales-cash-chip">
+          <span>Egresos</span>
+          <strong>${escapeHtml(formatMoney(totals.expense))}</strong>
+        </div>
+        <div class="sales-cash-chip">
+          <span>${differenceAmount === null ? "Cierre esperado" : "Diferencia"}</span>
+          <strong class="${
+            differenceAmount === null
+              ? ""
+              : differenceAmount === 0
+              ? "sales-cash-session-difference--balanced"
+              : differenceAmount > 0
+              ? "sales-cash-session-difference--positive"
+              : "sales-cash-session-difference--negative"
+          }">${escapeHtml(
+            differenceAmount === null ? formatMoney(expectedClosingAmount) : formatMoney(differenceAmount)
           )}</strong>
         </div>
-      </article>
-    `;
-  });
-  elements.cashSessionsSummary.innerHTML = `
-    <div class="sales-cash-session-header">
-      <p class="sales-section-note">Control diario para ${escapeHtml(
-        formatDateTime(sessionDate)
-      )}.</p>
+      </div>
     </div>
-    <div class="sales-cash-session-grid">${cards.join("")}</div>
   `;
+}
+
+function getRecentCashRecords(limit = 10) {
+  const movementRecords = state.cash_movements.map((movement) => ({
+    record_type: movement.movement_type === "gasto" ? "egreso" : "ingreso",
+    concept: movement.concept || "Movimiento de caja",
+    detail: movement.category || (movement.auto_generated ? "Generado automaticamente" : "Movimiento manual"),
+    cash_account: movement.cash_account,
+    amount: Number(movement.amount || 0),
+    display_at: movement.created_at || movement.movement_date,
+    sort_at: movement.created_at || `${movement.movement_date}T00:00:00`,
+    status_label: movement.auto_generated ? "Automatico" : "Registrado",
+    status_tone: movement.auto_generated ? "neutral" : "ok",
+  }));
+  const sessionRecords = state.cash_sessions.flatMap((session) => {
+    const records = [
+      {
+        record_type: "apertura",
+        concept: "Apertura de caja",
+        detail: session.opening_notes || "Inicio de caja registrado",
+        cash_account: session.cash_account,
+        amount: Number(session.opening_amount || 0),
+        display_at: session.opened_at || session.session_date,
+        sort_at: session.opened_at || `${session.session_date}T00:00:00`,
+        status_label: "Registrado",
+        status_tone: "ok",
+      },
+    ];
+    if (session.is_closed) {
+      records.push({
+        record_type: "cierre",
+        concept: "Cierre de caja",
+        detail:
+          session.difference_amount === null ||
+          session.difference_amount === undefined ||
+          session.difference_amount === ""
+            ? session.closing_notes || "Cierre registrado"
+            : `Diferencia ${formatMoney(session.difference_amount)}`,
+        cash_account: session.cash_account,
+        amount: Number(
+          session.closing_amount === null || session.closing_amount === undefined || session.closing_amount === ""
+            ? session.expected_closing_amount || 0
+            : session.closing_amount || 0
+        ),
+        display_at: session.closed_at || session.session_date,
+        sort_at: session.closed_at || `${session.session_date}T23:59:59`,
+        status_label: "Registrado",
+        status_tone: "ok",
+      });
+    }
+    return records;
+  });
+  const allRecords = [...movementRecords, ...sessionRecords];
+  return allRecords
+    .sort((left, right) => {
+      const leftDate = new Date(left.sort_at);
+      const rightDate = new Date(right.sort_at);
+      const leftTime = Number.isNaN(leftDate.getTime()) ? 0 : leftDate.getTime();
+      const rightTime = Number.isNaN(rightDate.getTime()) ? 0 : rightDate.getTime();
+      return rightTime - leftTime;
+    })
+    .slice(0, limit);
+}
+
+function renderCashMovementsTable() {
+  if (!elements.cashMovementsList) {
+    return;
+  }
+  const rows = getRecentCashRecords().map((record) => {
+    const amountClass =
+      record.record_type === "ingreso"
+        ? "sales-cash-amount sales-cash-amount--positive"
+        : record.record_type === "egreso"
+        ? "sales-cash-amount sales-cash-amount--negative"
+        : "sales-cash-amount sales-cash-amount--info";
+    return [
+      { value: formatDateTime(record.display_at), align: "left" },
+      {
+        value: `
+          <div class="sales-cash-cell">
+            <strong>${escapeHtml(record.concept)}</strong>
+            <span>${escapeHtml(record.detail)}</span>
+          </div>
+        `,
+        html: true,
+        align: "left",
+      },
+      {
+        value: `
+          <span class="sales-cash-record-type sales-cash-record-type--${escapeHtml(record.record_type)}">
+            <span class="sales-cash-record-type__icon">${getCashPanelIconMarkup(
+              record.record_type === "egreso" ? "expense" : record.record_type === "ingreso" ? "income" : record.record_type
+            )}</span>
+            <span>${escapeHtml(getCashMovementTypeLabel(record.record_type))}</span>
+          </span>
+        `,
+        html: true,
+        align: "left",
+      },
+      { value: cashAccountLabel(record.cash_account), align: "left" },
+      {
+        value: `<strong class="${amountClass}">${escapeHtml(formatMoney(Math.abs(record.amount || 0)))}</strong>`,
+        html: true,
+      },
+      {
+        value: `<span class="sales-cash-status-badge sales-cash-status-badge--${escapeHtml(
+          record.status_tone
+        )}">${escapeHtml(record.status_label)}</span>`,
+        html: true,
+      },
+    ];
+  });
+  elements.cashMovementsList.innerHTML = `
+    <div class="sales-table-scroll sales-cash-table-scroll">
+      ${buildSalesHtmlTable(
+        [
+          { label: "Fecha", align: "left" },
+          { label: "Concepto", align: "left" },
+          { label: "Tipo", align: "left" },
+          { label: "Caja", align: "left" },
+          { label: "Monto" },
+          { label: "Estado", align: "left" },
+        ],
+        rows,
+        "Aun no hay movimientos de caja."
+      )}
+    </div>
+  `;
+}
+
+function renderCashSection() {
+  renderCashSummaryCards();
+  renderCashAccountsSummary();
+  renderCashSessionsSummary();
+  renderCashMovementsTable();
+}
+
+function handleCashAccountSummaryClick(event) {
+  const accountButton = event.target.closest("[data-cash-account-select]");
+  if (!accountButton) {
+    return;
+  }
+  setCashAccountSelection(accountButton.dataset.cashAccountSelect || "");
 }
 
 function renderSalesDocumentDetail() {
@@ -7167,31 +7654,7 @@ function renderSales() {
     documentMode.emptyMessage
   );
 
-  renderList(
-    elements.cashMovementsList,
-    state.cash_movements,
-    (movement) => `
-      <article class="list-card">
-        <header>
-          <div>
-            <h4>${escapeHtml(movement.concept)}</h4>
-            <p>${formatDateTime(movement.movement_date)}</p>
-          </div>
-          <span class="${statusClass(movement.movement_type)}">${escapeHtml(
-            humanStatus(movement.movement_type)
-          )}</span>
-        </header>
-        <p>${formatMoney(movement.amount || 0)} / ${escapeHtml(
-          cashAccountLabel(movement.cash_account)
-        )}</p>
-        <p>${escapeHtml(movement.category || "Sin categoria")}</p>
-        <p>${movement.auto_generated ? "Generado automaticamente" : "Movimiento manual"}</p>
-      </article>
-    `,
-    "Aun no hay movimientos de caja."
-  );
-
-  renderCashSessionsSummary();
+  renderCashSection();
 
   renderList(
     elements.stockMovementsList,
@@ -7345,7 +7808,7 @@ function renderDashboard() {
             <h4>${escapeHtml(appointment.patient_name)}</h4>
             <p>${formatDateTime(appointment.appointment_at)}</p>
           </div>
-          <span class="${statusClass(appointment.status)}">${escapeHtml(humanStatus(appointment.status))}</span>
+          ${buildAppointmentStatusBadgeMarkup(appointment.status, { compact: true })}
         </header>
         <p>${escapeHtml(appointment.reason)}</p>
         <p>${escapeHtml(appointment.professional_name || "Sin profesional asignado")}</p>
@@ -11919,7 +12382,7 @@ function renderAppointments() {
               <h4>${escapeHtml(appointment.patient_name)}</h4>
               <p>${formatDateTime(appointment.appointment_at)}</p>
             </div>
-            <span class="${statusClass(appointment.status)}">${escapeHtml(humanStatus(appointment.status))}</span>
+            ${buildAppointmentStatusBadgeMarkup(appointment.status, { compact: true })}
           </header>
           <p>Tutor: ${escapeHtml(appointment.owner_name)}</p>
           <p>${escapeHtml(appointment.professional_name || "Agenda general")} / ${
@@ -12032,6 +12495,49 @@ function formatAgendaTimezoneLabel() {
   return tzName ? `${tzName} ${timezone}` : timezone;
 }
 
+function buildAgendaProgramSlotMarkup(slot) {
+  const appointment = slot?.appointment_id ? getAppointmentById(slot.appointment_id) : null;
+  if (!appointment) {
+    return `
+      <button
+        type="button"
+        class="agenda-slot agenda-slot--available"
+        data-slot-at="${escapeHtml(slot.slot_at)}"
+        data-slot-minutes="${escapeHtml(String(slot.duration_minutes || 30))}"
+        data-drop-slot="true"
+      >
+        <span class="agenda-slot-time">${escapeHtml(slot.label)}</span>
+        <span class="agenda-slot-duration">${escapeHtml(
+          String(slot.duration_minutes || 30)
+        )} min</span>
+        <span class="agenda-slot-helper">Disponible</span>
+      </button>
+    `;
+  }
+  const presentation = buildAgendaAppointmentPresentation(appointment);
+  return `
+    <button
+      type="button"
+      class="agenda-slot agenda-slot--occupied agenda-slot--${presentation.type}"
+      data-slot-at="${escapeHtml(slot.slot_at)}"
+      data-slot-minutes="${escapeHtml(String(slot.duration_minutes || 30))}"
+      data-appointment-id="${escapeHtml(appointment.id)}"
+      draggable="true"
+    >
+      <span class="agenda-slot-time">${escapeHtml(slot.label)}</span>
+      <span class="agenda-slot-status">${buildAppointmentStatusBadgeMarkup(appointment.status, {
+        compact: true,
+      })}</span>
+      <span class="agenda-slot-patient">${escapeHtml(
+        truncate(appointment.patient_name || slot.patient_name || "Cita", 22)
+      )}</span>
+      <span class="agenda-slot-service">${escapeHtml(
+        truncate(presentation.subtitle || appointment.reason || "Servicio", 28)
+      )}</span>
+    </button>
+  `;
+}
+
 function renderAgendaWeekSlots() {
   if (!elements.agendaWeekSlots) {
     return;
@@ -12053,25 +12559,9 @@ function renderAgendaWeekSlots() {
   for (let index = 0; index < 7; index += 1) {
     const current = addDays(weekStart, index);
     const currentIso = toIsoDate(current);
-    const slots = filterAvailableAgendaSlots(buildAgendaSlots(currentIso));
+    const slots = buildAgendaSlots(currentIso);
     const slotMarkup = slots.length
-      ? slots
-          .map(
-            (slot) => `
-              <button
-                type="button"
-                class="agenda-slot"
-                data-slot-at="${escapeHtml(slot.slot_at)}"
-                data-slot-minutes="${escapeHtml(String(slot.duration_minutes || 30))}"
-              >
-                <span class="agenda-slot-time">${escapeHtml(slot.label)}</span>
-                <span class="agenda-slot-duration">${escapeHtml(
-                  String(slot.duration_minutes || 30)
-                )} min</span>
-              </button>
-            `
-          )
-          .join("")
+      ? slots.map((slot) => buildAgendaProgramSlotMarkup(slot)).join("")
       : `<div class="agenda-slot agenda-slot--empty">—</div>`;
     columns.push(`
       <div class="agenda-week-day${currentIso === agendaSelectedDate ? " is-selected" : ""}" data-agenda-date="${escapeHtml(
@@ -12141,7 +12631,10 @@ function buildAgendaTimelineEventMarkup(appointment, { dayStart, dayEnd, minuteH
         <div class="agenda-timeline-event__identity">
           ${getAgendaAppointmentIconMarkup(presentation.type)}
           <div class="agenda-timeline-event__copy">
-            <strong class="agenda-timeline-event__patient">${escapeHtml(
+            <strong class="agenda-timeline-event__patient">${buildAppointmentStatusBadgeMarkup(
+              appointment.status,
+              { compact: true }
+            )}${escapeHtml(
               truncate(presentation.title, 24)
             )}</strong>
             <span class="agenda-timeline-event__text">${escapeHtml(
@@ -12304,6 +12797,7 @@ function renderAgendaListView() {
                     ${getAgendaAppointmentIconMarkup(presentation.type)}
                     <strong>${escapeHtml(truncate(presentation.title, 40))}</strong>
                   </div>
+                  ${buildAppointmentStatusBadgeMarkup(appointment.status, { compact: true })}
                   <span>${escapeHtml(
                     truncate(
                       [presentation.subtitle, appointment.owner_name || ""].filter(Boolean).join(" · "),
@@ -12364,6 +12858,7 @@ function renderAgendaLargeMonth() {
           )}" role="button" tabindex="0">
             ${getAgendaAppointmentIconMarkup(presentation.type)}
             <span class="agenda-event-time">${escapeHtml(timeLabel)}</span>
+            ${buildAppointmentStatusBadgeMarkup(appointment.status, { compact: true })}
             <span class="agenda-event-text">${escapeHtml(label)}</span>
           </div>
         `;
@@ -12938,6 +13433,107 @@ function getOwnerById(ownerId) {
 
 function getPatientById(patientId) {
   return (state.patients || []).find((patient) => patient.id === patientId) || null;
+}
+
+function getAppointmentById(appointmentId) {
+  return (state.appointments || []).find((appointment) => appointment.id === appointmentId) || null;
+}
+
+function getAppointmentOwner(appointment) {
+  if (!appointment) {
+    return null;
+  }
+  return getOwnerById(appointment.owner_id) || null;
+}
+
+function getAppointmentPatient(appointment) {
+  if (!appointment) {
+    return null;
+  }
+  return getPatientById(appointment.patient_id) || null;
+}
+
+function formatPatientAgeLabel(patient) {
+  const ageYears = Number(patient?.age_years);
+  if (Number.isFinite(ageYears) && ageYears > 0) {
+    const rounded = Math.round(ageYears * 10) / 10;
+    return `${String(rounded).replace(".0", "").replace(".", ",")} anos`;
+  }
+  const birthDate = String(patient?.birth_date || "").trim();
+  if (!birthDate) {
+    return "Sin dato";
+  }
+  const birth = new Date(`${birthDate}T00:00:00`);
+  if (Number.isNaN(birth.getTime())) {
+    return "Sin dato";
+  }
+  const now = new Date();
+  let months =
+    (now.getFullYear() - birth.getFullYear()) * 12 + (now.getMonth() - birth.getMonth());
+  if (now.getDate() < birth.getDate()) {
+    months -= 1;
+  }
+  if (months <= 0) {
+    return "Menos de 1 mes";
+  }
+  if (months < 12) {
+    return `${months} mes${months === 1 ? "" : "es"}`;
+  }
+  const years = Math.floor(months / 12);
+  const remainingMonths = months % 12;
+  return remainingMonths
+    ? `${years} ano${years === 1 ? "" : "s"} ${remainingMonths} mes${remainingMonths === 1 ? "" : "es"}`
+    : `${years} ano${years === 1 ? "" : "s"}`;
+}
+
+function normalizeWhatsappPhone(rawPhone) {
+  const digits = String(rawPhone || "").replace(/\D/g, "");
+  if (!digits) {
+    return "";
+  }
+  if (digits.length === 10) {
+    return `57${digits}`;
+  }
+  return digits;
+}
+
+function buildAppointmentReminderText(appointment) {
+  const owner = getAppointmentOwner(appointment);
+  const patient = getAppointmentPatient(appointment);
+  const presentation = buildAgendaAppointmentPresentation(appointment);
+  const start = new Date(appointment?.appointment_at || "");
+  const timeLabel = Number.isNaN(start.getTime())
+    ? formatDateTime(appointment?.appointment_at || "")
+    : `${start.toLocaleDateString("es-CO", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+      })} a las ${formatAgendaTimeShort(start)}`;
+  const clinicName = state.settings?.clinic_name || "Lativet";
+  return [
+    `Hola ${owner?.full_name || appointment?.owner_name || ""},`,
+    "",
+    `Te recordamos la cita de ${patient?.name || appointment?.patient_name || "tu mascota"} para ${timeLabel}.`,
+    `Servicio: ${presentation.subtitle || appointment?.reason || "Cita veterinaria"}.`,
+    `Encargado: ${appointment?.professional_name || "Agenda general"}.`,
+    "",
+    `Si necesitas confirmar o reprogramar, responde a este mensaje. ${clinicName}.`,
+  ].join("\n");
+}
+
+function buildAppointmentWhatsappUrl(appointment) {
+  const owner = getAppointmentOwner(appointment);
+  const phone = normalizeWhatsappPhone(owner?.phone || owner?.alternate_phone || "");
+  if (!phone) {
+    return "";
+  }
+  return `https://wa.me/${encodeURIComponent(phone)}?text=${encodeURIComponent(
+    buildAppointmentReminderText(appointment)
+  )}`;
+}
+
+function isTerminalAppointmentStatus(status) {
+  return ["completed", "cancelled", "no_show"].includes(status);
 }
 
 function getRecordById(recordId) {
@@ -14054,15 +14650,42 @@ function closeAppointmentModal() {
   clearAppointmentFormFeedback();
 }
 
+function buildAppointmentDetailPatientSnapshotMarkup(appointment) {
+  const owner = getAppointmentOwner(appointment);
+  const patient = getAppointmentPatient(appointment);
+  const presentation = buildAgendaAppointmentPresentation(appointment);
+  const phone = owner?.phone || owner?.alternate_phone || "Sin telefono";
+  const cards = [
+    ["Paciente", patient?.name || appointment.patient_name || "Sin dato"],
+    ["Tutor", owner?.full_name || appointment.owner_name || "Sin dato"],
+    ["Telefono", phone],
+    ["Edad", formatPatientAgeLabel(patient)],
+    ["Servicio", presentation.subtitle || appointment.reason || "Sin dato"],
+  ];
+  return cards
+    .map(
+      ([label, value]) => `
+        <article class="appointment-detail-patient-card">
+          <span>${escapeHtml(label)}</span>
+          <strong>${escapeHtml(value)}</strong>
+        </article>
+      `
+    )
+    .join("");
+}
+
 function openAppointmentDetailModal(appointmentId) {
   if (!elements.appointmentDetailModal) {
     return;
   }
-  const appointment = (state.appointments || []).find((item) => item.id === appointmentId);
+  const appointment = getAppointmentById(appointmentId);
   if (!appointment) {
     showStatus("No se encontro la cita seleccionada.", "error");
     return;
   }
+  const owner = getAppointmentOwner(appointment);
+  const patient = getAppointmentPatient(appointment);
+  const presentation = buildAgendaAppointmentPresentation(appointment);
   const duration = Number(appointment.duration_minutes || 30);
   const start = new Date(appointment.appointment_at);
   let subtitle = formatDateTime(appointment.appointment_at);
@@ -14084,17 +14707,46 @@ function openAppointmentDetailModal(appointmentId) {
     elements.appointmentDetailSubtitle.textContent = subtitle;
   }
   if (elements.appointmentDetailStatus) {
-    elements.appointmentDetailStatus.innerHTML = `<span class="${statusClass(
-      appointment.status
-    )}">${escapeHtml(humanStatus(appointment.status))}</span>`;
+    elements.appointmentDetailStatus.innerHTML = buildAppointmentStatusBadgeMarkup(appointment.status);
+  }
+  if (elements.appointmentDetailStatusActions) {
+    elements.appointmentDetailStatusActions.innerHTML = APPOINTMENT_STATUS_ACTIONS.map((status) => `
+      <button
+        type="button"
+        class="appointment-detail-status-chip${status === appointment.status ? " is-active" : ""}"
+        data-appointment-detail-status="${escapeHtml(status)}"
+        data-appointment-id="${escapeHtml(appointment.id)}"
+      >
+        ${buildAppointmentStatusBadgeMarkup(status, { compact: true })}
+      </button>
+    `).join("");
+  }
+  if (elements.appointmentDetailQuickCard) {
+    elements.appointmentDetailQuickCard.innerHTML = `
+      <div class="appointment-detail-quick-card__avatar">${escapeHtml(
+        getAgendaEntityInitials(patient?.name || appointment.patient_name, "CT")
+      )}</div>
+      <div class="appointment-detail-quick-card__copy">
+        <strong>${escapeHtml(patient?.name || appointment.patient_name || "Paciente")}</strong>
+        <span>${escapeHtml(owner?.full_name || appointment.owner_name || "Sin tutor")}</span>
+        <small>${escapeHtml(
+          [presentation.subtitle || presentation.meta.label, `${duration} min`].filter(Boolean).join(" · ")
+        )}</small>
+      </div>
+    `;
   }
   const summary = [
-    ["Propietario", appointment.owner_name || "Sin dato"],
-    ["Paciente", appointment.patient_name || "Sin dato"],
+    ["Propietario", owner?.full_name || appointment.owner_name || "Sin dato"],
+    ["Correo", owner?.email || "Sin dato"],
     ["Encargado", appointment.professional_name || "Agenda general"],
     ["Duracion", `${duration} min`],
   ];
   renderSummary(elements.appointmentDetailSummary, summary, "Sin informacion disponible.");
+  if (elements.appointmentDetailPatientSnapshot) {
+    elements.appointmentDetailPatientSnapshot.innerHTML = buildAppointmentDetailPatientSnapshotMarkup(
+      appointment
+    );
+  }
   if (elements.appointmentDetailNotes) {
     elements.appointmentDetailNotes.textContent = appointment.notes || "Sin descripcion";
   }
@@ -14116,6 +14768,15 @@ function openAppointmentDetailModal(appointmentId) {
     }
     elements.appointmentDetailLinks.innerHTML = links.join("");
     elements.appointmentDetailLinks.classList.toggle("is-hidden", !links.length);
+  }
+  if (elements.appointmentDetailReminderButton) {
+    const hasContact = Boolean(owner?.email || owner?.phone || owner?.alternate_phone);
+    elements.appointmentDetailReminderButton.dataset.appointmentId = appointment.id || "";
+    elements.appointmentDetailReminderButton.disabled =
+      isTerminalAppointmentStatus(appointment.status) || !hasContact;
+  }
+  if (elements.appointmentDetailEditButton) {
+    elements.appointmentDetailEditButton.dataset.appointmentId = appointment.id || "";
   }
   elements.appointmentDetailModal.classList.remove("is-hidden");
   elements.appointmentDetailModal.setAttribute("aria-hidden", "false");
@@ -19579,6 +20240,7 @@ async function handleCashMovementSubmit(event) {
   salesReportState.loaded = false;
   await refreshData("Movimiento de caja guardado.");
   setActiveSection("sales");
+  setSectionSubsection("sales", "caja");
 }
 
 async function handleCashSessionOpenSubmit(event) {
@@ -20302,6 +20964,79 @@ async function handleAppointmentsClick(event) {
   });
 }
 
+function describeAppointmentReminderEmailResult(emailResult) {
+  if (emailResult?.sent) {
+    return `Correo enviado a ${emailResult.to}.`;
+  }
+  const reasons = {
+    smtp_disabled: "El correo SMTP esta deshabilitado.",
+    smtp_from_missing: "Falta configurar el correo remitente.",
+    smtp_password_missing: "Falta configurar la app password SMTP.",
+    owner_email_missing: "El tutor no tiene correo registrado.",
+  };
+  if (emailResult?.reason && reasons[emailResult.reason]) {
+    return reasons[emailResult.reason];
+  }
+  if (emailResult?.error) {
+    return `No se pudo enviar el correo: ${emailResult.error}`;
+  }
+  return "";
+}
+
+async function sendAppointmentReminder(appointmentId) {
+  const appointment = getAppointmentById(appointmentId);
+  if (!appointment) {
+    throw new Error("No se encontro la cita seleccionada.");
+  }
+  const whatsappUrl = buildAppointmentWhatsappUrl(appointment);
+  if (whatsappUrl) {
+    window.open(whatsappUrl, "_blank", "noopener,noreferrer");
+  }
+  const reminder = await api.sendAppointmentReminder(appointmentId);
+  const parts = [];
+  if (whatsappUrl) {
+    parts.push("WhatsApp abierto con el recordatorio listo.");
+  }
+  const emailMessage = describeAppointmentReminderEmailResult(reminder?.email);
+  if (emailMessage) {
+    parts.push(emailMessage);
+  }
+  if (!parts.length) {
+    parts.push("No hay canales de contacto configurados para esta cita.");
+  }
+  showStatus(
+    parts.join(" "),
+    reminder?.email?.sent || whatsappUrl ? "success" : "warning"
+  );
+}
+
+async function handleAppointmentDetailClick(event) {
+  const statusButton = event.target.closest("[data-appointment-detail-status][data-appointment-id]");
+  if (statusButton) {
+    const appointmentId = statusButton.dataset.appointmentId || "";
+    const status = statusButton.dataset.appointmentDetailStatus || "";
+    await api.updateAppointmentStatus(appointmentId, status);
+    await refreshData({ sections: AGENDA_REFRESH_SECTIONS });
+    openAppointmentDetailModal(appointmentId);
+    showStatus("Estado de cita actualizado.", "success");
+    return;
+  }
+  const reminderButton = event.target.closest("#appointmentDetailReminderButton");
+  if (reminderButton?.dataset?.appointmentId) {
+    await sendAppointmentReminder(reminderButton.dataset.appointmentId);
+    return;
+  }
+  const editButton = event.target.closest("#appointmentDetailEditButton");
+  if (editButton?.dataset?.appointmentId) {
+    const appointment = getAppointmentById(editButton.dataset.appointmentId);
+    if (!appointment) {
+      throw new Error("No se encontro la cita seleccionada.");
+    }
+    closeAppointmentDetailModal();
+    openAppointmentModalForEdit(appointment);
+  }
+}
+
 async function handleAvailabilityListClick(event) {
   const button = event.target.closest("button[data-delete-availability]");
   if (!button) {
@@ -20417,6 +21152,100 @@ function handleAgendaWeekClick(event) {
   if (dayButton) {
     openAppointmentModalForDate(dayButton.dataset.agendaDate);
   }
+}
+
+function clearAgendaDropTargets() {
+  elements.agendaWeekSlots
+    ?.querySelectorAll(".agenda-slot.is-drop-target, .agenda-slot.is-dragging")
+    .forEach((slot) => {
+      slot.classList.remove("is-drop-target", "is-dragging");
+    });
+}
+
+function handleAgendaWeekDragStart(event) {
+  const slot = event.target.closest(".agenda-slot--occupied[data-appointment-id]");
+  if (!slot) {
+    return;
+  }
+  agendaDragState.appointmentId = slot.dataset.appointmentId || "";
+  agendaDragState.sourceSlotAt = slot.dataset.slotAt || "";
+  slot.classList.add("is-dragging");
+  if (event.dataTransfer) {
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", agendaDragState.appointmentId);
+  }
+}
+
+function handleAgendaWeekDragOver(event) {
+  const slot = event.target.closest(".agenda-slot[data-drop-slot]");
+  if (!slot || !agendaDragState.appointmentId) {
+    return;
+  }
+  event.preventDefault();
+  clearAgendaDropTargets();
+  slot.classList.add("is-drop-target");
+}
+
+function handleAgendaWeekDragLeave(event) {
+  const slot = event.target.closest(".agenda-slot[data-drop-slot]");
+  if (!slot) {
+    return;
+  }
+  const relatedTarget = event.relatedTarget;
+  if (relatedTarget && slot.contains(relatedTarget)) {
+    return;
+  }
+  slot.classList.remove("is-drop-target");
+}
+
+function handleAgendaWeekDragEnd() {
+  clearAgendaDropTargets();
+  agendaDragState.appointmentId = "";
+  agendaDragState.sourceSlotAt = "";
+}
+
+async function moveAppointmentToAgendaSlot(appointmentId, slotAt) {
+  const appointment = getAppointmentById(appointmentId);
+  if (!appointment) {
+    throw new Error("No se encontro la cita seleccionada.");
+  }
+  const nextDateTime = toInputDateTime(slotAt);
+  if (!nextDateTime) {
+    throw new Error("No se encontro un horario valido para reprogramar.");
+  }
+  if (toInputDateTime(appointment.appointment_at) === nextDateTime) {
+    return;
+  }
+  await api.saveAppointment({
+    id: appointment.id,
+    patient_id: appointment.patient_id,
+    owner_id: appointment.owner_id,
+    appointment_at: nextDateTime,
+    reason: appointment.reason,
+    status: appointment.status,
+    professional_name: appointment.professional_name,
+    duration_minutes: appointment.duration_minutes,
+    notes: appointment.notes,
+  });
+  agendaSelectedDate = toIsoDate(slotAt) || agendaSelectedDate;
+  await refreshData({
+    sections: AGENDA_REFRESH_SECTIONS,
+    message: "Cita reprogramada.",
+  });
+}
+
+async function handleAgendaWeekDrop(event) {
+  const slot = event.target.closest(".agenda-slot[data-drop-slot]");
+  if (!slot || !agendaDragState.appointmentId) {
+    return;
+  }
+  event.preventDefault();
+  const appointmentId = agendaDragState.appointmentId;
+  const slotAt = slot.dataset.slotAt || "";
+  clearAgendaDropTargets();
+  agendaDragState.appointmentId = "";
+  agendaDragState.sourceSlotAt = "";
+  await moveAppointmentToAgendaSlot(appointmentId, slotAt);
 }
 
 function handleRecordsClick(event) {
@@ -21728,30 +22557,48 @@ function bindForms() {
   elements.billingDocumentForm.addEventListener("change", renderBillingWizard);
   elements.billingPaymentForm.addEventListener("submit", wrapAsync(handleBillingPaymentSubmit));
   elements.cashMovementForm.addEventListener("submit", wrapAsync(handleCashMovementSubmit));
+  elements.cashMovementForm.addEventListener("change", (event) => {
+    const field = event.target.closest('select[name="cash_account"]');
+    if (!field) {
+      return;
+    }
+    setCashAccountSelection(field.value || "");
+  });
+  if (elements.cashAccountsSummary) {
+    elements.cashAccountsSummary.addEventListener("click", handleCashAccountSummaryClick);
+  }
   if (elements.cashSessionOpenForm) {
     elements.cashSessionOpenForm.addEventListener("submit", wrapAsync(handleCashSessionOpenSubmit));
     elements.cashSessionOpenForm.addEventListener("change", (event) => {
-      const field = event.target.closest('input[name="session_date"]');
-      if (!field) {
+      const dateField = event.target.closest('input[name="session_date"]');
+      if (dateField) {
+        if (elements.cashSessionCloseForm?.elements?.session_date) {
+          elements.cashSessionCloseForm.elements.session_date.value = dateField.value || "";
+        }
+        renderCashSessionsSummary();
         return;
       }
-      if (elements.cashSessionCloseForm?.elements?.session_date) {
-        elements.cashSessionCloseForm.elements.session_date.value = field.value || "";
+      const accountField = event.target.closest('select[name="cash_account"]');
+      if (accountField) {
+        setCashAccountSelection(accountField.value || "");
       }
-      renderCashSessionsSummary();
     });
   }
   if (elements.cashSessionCloseForm) {
     elements.cashSessionCloseForm.addEventListener("submit", wrapAsync(handleCashSessionCloseSubmit));
     elements.cashSessionCloseForm.addEventListener("change", (event) => {
-      const field = event.target.closest('input[name="session_date"]');
-      if (!field) {
+      const dateField = event.target.closest('input[name="session_date"]');
+      if (dateField) {
+        if (elements.cashSessionOpenForm?.elements?.session_date) {
+          elements.cashSessionOpenForm.elements.session_date.value = dateField.value || "";
+        }
+        renderCashSessionsSummary();
         return;
       }
-      if (elements.cashSessionOpenForm?.elements?.session_date) {
-        elements.cashSessionOpenForm.elements.session_date.value = field.value || "";
+      const accountField = event.target.closest('select[name="cash_account"]');
+      if (accountField) {
+        setCashAccountSelection(accountField.value || "");
       }
-      renderCashSessionsSummary();
     });
   }
   elements.stockAdjustmentForm.addEventListener("submit", wrapAsync(handleStockAdjustmentSubmit));
@@ -21791,6 +22638,11 @@ function bindForms() {
   }
   if (elements.agendaWeekSlots) {
     elements.agendaWeekSlots.addEventListener("click", handleAgendaWeekClick);
+    elements.agendaWeekSlots.addEventListener("dragstart", handleAgendaWeekDragStart);
+    elements.agendaWeekSlots.addEventListener("dragover", handleAgendaWeekDragOver);
+    elements.agendaWeekSlots.addEventListener("dragleave", handleAgendaWeekDragLeave);
+    elements.agendaWeekSlots.addEventListener("dragend", handleAgendaWeekDragEnd);
+    elements.agendaWeekSlots.addEventListener("drop", wrapAsync(handleAgendaWeekDrop));
   }
   if (elements.agendaWeekTimeline) {
     elements.agendaWeekTimeline.addEventListener("click", handleAgendaTimelineClick);
@@ -22032,6 +22884,7 @@ function bindForms() {
     }
   });
   if (elements.appointmentDetailModal) {
+    elements.appointmentDetailModal.addEventListener("click", wrapAsync(handleAppointmentDetailClick));
     elements.appointmentDetailModal.addEventListener("click", (event) => {
       if (event.target.dataset.closeAppointmentDetailModal) {
         closeAppointmentDetailModal();

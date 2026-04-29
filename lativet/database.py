@@ -57,8 +57,21 @@ DEFAULT_SETTINGS = {
     "google_calendar_locked": False,
 }
 
-APPOINTMENT_STATUSES = {"scheduled", "confirmed", "completed", "cancelled", "no_show"}
-ACTIVE_APPOINTMENT_STATUSES = {"scheduled", "confirmed"}
+APPOINTMENT_STATUSES = {
+    "scheduled",
+    "pending_confirmation",
+    "waiting_room",
+    "confirmed",
+    "completed",
+    "cancelled",
+    "no_show",
+}
+ACTIVE_APPOINTMENT_STATUSES = {
+    "scheduled",
+    "pending_confirmation",
+    "waiting_room",
+    "confirmed",
+}
 CONSULTATION_TYPES = {
     "Consulta",
     "Vacunacion",
@@ -2431,7 +2444,7 @@ class Database:
             """
             SELECT appointment_at, duration_minutes
             FROM appointments
-            WHERE status IN ('scheduled', 'confirmed')
+            WHERE status IN ('scheduled', 'pending_confirmation', 'waiting_room', 'confirmed')
               AND appointment_at >= ?
               AND appointment_at <= ?
             """,
@@ -4205,14 +4218,14 @@ class Database:
             "owners": scalar("SELECT COUNT(*) AS total FROM owners"),
             "patients": scalar("SELECT COUNT(*) AS total FROM patients"),
             "appointments": scalar(
-                "SELECT COUNT(*) AS total FROM appointments WHERE status IN ('scheduled', 'confirmed')"
+                "SELECT COUNT(*) AS total FROM appointments WHERE status IN ('scheduled', 'pending_confirmation', 'waiting_room', 'confirmed')"
             ),
             "appointments_total": scalar("SELECT COUNT(*) AS total FROM appointments"),
             "appointments_today": scalar(
                 """
                 SELECT COUNT(*) AS total
                 FROM appointments
-                WHERE status IN ('scheduled', 'confirmed')
+                WHERE status IN ('scheduled', 'pending_confirmation', 'waiting_room', 'confirmed')
                   AND appointment_at >= ?
                   AND appointment_at <= ?
                 """,
@@ -4260,7 +4273,7 @@ class Database:
             """
             SELECT COUNT(*) AS total
             FROM appointments
-            WHERE status IN ('scheduled', 'confirmed')
+            WHERE status IN ('scheduled', 'pending_confirmation', 'waiting_room', 'confirmed')
               AND appointment_at >= ?
               AND appointment_at <= ?
             """,

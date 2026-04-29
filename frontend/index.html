@@ -524,6 +524,24 @@
                   <button id="openAppointmentModalButton" class="primary-button" type="button">Nueva cita</button>
                 </div>
               </div>
+              <div class="agenda-status-legend" aria-label="Estados de la cita">
+                <span class="agenda-status-pill agenda-status-pill--scheduled">
+                  <span class="agenda-status-dot agenda-status-dot--scheduled" aria-hidden="true"></span>
+                  Agendada
+                </span>
+                <span class="agenda-status-pill agenda-status-pill--pending_confirmation">
+                  <span class="agenda-status-dot agenda-status-dot--pending_confirmation" aria-hidden="true"></span>
+                  Por confirmar
+                </span>
+                <span class="agenda-status-pill agenda-status-pill--waiting_room">
+                  <span class="agenda-status-dot agenda-status-dot--waiting_room" aria-hidden="true"></span>
+                  Sala de espera
+                </span>
+                <span class="agenda-status-pill agenda-status-pill--confirmed">
+                  <span class="agenda-status-dot agenda-status-dot--confirmed" aria-hidden="true"></span>
+                  Confirmada
+                </span>
+              </div>
               <div class="agenda-view-body">
                 <section id="agendaMonthView" class="agenda-view-panel is-hidden">
                   <div class="agenda-weekdays agenda-weekdays--large">
@@ -789,53 +807,130 @@
           </div>
 
           <div class="two-column-grid">
-            <article id="salesCashFormPanel" class="panel-card">
-              <div class="panel-heading"><div><p class="eyebrow">Caja</p><h3>Ingreso o egreso manual</h3></div></div>
-              <form id="cashMovementForm" class="form-grid">
+            <article id="salesCashPanel" class="panel-card panel-card--wide sales-cash-overview-panel">
+              <div class="sales-cash-hero">
+                <div class="sales-cash-hero__title">
+                  <span class="sales-cash-hero__icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="3.5" y="6.5" width="17" height="11" rx="2.5"></rect>
+                      <path d="M7.5 10.5h2"></path>
+                      <path d="M14 12h.01"></path>
+                      <path d="M6.5 18.5h11"></path>
+                    </svg>
+                  </span>
+                  <div>
+                    <p class="eyebrow">Caja</p>
+                    <h3>Caja</h3>
+                    <p class="sales-section-note">Gestiona los movimientos y el estado de tus cajas.</p>
+                  </div>
+                </div>
+              </div>
+              <div id="cashSummaryCards" class="sales-cash-kpi-grid"></div>
+            </article>
+          </div>
+
+          <div class="two-column-grid">
+            <article id="salesCashFormPanel" class="panel-card sales-cash-work-card">
+              <div class="panel-heading">
+                <div class="sales-cash-title">
+                  <span class="sales-cash-title__icon sales-cash-title__icon--blue" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="3.5" y="6.5" width="17" height="11" rx="2.5"></rect>
+                      <path d="M7.5 10.5h2"></path>
+                      <path d="M14 12h.01"></path>
+                    </svg>
+                  </span>
+                  <div>
+                    <h3>Ingreso o egreso manual</h3>
+                    <p class="sales-section-note">Registra movimientos de forma rapida y segura.</p>
+                  </div>
+                </div>
+              </div>
+              <form id="cashMovementForm" class="form-grid sales-cash-form">
                 <div class="sales-form-row sales-form-row--compact full">
-                  <label class="sales-field--xs"><span>Tipo</span><select name="movement_type"><option value="ingreso">Ingreso</option><option value="gasto">Gasto</option></select></label>
+                  <label class="sales-field--xs"><span>Tipo</span><select name="movement_type"><option value="ingreso">Ingreso</option><option value="gasto">Egreso</option></select></label>
                   <label class="sales-field--sm"><span>Fecha</span><input name="movement_date" type="date" required /></label>
                   <label class="sales-field--xs"><span>Monto</span><input name="amount" type="number" step="0.01" min="0.01" required /></label>
                   <label class="sales-field--sm"><span>Cuenta</span><select name="cash_account"><option value="caja_menor">Caja menor</option><option value="caja_mayor">Caja mayor</option><option value="transferencia">Transferencias</option></select></label>
                 </div>
-                <label class="full"><span>Concepto</span><input name="concept" required /></label>
-                <label><span>Categoria</span><input name="category" placeholder="Factura, compra, servicio" /></label>
-                <label class="full"><span>Notas</span><textarea name="notes" rows="2"></textarea></label>
-                <div class="full form-actions"><button class="primary-button" type="submit">Guardar movimiento</button></div>
+                <label class="full"><span>Concepto</span><input name="concept" placeholder="Ej. Pago de consulta, compra de insumos..." required /></label>
+                <div class="sales-cash-form__split full">
+                  <label><span>Categoria</span><select name="category"><option value="">Seleccione una categoria</option><option value="Consulta">Consulta</option><option value="Farmacia">Farmacia</option><option value="Cirugia">Cirugia</option><option value="Proveedor">Proveedor</option><option value="Compras">Compras</option><option value="Servicios">Servicios</option><option value="Nomina">Nomina</option><option value="Transferencia interna">Transferencia interna</option><option value="Otro">Otro</option></select></label>
+                  <label><span>Notas (opcional)</span><textarea name="notes" rows="3" placeholder="Notas adicionales del movimiento..."></textarea></label>
+                </div>
+                <div class="full form-actions"><button class="primary-button sales-cash-primary-button" type="submit">Guardar movimiento</button></div>
               </form>
             </article>
 
-            <article id="salesCashSessionPanel" class="panel-card">
-              <div class="panel-heading"><div><p class="eyebrow">Caja</p><h3>Apertura y cierre diario</h3></div></div>
-              <div id="cashSessionsSummary" class="sales-cash-session-shell"></div>
-              <div class="sales-cash-session-actions">
-                <form id="cashSessionOpenForm" class="form-grid sales-cash-session-form">
-                  <div class="full">
-                    <p class="eyebrow">Inicio de caja</p>
-                    <p class="sales-section-note">Registra con cuanto abre la caja del dia.</p>
+            <article id="salesCashSessionPanel" class="panel-card sales-cash-work-card sales-cash-work-card--stacked">
+              <div class="sales-cash-side-section">
+                <div class="panel-heading">
+                  <div class="sales-cash-title">
+                    <span class="sales-cash-title__icon sales-cash-title__icon--blue" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3.5" y="6.5" width="17" height="11" rx="2.5"></rect>
+                        <path d="M7.5 10.5h2"></path>
+                        <path d="M15.5 10.5h2"></path>
+                        <path d="M7.5 14h9"></path>
+                      </svg>
+                    </span>
+                    <div>
+                      <h3>Resumen de cajas</h3>
+                      <p class="sales-section-note">Estado actual de tus cajas y transferencias.</p>
+                    </div>
                   </div>
-                  <div class="sales-form-row sales-form-row--compact full">
-                    <label class="sales-field--sm"><span>Fecha</span><input name="session_date" type="date" required /></label>
-                    <label class="sales-field--sm"><span>Caja</span><select name="cash_account"><option value="caja_menor">Caja menor</option><option value="caja_mayor">Caja mayor</option><option value="transferencia">Transferencias</option></select></label>
-                    <label class="sales-field--xs"><span>Monto inicial</span><input name="opening_amount" type="number" step="0.01" min="0" value="0" required /></label>
-                  </div>
-                  <label class="full"><span>Nota de apertura</span><textarea name="opening_notes" rows="2"></textarea></label>
-                  <div class="full form-actions"><button class="secondary-button" type="submit">Abrir caja</button></div>
-                </form>
+                </div>
+                <div id="cashAccountsSummary" class="sales-cash-accounts"></div>
+              </div>
 
-                <form id="cashSessionCloseForm" class="form-grid sales-cash-session-form">
-                  <div class="full">
-                    <p class="eyebrow">Cierre de caja</p>
-                    <p class="sales-section-note">Registra con cuanto termino realmente la caja al final del dia.</p>
+              <div class="sales-cash-side-section sales-cash-side-section--soft">
+                <div class="panel-heading">
+                  <div class="sales-cash-title">
+                    <span class="sales-cash-title__icon sales-cash-title__icon--blue" aria-hidden="true">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3.5" y="5" width="17" height="16" rx="2.5"></rect>
+                        <path d="M8 3.5v3"></path>
+                        <path d="M16 3.5v3"></path>
+                        <path d="M3.5 9.5h17"></path>
+                        <path d="M8 14h3"></path>
+                      </svg>
+                    </span>
+                    <div>
+                      <h3>Apertura y cierre diario</h3>
+                      <p class="sales-section-note">Controla la apertura y el cierre de tus cajas.</p>
+                    </div>
                   </div>
-                  <div class="sales-form-row sales-form-row--compact full">
-                    <label class="sales-field--sm"><span>Fecha</span><input name="session_date" type="date" required /></label>
-                    <label class="sales-field--sm"><span>Caja</span><select name="cash_account"><option value="caja_menor">Caja menor</option><option value="caja_mayor">Caja mayor</option><option value="transferencia">Transferencias</option></select></label>
-                    <label class="sales-field--xs"><span>Monto de cierre</span><input name="closing_amount" type="number" step="0.01" min="0" value="0" required /></label>
-                  </div>
-                  <label class="full"><span>Nota de cierre</span><textarea name="closing_notes" rows="2"></textarea></label>
-                  <div class="full form-actions"><button class="primary-button" type="submit">Cerrar caja</button></div>
-                </form>
+                </div>
+                <div id="cashSessionsSummary" class="sales-cash-session-shell"></div>
+                <div class="sales-cash-session-actions">
+                  <form id="cashSessionOpenForm" class="form-grid sales-cash-session-form sales-cash-session-form--open">
+                    <div class="full sales-cash-mini-header">
+                      <p class="sales-cash-mini-title">Abrir caja</p>
+                      <p class="sales-section-note">Registra la apertura de caja del dia.</p>
+                    </div>
+                    <div class="sales-form-row sales-form-row--compact full">
+                      <label class="sales-field--sm"><span>Fecha</span><input name="session_date" type="date" required /></label>
+                      <label class="sales-field--sm"><span>Caja</span><select name="cash_account"><option value="caja_menor">Caja menor</option><option value="caja_mayor">Caja mayor</option><option value="transferencia">Transferencias</option></select></label>
+                      <label class="sales-field--xs"><span>Monto inicial</span><input name="opening_amount" type="number" step="0.01" min="0" value="0" required /></label>
+                    </div>
+                    <label class="full"><span>Nota de apertura</span><textarea name="opening_notes" rows="2" placeholder="Observaciones de apertura..."></textarea></label>
+                    <div class="full form-actions"><button class="secondary-button sales-cash-secondary-button" type="submit">Abrir caja</button></div>
+                  </form>
+
+                  <form id="cashSessionCloseForm" class="form-grid sales-cash-session-form sales-cash-session-form--close">
+                    <div class="full sales-cash-mini-header">
+                      <p class="sales-cash-mini-title">Cerrar caja</p>
+                      <p class="sales-section-note">Registra el cierre y monto final de caja.</p>
+                    </div>
+                    <div class="sales-form-row sales-form-row--compact full">
+                      <label class="sales-field--sm"><span>Fecha</span><input name="session_date" type="date" required /></label>
+                      <label class="sales-field--sm"><span>Caja</span><select name="cash_account"><option value="caja_menor">Caja menor</option><option value="caja_mayor">Caja mayor</option><option value="transferencia">Transferencias</option></select></label>
+                      <label class="sales-field--xs"><span>Monto final</span><input name="closing_amount" type="number" step="0.01" min="0" value="0" required /></label>
+                    </div>
+                    <label class="full"><span>Nota de cierre</span><textarea name="closing_notes" rows="2" placeholder="Observaciones de cierre..."></textarea></label>
+                    <div class="full form-actions"><button class="primary-button sales-cash-primary-button" type="submit">Cerrar caja</button></div>
+                  </form>
+                </div>
               </div>
             </article>
 
@@ -874,9 +969,27 @@
               <div class="panel-heading"><div><p id="salesCatalogPanelEyebrow" class="eyebrow">Inventario</p><h3 id="salesCatalogPanelTitle">Productos registrados</h3></div></div>
               <div id="catalogItemsList" class="sales-inventory-shell"></div>
             </article>
-            <article id="salesCashPanel" class="panel-card">
-              <div class="panel-heading"><div><p class="eyebrow">Caja</p><h3>Movimientos recientes</h3></div></div>
-              <div id="cashMovementsList" class="list-surface"></div>
+          </div>
+
+          <div class="two-column-grid">
+            <article id="salesCashMovementsPanel" class="panel-card panel-card--wide sales-cash-table-panel">
+              <div class="panel-heading">
+                <div class="sales-cash-title">
+                  <span class="sales-cash-title__icon sales-cash-title__icon--blue" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M4 19.5h16"></path>
+                      <path d="M7.5 15.5v-7"></path>
+                      <path d="M12 15.5v-10"></path>
+                      <path d="M16.5 15.5v-4"></path>
+                    </svg>
+                  </span>
+                  <div>
+                    <h3>Movimientos recientes</h3>
+                    <p class="sales-section-note">Ultimos movimientos registrados en el sistema.</p>
+                  </div>
+                </div>
+              </div>
+              <div id="cashMovementsList" class="sales-cash-table-shell"></div>
             </article>
           </div>
 
@@ -1540,7 +1653,21 @@
           <button id="closeAppointmentDetailButton" class="ghost-button" type="button">Cerrar</button>
         </div>
         <div id="appointmentDetailStatus" class="appointment-detail-status"></div>
+        <div id="appointmentDetailStatusActions" class="appointment-detail-status-actions"></div>
+        <div id="appointmentDetailQuickCard" class="appointment-detail-quick-card"></div>
+        <div class="appointment-detail-actions">
+          <button id="appointmentDetailReminderButton" class="primary-button" type="button">
+            Enviar recordatorio
+          </button>
+          <button id="appointmentDetailEditButton" class="secondary-button" type="button">
+            Editar / reprogramar
+          </button>
+        </div>
         <div id="appointmentDetailSummary" class="summary-list"></div>
+        <div class="appointment-detail-section">
+          <h4>Ficha rapida</h4>
+          <div id="appointmentDetailPatientSnapshot" class="appointment-detail-patient-snapshot"></div>
+        </div>
         <div class="appointment-detail-section">
           <h4>Descripcion</h4>
           <p id="appointmentDetailNotes" class="appointment-detail-notes"></p>

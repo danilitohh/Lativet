@@ -252,6 +252,66 @@ class LativetService:
             "pdf_url": self._build_export_url(resolved_pdf_path),
         }
 
+    def _send_appointment_reminder_email(self, appointment: dict, owner: dict) -> dict:
+        settings = self._db.get_settings()
+        if not settings.get("smtp_enabled"):
+            return {"sent": False, "skipped": True, "reason": "smtp_disabled"}
+
+        sender = (settings.get("smtp_from") or "").strip()
+        if not sender:
+            return {"sent": False, "skipped": True, "reason": "smtp_from_missing"}
+
+        password = self._db.get_secret_setting("smtp_app_password").strip()
+        if not password:
+            return {"sent": False, "skipped": True, "reason": "smtp_password_missing"}
+
+        to_address = str(owner.get("email") or "").strip()
+        if not to_address:
+            return {"sent": False, "skipped": True, "reason": "owner_email_missing"}
+
+        appointment_at = str(appointment.get("appointment_at") or "").strip()
+        patient_name = str(appointment.get("patient_name") or "tu mascota").strip() or "tu mascota"
+        owner_name = str(owner.get("full_name") or "propietario").strip() or "propietario"
+        clinic_name = str(settings.get("clinic_name") or "Lativet").strip() or "Lativet"
+        reason = str(appointment.get("reason") or "cita veterinaria").strip() or "cita veterinaria"
+        professional_name = (
+            str(appointment.get("professional_name") or "Agenda general").strip() or "Agenda general"
+        )
+        try:
+            appointment_dt = datetime.fromisoformat(appointment_at)
+            date_label = appointment_dt.strftime("%d/%m/%Y")
+            time_label = appointment_dt.strftime("%I:%M %p").lstrip("0").lower()
+        except ValueError:
+            date_label = appointment_at or "fecha por confirmar"
+            time_label = ""
+        schedule_label = f"{date_label} a las {time_label}" if time_label else date_label
+        subject = f"{clinic_name} - Recordatorio de cita para {patient_name}"
+        body = (
+            f"Hola {owner_name},\n\n"
+            f"Te recordamos la cita de {patient_name} programada para el {schedule_label}.\n"
+            f"Servicio o motivo: {reason}.\n"
+            f"Responsable: {professional_name}.\n\n"
+            "Si necesitas confirmar o reprogramar la cita, comunicate con la clinica.\n\n"
+            "Este correo fue generado automaticamente por Lativet.\n"
+        )
+        config = SmtpConfig(
+            host=(settings.get("smtp_host") or "smtp.gmail.com").strip(),
+            port=int(settings.get("smtp_port") or 587),
+            username=sender,
+            password=password,
+            sender=sender,
+        )
+        try:
+            send_email(
+                config,
+                to_address=to_address,
+                subject=subject,
+                body=body,
+            )
+        except Exception as exc:
+            return {"sent": False, "to": to_address, "error": str(exc)}
+        return {"sent": True, "to": to_address, "subject": subject}
+
     @safe_api_call
     def bootstrap(self, lite: bool = False, sections: set[str] | None = None) -> dict:
         payload = self._db.bootstrap(lite=lite, sections=sections)
@@ -335,6 +395,20 @@ class LativetService:
         deleted = self._db.delete_appointment(appointment_id)
         deleted["google_calendar"] = google_calendar
         return deleted
+
+    @safe_api_call
+    def send_appointment_reminder(self, appointment_id: str) -> dict:
+        appointment = self._db.get_appointment(appointment_id)
+        owner = self._db.get_owner(appointment["owner_id"])
+        email_result = self._send_appointment_reminder_email(appointment, owner)
+        return {
+            "appointment_id": appointment.get("id"),
+            "patient_name": appointment.get("patient_name"),
+            "owner_name": owner.get("full_name"),
+            "owner_email": owner.get("email") or "",
+            "owner_phone": owner.get("phone") or owner.get("alternate_phone") or "",
+            "email": email_result,
+        }
 
     @safe_api_call
     def save_availability_rule(self, payload: dict) -> dict:

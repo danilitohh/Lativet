@@ -195,6 +195,75 @@ class WebSmokeTests(unittest.TestCase):
         backup = self.assert_ok(self.client.post("/api/backups", json={}))
         self.assertTrue(backup["path"].endswith(".sqlite3"))
 
+    def test_http_sends_appointment_reminder_and_supports_extended_statuses(self) -> None:
+        owner = self.assert_ok(
+            self.client.post(
+                "/api/owners",
+                json={
+                    "full_name": "Laura Torres",
+                    "identification_type": "CC",
+                    "identification_number": "998877",
+                    "phone": "3001234567",
+                    "email": "laura@example.com",
+                },
+            )
+        )
+        patient = self.assert_ok(
+            self.client.post(
+                "/api/patients",
+                json={
+                    "owner_id": owner["id"],
+                    "name": "Milo",
+                    "species": "Felino",
+                    "breed": "Criollo",
+                    "sex": "Macho",
+                    "weight_kg": "4.1",
+                },
+            )
+        )
+        appointment = self.assert_ok(
+            self.client.post(
+                "/api/appointments",
+                json={
+                    "patient_id": patient["id"],
+                    "appointment_at": "2026-04-25T10:30",
+                    "reason": "Vacunacion anual",
+                    "status": "pending_confirmation",
+                },
+            )
+        )
+        self.assertEqual(appointment["status"], "pending_confirmation")
+
+        moved_to_waiting_room = self.assert_ok(
+            self.client.patch(
+                f"/api/appointments/{appointment['id']}/status",
+                json={"status": "waiting_room"},
+            )
+        )
+        self.assertEqual(moved_to_waiting_room["status"], "waiting_room")
+
+        service = self.app.extensions.get("lativet_service")
+        self.assertIsNotNone(service)
+        service._db.save_settings(
+            {
+                **service._db.get_settings(),
+                "smtp_enabled": True,
+                "smtp_from": "clinic@example.com",
+                "smtp_host": "smtp.example.com",
+                "smtp_port": 587,
+            }
+        )
+        service._db.set_secret_setting("smtp_app_password", "secret")
+
+        with patch("lativet.api.send_email") as send_email_mock:
+            reminder = self.assert_ok(
+                self.client.post(f"/api/appointments/{appointment['id']}/reminder", json={})
+            )
+
+        send_email_mock.assert_called_once()
+        self.assertTrue(reminder["email"]["sent"])
+        self.assertEqual(reminder["owner_email"], "laura@example.com")
+
     def test_http_supports_owner_and_patient_delete_via_post_fallback(self) -> None:
         owner = self.assert_ok(
             self.client.post(
