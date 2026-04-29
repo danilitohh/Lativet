@@ -7125,28 +7125,6 @@ body.auth-locked .page-shell > :not(#loginModal) {
   margin-bottom: 12px;
 }
 
-.appointment-detail-status-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 14px;
-}
-
-.appointment-detail-status-chip {
-  padding: 0;
-  border: none;
-  background: transparent;
-  box-shadow: none;
-}
-
-.appointment-detail-status-chip:hover {
-  transform: none;
-}
-
-.appointment-detail-status-chip.is-active .agenda-status-pill {
-  box-shadow: 0 10px 20px rgba(79, 91, 213, 0.16);
-}
-
 .appointment-detail-quick-card {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);

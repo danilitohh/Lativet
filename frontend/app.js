@@ -102,15 +102,6 @@ const APPOINTMENT_STATUS_META = {
   cancelled: { label: "Cancelada", tone: "cancelled" },
   no_show: { label: "No asistio", tone: "no_show" },
 };
-const APPOINTMENT_STATUS_ACTIONS = [
-  "scheduled",
-  "pending_confirmation",
-  "waiting_room",
-  "confirmed",
-  "completed",
-  "no_show",
-  "cancelled",
-];
 const activeSubsections = {};
 let openNavDropdownSection = "";
 let agendaViewDate = new Date();
@@ -3648,7 +3639,6 @@ function cacheElements() {
     "appointmentDetailTitle",
     "appointmentDetailSubtitle",
     "appointmentDetailStatus",
-    "appointmentDetailStatusActions",
     "appointmentDetailQuickCard",
     "appointmentDetailReminderButton",
     "appointmentDetailEditButton",
@@ -14709,18 +14699,6 @@ function openAppointmentDetailModal(appointmentId) {
   if (elements.appointmentDetailStatus) {
     elements.appointmentDetailStatus.innerHTML = buildAppointmentStatusBadgeMarkup(appointment.status);
   }
-  if (elements.appointmentDetailStatusActions) {
-    elements.appointmentDetailStatusActions.innerHTML = APPOINTMENT_STATUS_ACTIONS.map((status) => `
-      <button
-        type="button"
-        class="appointment-detail-status-chip${status === appointment.status ? " is-active" : ""}"
-        data-appointment-detail-status="${escapeHtml(status)}"
-        data-appointment-id="${escapeHtml(appointment.id)}"
-      >
-        ${buildAppointmentStatusBadgeMarkup(status, { compact: true })}
-      </button>
-    `).join("");
-  }
   if (elements.appointmentDetailQuickCard) {
     elements.appointmentDetailQuickCard.innerHTML = `
       <div class="appointment-detail-quick-card__avatar">${escapeHtml(
@@ -21011,16 +20989,6 @@ async function sendAppointmentReminder(appointmentId) {
 }
 
 async function handleAppointmentDetailClick(event) {
-  const statusButton = event.target.closest("[data-appointment-detail-status][data-appointment-id]");
-  if (statusButton) {
-    const appointmentId = statusButton.dataset.appointmentId || "";
-    const status = statusButton.dataset.appointmentDetailStatus || "";
-    await api.updateAppointmentStatus(appointmentId, status);
-    await refreshData({ sections: AGENDA_REFRESH_SECTIONS });
-    openAppointmentDetailModal(appointmentId);
-    showStatus("Estado de cita actualizado.", "success");
-    return;
-  }
   const reminderButton = event.target.closest("#appointmentDetailReminderButton");
   if (reminderButton?.dataset?.appointmentId) {
     await sendAppointmentReminder(reminderButton.dataset.appointmentId);
